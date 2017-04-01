@@ -1,0 +1,61 @@
+\chapter{Adaptation API design}
+
+\section{The importance of API design}
+
+API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action.
+
+APIs can be found on multiple levels of abstraction in a specific piece of software - % TODO 
+
+.In our case, the API will be used to access functionality of our framework after adding our classes to the project.
+
+\section{Basic API requirements}
+
+The library itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations.
+In the optimal case, the library would be just added as a reference into the project and some minor changes would be done at the highest level, i.e. in the class method definitions, traits, adapters, etc. The business logic of the application should remain intact.
+We can make a list of the \textbf{basic requirements}:
+\begin{enumerate}
+	\item Mark two or more methods as linked together (stating that they can be called interchangeably)
+	\item Perform a call to the group of linked methods
+	\item %TODO
+\end{enumerate}
+
+And some possible \textbf{extensions} to the API:
+\begin{enumerate}
+	\item Separate the selecting call and the evaluation call
+	\item %TODO
+\end{enumerate}
+
+\section{Goals of the API design}
+
+For a framework that will be used repeatedly by a variety of other developers, the API design is crucial and has several principal goals:
+
+\begin{enumerate}
+	\item Keeping the API calls simple in simple cases
+	\item Giving the caller more options in more complicated cases
+\end{enumerate}
+
+\section{Advantages and disadvantages of Scala in API design}
+
+% TODO: Macros
+
+\section{Possibe API drafts}
+
+\subsection{Direct interaction}
+
+\subsection{Function composition}
+
+Scala is a programming language that has absorbed a lot of concepts from the functional programming language world. Above all the key concept that functions are \textit{first-class values} and can be passed around the same way as code.
+
+The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. In a purely functional language, this could be solved using a \textit{higher-order function}\footnote{A function whose arguments and return type are other functions.}. It is a common approach
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+funA :: Ord a => [a] -> [a]
+funB :: Ord a => [a] -> [a]
+
+fun = selectFrom funA funB
+
+fun :: Ord a => [a] -> [a]
+\end{lstlisting}
+
+%TODO: Evaluation, advantages, disadvantages, generation
