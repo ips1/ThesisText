@@ -58,4 +58,124 @@ fun = selectFrom funA funB
 fun :: Ord a => [a] -> [a]
 \end{lstlisting}
 
+\section{Scala API implementation}
+
+%TODO: scala implicit casts
+
+%TODO: scala function types (and nececity to duplicate code)
+
+%TODO: extending function type, overriding apply()
+
+%TODO: methods vs. functions in scala, eta expanstion
+
+%TODO: multiple combination
+
+%TODO: covariance and contravariance
+
+\subsection{Covariance and contravariance}
+So far, all mentioned usages of the \lstinline|or()| method were limited to functions with the same signatures. Quite common case, however, might be combining multiple functions with slightly different argument and return value types, typically one being a specialized version of the other. For example:
+
+%TODO: replace this example:
+
+The two functions can't be joined using the \lstinline|or()| method, because \lstinline|bubbleSort()| is defined on a more general type than \lstinline|radixSort()|. Let's examine simplified case with more combinations:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def fun1(arg: Any): String = ???
+def fun2(arg: String): Any = ???
+def fun3(arg: String): String = ???
+
+val fun4 = fun3 _ or fun2
+val fun5 = fun2 _ or fun3
+val fun6 = fun3 _ or fun1
+val fun7 = fun1 _ or fun3
+\end{lstlisting}
+
+We receive compilation error on lines 5 and 8, in the definition of \lstinline|fun4| and \lstinline|fun7|. Lines 6 and 7 compile correctly. These are the cases where:
+
+\begin{enumerate}
+	\item Return type of the function passed in as an argument is a subtype of the return type of the target function
+	\item Argument type of the function passed in as an argument is a supertype of the argument type of the target function
+\end{enumerate}
+
+The function types (represented as traits) in Scala are defined in the following way:
+\lstset{language=Scala}
+\begin{lstlisting}
+trait Function1[-T1, +R] extends AnyRef
+\end{lstlisting}
+
+The type arguments representing the function arguments are defined as contravariant and the type argument representing the return value of the function is defined as covariant. This leads to \lstinline|(String) => String| being a subtype of \lstinline|(String) => Any| and to \lstinline|(Any) => String| being a subtype of \lstinline|(String) => String|. So the \lstinline|or()| method is working flawlessly for the \lstinline|fun5| and \lstinline|fun6|.
+
+Taking into account that \lstinline|or()| is behaving like a commutative infix operator, we would like it to work in the other two cases as well. The two functions combined will always be in a subtype - supertype relation The signature of the function returned has to match the more limiting signature, i.e. the signature,
+
+\begin{lstlisting}
+def funA(arg: A): A = ???
+def funB(arg: B): B = ???
+val funAB: (B with A) => Object = funA _ or funB
+\end{lstlisting}
+
+%TODO: Comment case & listing
+
+ As we can see, these are the cases where:
+
+\begin{enumerate}
+	\item The output type of the function that is passed as an argument is more general (superclass) than the output type of the target function
+	\item The argument type of the function that is passed as an argument is more specific (subclass) than the argument type of the target function
+\end{enumerate}
+
+This is a case where covariance and contravariance of the type arguments of the functions that our \lstinline|or()| method accepts should be taken into account. Let's consider the following type of the first function:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+(A) => B
+\end{lstlisting}
+
+This function should be combinable using \lstinline|or()| method with any 
+
+\subsection{Implicit arguments}
+
+%TODO: How to solve this issue?
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def radixSort(list: List[Int]): List[Int] = ???
+def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
+\end{lstlisting}
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def radixSort(list: List[Int]): List[Int] = ???
+def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+\end{lstlisting}
+
+%TODO: implementing traits using combined methods
+
+%TODO: summary of the API approach, definition of key terms and points in adaptive lifecycle - method definition, function / closure creation (eta expansion), function combination, 
+
+\section{Identifier selection}
+
+The functions that we are going to select from have to be identifiable in the entire application. More specifically, we need to be able to store the runtime measurements for every function throughout the entire execution process. The functions might be referenced and called from various points in the library user's code. Additionally, we know nothing about the runtime state of the application memory at the point of entry into our function. So the auxiliary data have to be stored statically, in a special memory section dedicated exclusively to the framework, and the access has to be thread safe.
+
+%TODO: Thread safety
+
+The historical runtime measurements (run history) of a function can be identified using various approaches.
+
+\subsection{Arbitrary identifiers}
+User of the library could assign custom identifiers to the functions. Main advantage of this approach is the possibility to include description or documentation of the specific implementation in the identifiers. For example:
+
+\begin{lstlisting}
+quickSort
+heapSort
+\end{lstlisting}
+
+\begin{lstlisting}
+joinQuery
+selectInQuery
+\end{lstlisting}
+
+Having meaningful identifiers leads to readable logs or measurement history dumps and to easier debugging in general. It, however, imposes new requirements on the user of the library and makes the API more complex. In addition, the identifiers would in almost all the cases exactly match the name of the function implementation.
+
+\subsection{Randomly generated identifiers}
+If we abandoned the idea of meaningfulness, we could assign automatically generated identifiers without the user having to specify them. Possible candidates could be sequential numbers or GUIDs. The identifiers would have to be created and matched with the function definitions or combi
+
 %TODO: Evaluation, advantages, disadvantages, generation
