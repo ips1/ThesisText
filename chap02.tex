@@ -66,6 +66,48 @@ fun :: Ord a => [a] -> [a]
 
 %TODO: extending function type, overriding apply()
 
+\subsection{Methods and functions in Scala}
+
+There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They can't be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
+
+\begin{lstlisting}
+class Class {
+  def method(arg: String): String = s"Called method($arg) on $this"
+}
+val obj = new Class()
+println(obj.method("Hello"))
+\end{lstlisting}
+
+On the other hand, functions are first-class values that have a type and can be passed into other functions or methods, or be part of expressions. Internally, they are represented as closure objects, carrying around their context and the compiled code stored as a method in the closure type. Functions are created using lambda expressions:
+
+\begin{lstlisting}
+val function: (String) => Unit = arg => println(obj.method(arg))
+function("Hello again!")
+List("One", "Two", "Three").foreach(function)
+\end{lstlisting}
+
+The \lstinline|obj| reference is \textit{captured} inside the closure, the function is not tied to any class. 
+
+Because the strengths of Scala lie in its functional features, it is often handy to be able to convert methods to functions. This is called \textit{eta-expansion} and is quite straightforward (assuming we are inside the class):
+
+\begin{lstlisting}
+val methodFunction: (String) => String = arg => method(arg)
+\end{lstlisting}
+
+Scala has a special operator that makes it even simpler:
+
+\begin{lstlisting}
+val methodFunction = method _
+\end{lstlisting}
+
+And in some expression contexts, this conversion is implicit:
+
+\begin{lstlisting}
+List("One", "Two", "Three").map(method)
+\end{lstlisting}
+
+%TODO: Generic methods vs. functions
+
 %TODO: methods vs. functions in scala, eta expanstion
 
 %TODO: multiple combination
@@ -73,6 +115,9 @@ fun :: Ord a => [a] -> [a]
 %TODO: covariance and contravariance
 
 \subsection{Covariance and contravariance}
+%TODO: Object-oriented polymorphism
+% http://milessabin.com/blog/2012/04/27/shapeless-polymorphic-function-values-1/
+
 So far, all mentioned usages of the \lstinline|or()| method were limited to functions with the same signatures. Quite common case, however, might be combining multiple functions with slightly different argument and return value types, typically one being a specialized version of the other. For example:
 
 %TODO: replace this example:
@@ -144,9 +189,27 @@ def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
 
 \lstset{language=Scala}
 \begin{lstlisting}
-def radixSort(list: List[Int]): List[Int] = ???
 def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 \end{lstlisting}
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def implicitFun1[A <% Ordered[A]](list: List[A]): List[A] = ???
+def implicitFun2[A <% Ordered[A]](list: List[A]): List[A] = ???
+
+def fun = implicitFun1 _ or implicitFun2
+\end{lstlisting}
+
+Interesting thing is that the parser included in the IntelliJ IDEA IDE\footnote{Integrated Development Environment.} Scala plugin that performs background code inspection and immediately highlights compile-time errors doesn't recognize this problem. It was tested in version 2016.3.4 with Scala plugin version 2016.3.8.
+
+%TODO: IntelliJ parser has no problems, compilation shows error
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def fun: (List[A]) => List[String] = implicitFun1 _ or implicitFun2
+\end{lstlisting}
+
+%TODO: Automatically generated type annotation is WRONG!!!
 
 %TODO: implementing traits using combined methods
 
@@ -179,3 +242,9 @@ Having meaningful identifiers leads to readable logs or measurement history dump
 If we abandoned the idea of meaningfulness, we could assign automatically generated identifiers without the user having to specify them. Possible candidates could be sequential numbers or GUIDs. The identifiers would have to be created and matched with the function definitions or combi
 
 %TODO: Evaluation, advantages, disadvantages, generation
+
+\section{Delayed measuring}
+
+%TODO: Use cases - configuration generation, expression tree building, query building...
+
+%TODO: Problems - matching decision with measurement
