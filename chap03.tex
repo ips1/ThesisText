@@ -1,7 +1,386 @@
-\chapter{Adaptation API design}
+\chapter{Adaptation API design and implementation}
 
-An~example citation: \cite{Andel07}
+\section{The importance of API design}
 
-\section{Title of the first subchapter of the first chapter}
+API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action.
 
-\section{Title of the second subchapter of the first chapter}
+APIs can be found on multiple levels of abstraction in a specific piece of software - % TODO 
+
+.In our case, the API will be used to access functionality of our framework after adding our classes to the project.
+
+\section{Basic API requirements}
+
+The library itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations.
+In the optimal case, the library would be just added as a reference into the project and some minor changes would be done at the highest level, i.e. in the class method definitions, traits, adapters, etc. The business logic of the application should remain intact.
+We can make a list of the \textbf{basic requirements}:
+\begin{enumerate}
+	\item Mark two or more methods as linked together (stating that they can be called interchangeably)
+	\item Perform a call to the group of linked methods
+	\item %TODO
+\end{enumerate}
+
+And some possible \textbf{extensions} to the API:
+\begin{enumerate}
+	\item Separate the selecting call and the evaluation call
+	\item %TODO
+\end{enumerate}
+
+\section{Goals of the API design}
+
+For a framework that will be used repeatedly by a variety of other developers, the API design is crucial and has several principal goals:
+
+\begin{enumerate}
+	\item Keeping the API calls simple in simple cases
+	\item Giving the caller more options in more complicated cases
+\end{enumerate}
+
+\section{Advantages and disadvantages of Scala in API design}
+
+% TODO: Macros
+
+\section{Possibe API drafts}
+
+\subsection{Direct interaction}
+
+\subsection{Function composition}
+
+Scala is a programming language that has absorbed a lot of concepts from the functional programming language world. Above all the key concept that functions are \textit{first-class values} and can be passed around the same way as code.
+
+The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. In a purely functional language, this could be solved using a \textit{higher-order function}\footnote{A function whose arguments and return type are other functions.}. It is a common approach
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+funA :: Ord a => [a] -> [a]
+funB :: Ord a => [a] -> [a]
+
+fun = selectFrom funA funB
+
+fun :: Ord a => [a] -> [a]
+\end{lstlisting}
+
+\section{Scala API implementation}
+
+%TODO: scala implicit casts
+
+%TODO: scala function types (and nececity to duplicate code)
+
+%TODO: extending function type, overriding apply()
+
+\subsection{Methods and functions in Scala}
+
+There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They can't be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
+
+\begin{lstlisting}
+class Class {
+def method(arg: String): String = s"Called method($arg) on $this"
+}
+val obj = new Class()
+println(obj.method("Hello"))
+\end{lstlisting}
+
+On the other hand, functions are first-class values that have a type and can be passed into other functions or methods, or be part of expressions. Internally, they are represented as closure objects, carrying around their context and the compiled code stored as a method in the closure type. Functions are created using lambda expressions:
+
+\begin{lstlisting}
+val function: (String) => Unit = arg => println(obj.method(arg))
+function("Hello again!")
+List("One", "Two", "Three").foreach(function)
+\end{lstlisting}
+
+The \lstinline|obj| reference is \textit{captured} inside the closure, the function is not tied to any class. 
+
+Because the strengths of Scala lie in its functional features, it is often handy to be able to convert methods to functions. This is called \textit{eta-expansion} and is quite straightforward (assuming we are inside the class):
+
+\begin{lstlisting}
+val methodFunction: (String) => String = arg => method(arg)
+\end{lstlisting}
+
+Scala has a special operator that makes it even simpler:
+
+\begin{lstlisting}
+val methodFunction = method _
+\end{lstlisting}
+
+And in some expression contexts, this conversion is implicit:
+
+\begin{lstlisting}
+List("One", "Two", "Three").map(method)
+\end{lstlisting}
+
+%TODO: Generic methods vs. functions
+
+%TODO: methods vs. functions in scala, eta expanstion
+
+%TODO: multiple combination
+
+%TODO: covariance and contravariance
+
+\subsection{Covariance and contravariance}
+%TODO: Object-oriented polymorphism
+% http://milessabin.com/blog/2012/04/27/shapeless-polymorphic-function-values-1/
+
+So far, all mentioned usages of the \lstinline|or()| method were limited to functions with the same signatures. Quite common case, however, might be combining multiple functions with slightly different argument and return value types, typically one being a specialized version of the other. For example:
+
+%TODO: replace this example:
+
+The two functions can't be joined using the \lstinline|or()| method, because \lstinline|bubbleSort()| is defined on a more general type than \lstinline|radixSort()|. Let's examine simplified case with more combinations:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def fun1(arg: Any): String = ???
+def fun2(arg: String): Any = ???
+def fun3(arg: String): String = ???
+
+val fun4 = fun3 _ or fun2
+val fun5 = fun2 _ or fun3
+val fun6 = fun3 _ or fun1
+val fun7 = fun1 _ or fun3
+\end{lstlisting}
+
+We receive compilation error on lines 5 and 8, in the definition of \lstinline|fun4| and \lstinline|fun7|. Lines 6 and 7 compile correctly. These are the cases where:
+
+\begin{enumerate}
+	\item Return type of the function passed in as an argument is a subtype of the return type of the target function
+	\item Argument type of the function passed in as an argument is a supertype of the argument type of the target function
+\end{enumerate}
+
+The function types (represented as traits) in Scala are defined in the following way:
+\lstset{language=Scala}
+\begin{lstlisting}
+trait Function1[-T1, +R] extends AnyRef
+\end{lstlisting}
+
+The type arguments representing the function arguments are defined as contravariant and the type argument representing the return value of the function is defined as covariant. This leads to \lstinline|(String) => String| being a subtype of \lstinline|(String) => Any| and to \lstinline|(Any) => String| being a subtype of \lstinline|(String) => String|. So the \lstinline|or()| method is working flawlessly for the \lstinline|fun5| and \lstinline|fun6|.
+
+Taking into account that \lstinline|or()| is behaving like a commutative infix operator, we would like it to work in the other two cases as well. The two functions combined will always be in a subtype - supertype relation The signature of the function returned has to match the more limiting signature, i.e. the signature,
+
+\begin{lstlisting}
+def funA(arg: A): A = ???
+def funB(arg: B): B = ???
+val funAB: (B with A) => Object = funA _ or funB
+\end{lstlisting}
+
+%TODO: Comment case & listing
+
+As we can see, these are the cases where:
+
+\begin{enumerate}
+	\item The output type of the function that is passed as an argument is more general (superclass) than the output type of the target function
+	\item The argument type of the function that is passed as an argument is more specific (subclass) than the argument type of the target function
+\end{enumerate}
+
+This is a case where covariance and contravariance of the type arguments of the functions that our \lstinline|or()| method accepts should be taken into account. Let's consider the following type of the first function:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+(A) => B
+\end{lstlisting}
+
+This function should be combinable using \lstinline|or()| method with any 
+
+\subsection{Generic methods}
+
+%TODO: Solution suggestion - OOP approach, genericity in classes
+
+%TODO: How to solve this issue?
+
+Functions have one major limitation in Scala - they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the eta-expansion on a generic method, we have to specify the type argument, otherwise, the type arguments will be fixed as Nothing and the function won't be callable:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def makeTuple[A, B](a: A, b: B): (A, B) = (a, b)
+val fun1 = makeTuple _
+// fun1: (Nothing, Nothing) => (Nothing, Nothing)
+val fun2 = makeTuple[Int, String] _
+// fun2: (Int, String) => (Int, String)
+\end{lstlisting}
+
+As the \lstinline|or()| method performs combination of functions into another function, we automatically lose all the generic types involved in the original methods we are expanding and then combining. We can, however, take advantage of the fact that the type arguments being explicitly set in the process of eta-expansion can be generic types of an enclosing structure (generic class or generic method). With this approach, there are two possible patterns of achieving genericity in combined functions:
+
+\begin{enumerate}
+	\item Defining a function field inside a generic class
+	\lstset{language=Scala}
+	\begin{lstlisting}
+	def defaultCount[A](list: List[A], item: A) = list.count(_ == item)
+	def customCount[A](list: List[A], item: A) = list.filter(_ == item).map((i) => 1).sum
+	
+	class ListTools[A] {
+	val count = defaultCount[A] _ or customCount[A]
+	}
+	\end{lstlisting}
+	\item Defining a generic method by creating the combination and then calling it immediately
+	\lstset{language=Scala}
+	\begin{lstlisting}
+	def count[A](list: List[A], item: A) = (defaultCount _ or customCount)(list, item)
+	\end{lstlisting}
+\end{enumerate}
+
+
+Generics solution:
+\lstset{language=Scala}
+\begin{lstlisting}
+def defaultMap[A, B](list: List[A], fun: (A) => B): List[B] = 
+list.map(fun)
+def iterativeMap[A, B](list: List[A], fun: (A) => B): List[B] =  {
+val result = new mutable.MutableList[B]()
+for (x <- list) {
+result += fun(x)
+}
+result.toList
+}
+
+def map[A, B](list: List[A], fun: (A) => B): List[B] = 
+(defaultMap[A, B] _ or iterativeMap[A, B])(list, fun)
+\end{lstlisting}
+
+\subsection{Implicit arguments}
+
+Implicit arguments are arguments that will be filled in automatically at invocation by an implicit method with matching signature that is available within the scope. This can be used for different reasons, but the most common is a combination with a type argument that has to have a conversion of some kind. In the Scala terminology, the type has to be \textit{viewable} as some other type. There used to be a specialized syntax called \textit{View bounds} in earlier versions of Scala to support this usage, but it has been deprecated.
+
+%TODO: http://docs.scala-lang.org/tutorials/tour/implicit-parameters.html
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
+def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+\end{lstlisting}
+
+The most common usage of implicit arguments is simulating \textit{type classes} from other functional languages like Haskell. We create a generic trait with required methods (representing the type class and its functions) and whenever we want a new type to be member of the type class, we create implementation of the trait and an implicit method that provides the implementation. From now on, the newly added member can be used in any method requiring the implicit conversion just by importing our conversion function into the scope where the method is called.
+
+%TODO: Example of custom "type class" or member?
+
+As with a lot of other features, implicit arguments are supported only by methods, not by functions. Therefore, all of them have to be resolved and fixed when performing eta-expansion, along with all the type arguments. If we set the type arguments to a concrete type, we can provide the implementation in the same way as at the time of invocation, without any problem:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def radixSort(list: List[Int]): List[Int] = ???
+def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
+
+val sort = radixSort _ or bubbleSort[Int]
+\end{lstlisting}
+
+%TODO: Reference
+There is, however, one more option mentioned in [REFERENCE] - the type argument can be set to a type argument of an enclosing scope, making the implicit argument generic again. In this case, the scope in which the type argument is declared has to provide the implicit function implementation. As a result, the implicit argument has to be repeated in the method or class constructor signature.
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def implicitFun1[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+def implicitFun2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+
+// Following line won't compile:
+// def implicitFun[A](list: List[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)
+def implicitFun[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)d
+\end{lstlisting}
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+\end{lstlisting}
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def implicitFun1[A <% Ordered[A]](list: List[A]): List[A] = ???
+def implicitFun2[A <% Ordered[A]](list: List[A]): List[A] = ???
+
+def fun = implicitFun1 _ or implicitFun2
+\end{lstlisting}
+
+Interesting thing is that the parser included in the IntelliJ IDEA IDE\footnote{Integrated Development Environment.} Scala plugin that performs background code inspection and immediately highlights compile-time errors doesn't recognize this problem. It was tested in version 2016.3.4 with Scala plugin version 2016.3.8.
+
+%TODO: IntelliJ parser has no problems, compilation shows error
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def fun: (List[A]) => List[String] = implicitFun1 _ or implicitFun2
+\end{lstlisting}
+
+%TODO: Automatically generated type annotation is WRONG!!!
+
+\subsection{Overloading}
+Very similar issue is encountered when it comes to overloading - only methods can be overloaded.
+
+%TODO: implementing traits using combined methods
+\subsection{Implementing Traits}
+Traits in the role of interfaces represent key element of object-oriented programming approach. Providing custom implementations of traits is essential and using adapted functions in this role would be very useful. The key problem is the separation of functions and methods in Scala mentioned in [REF].
+%TODO: ADD REFERENCE HERE
+
+The methods defined in traits can be implemented or overridden only by a different method, which will be invoked using virtual method calls. The function defined in the trait using a val keyword is basically a getter which returns the function value, invokable by itself. In this case, the getter has to be overridden, either by a custom getter, or by a field with automatically generated getter. An adapted function generated using the \lstinline|or()| method can be assigned to such a field and thus implementing the trait function getter. An example follows:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+trait TestTrait {
+def testMethod(arg: List[Int]): List[String]
+val testFunction: (List[Int]) => List[String]
+}
+
+class TestImpl extends TestTrait {
+import functionadaptors.Implicits._
+
+def impl1(arg: List[Int]): List[String] = 
+arg.map("Num: " + _.toString)
+def impl2(arg: List[Int]): List[String] = 
+arg.map(i => s"Num: $i")
+
+override val testFunction: (List[Int]) => List[String] = 
+impl1 _ or impl2
+
+// Can't implement testMethod using the result of or()
+override def testMethod(arg: List[Int]): List[String] = ???
+}
+\end{lstlisting}
+
+Unfortunately, a lot of the traits we need to provide implementations for are already existing and can use the method format. Manual workaround to implement the method is quite straightforward, but again, it generates unnecessary calls and duplicities in our code:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+...
+private val adaptedFunction = impl1 _ or impl2
+override def testMethod(arg: List[Int]): List[String] = 
+adaptedFunction(arg)
+...
+\end{lstlisting}
+
+%TODO: Add reference
+Or, using the solution that was previously mentioned in [PREVIOUS SECTION], we can even omit the private field declaration and use an expression syntax:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+override def testMethod(arg: List[Int]): List[String] = 
+(impl1 _ or impl2)(arg)
+\end{lstlisting}
+
+
+%TODO: summary of the API approach, definition of key terms and points in adaptive lifecycle - method definition, function / closure creation (eta expansion), function combination, 
+
+\section{Identifier selection}
+
+The functions that we are going to select from have to be identifiable in the entire application. More specifically, we need to be able to store the runtime measurements for every function throughout the entire execution process. The functions might be referenced and called from various points in the library user's code. Additionally, we know nothing about the runtime state of the application memory at the point of entry into our function. So the auxiliary data have to be stored statically, in a special memory section dedicated exclusively to the framework, and the access has to be thread safe.
+
+%TODO: Thread safety
+
+The historical runtime measurements (run history) of a function can be identified using various approaches.
+
+\subsection{Arbitrary identifiers}
+User of the library could assign custom identifiers to the functions. Main advantage of this approach is the possibility to include description or documentation of the specific implementation in the identifiers. For example:
+
+\begin{lstlisting}
+quickSort
+heapSort
+\end{lstlisting}
+
+\begin{lstlisting}
+joinQuery
+selectInQuery
+\end{lstlisting}
+
+Having meaningful identifiers leads to readable logs or measurement history dumps and to easier debugging in general. It, however, imposes new requirements on the user of the library and makes the API more complex. In addition, the identifiers would in almost all the cases exactly match the name of the function implementation.
+
+\subsection{Randomly generated identifiers}
+If we abandoned the idea of meaningfulness, we could assign automatically generated identifiers without the user having to specify them. Possible candidates could be sequential numbers or GUIDs. The identifiers would have to be created and matched with the function definitions or combi
+
+%TODO: Evaluation, advantages, disadvantages, generation
+
+\section{Delayed measuring}
+
+%TODO: Use cases - configuration generation, expression tree building, query building...
+
+%TODO: Problems - matching decision with measurement
