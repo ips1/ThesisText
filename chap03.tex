@@ -50,7 +50,7 @@ The goal of our API is to allow the programmer to link together two or more func
 
 Scala supports this approach both in language features and in its standard libraries - as mentioned in \ref{subsec:metandfun}, functions are first class values and can be arguments of other methods or functions. A simple example could be function composition, which is implemented as a method on the function type traits (see \ref{subsec:functiontypes}):
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val timesTwo = (x: Int) => { x * 2 }
 val plusOne = (x: Int) => { x + 1 }
@@ -59,21 +59,21 @@ val timesTwoPlusOne = timesTwo.andThen(plusOne)
 
 We can achieve even more readable and natural looking code if we take advantage of the infix operator syntax (see \ref{subsec:infixops}):
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val timesTwoPlusOne = timesTwo andThen plusOne
 \end{lstlisting}
 
 Chaining of the methods / operators is possible as well:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val manyOperations = timesTwo andThen plusOne andThen plusOne andThen timesTwo
 \end{lstlisting}
 
 Inspired by this readable and very simple syntax to compose functions which relies on only the basic syntactic features of Scala, we can try to design the API of the selection mechanism in the exactly same way:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def or(fun: (T) => R): (T) => R = ???
 ...
@@ -91,14 +91,14 @@ We need to cover all of the 23 original function type traits with custom type ex
 Another thing to consider is that in most cases, the selection mechanism will be used with methods, not functions. As mentioned in \ref{subsec:etaexpansion}, Scala allows a simple conversion from methods to functions, which can be implicit in some cases. It would be preferable to omit the explicit conversions wherever it's possible.
 
 We can try combining methods with Scala function composition:
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val composed = method1 andThen method2
 \end{lstlisting}
 
 This code won't compile with a suggestion to add the \lstinline|_| operator to \lstinline|method1| in order to treat it as a partially applied function (and to be able to call \lstinline|andThen()| method). Scala unfortunately doesn't perform implicit eta-expansion on the target of a method call. So after fixing the example, we get a fully working result:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val composed = method1 _ andThen method2
 \end{lstlisting}
@@ -106,7 +106,7 @@ val composed = method1 _ andThen method2
 On \lstinline|method2|, the eta-expansion is performed implicitly, because it's an argument of a method without overloads.
 
 Now, in order to keep the same pattern working, we need to declare our \lstinline|or()| method in the following way:
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 trait FunctionAdaptor[T, R] extends (T) => R {
   def or(fun: (T) => R): (T) => R = ???
@@ -115,7 +115,7 @@ trait FunctionAdaptor[T, R] extends (T) => R {
 
 If there is a suitable implicit conversion from \lstinline|(T) => R| to \lstinline|FunctionAdaptor[T,R]|, it is possible to use it in the same way as the \lstinline|andThen()| method:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val fun = method1 _ or method2 or method3
 \end{lstlisting}
@@ -148,7 +148,7 @@ So far, all mentioned usages of the \lstinline|or()| method were limited to func
 
 The two functions can't be joined using the \lstinline|or()| method, because \lstinline|bubbleSort()| is defined on a more general type than \lstinline|radixSort()|. Let's examine simplified case with more combinations:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def fun1(arg: Any): String = ???
 def fun2(arg: String): Any = ???
@@ -168,7 +168,7 @@ We receive compilation error on lines 5 and 8, in the definition of \lstinline|f
 \end{enumerate}
 
 The function types (represented as traits) in Scala are defined in the following way:
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 trait Function1[-T1, +R] extends AnyRef
 \end{lstlisting}
@@ -194,7 +194,7 @@ As we can see, these are the cases where:
 
 This is a case where covariance and contravariance of the type arguments of the functions that our \lstinline|or()| method accepts should be taken into account. Let's consider the following type of the first function:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 (A) => B
 \end{lstlisting}
@@ -209,7 +209,7 @@ This function should be combinable using \lstinline|or()| method with any
 
 Functions have one major limitation in Scala - they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the eta-expansion on a generic method, we have to specify the type argument, otherwise, the type arguments will be fixed as Nothing and the function won't be callable:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def makeTuple[A, B](a: A, b: B): (A, B) = (a, b)
 val fun1 = makeTuple _
@@ -222,7 +222,7 @@ As the \lstinline|or()| method performs combination of functions into another fu
 
 \begin{enumerate}
 	\item Defining a function field inside a generic class
-	\lstset{language=Scala}
+	\lstset{style=Scala}
 	\begin{lstlisting}
 	def defaultCount[A](list: List[A], item: A) = list.count(_ == item)
 	def customCount[A](list: List[A], item: A) = list.filter(_ == item).map((i) => 1).sum
@@ -232,7 +232,7 @@ As the \lstinline|or()| method performs combination of functions into another fu
 	}
 	\end{lstlisting}
 	\item Defining a generic method by creating the combination and then calling it immediately
-	\lstset{language=Scala}
+	\lstset{style=Scala}
 	\begin{lstlisting}
 	def count[A](list: List[A], item: A) = (defaultCount _ or customCount)(list, item)
 	\end{lstlisting}
@@ -240,7 +240,7 @@ As the \lstinline|or()| method performs combination of functions into another fu
 
 
 Generics solution:
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def defaultMap[A, B](list: List[A], fun: (A) => B): List[B] = 
 list.map(fun)
@@ -262,7 +262,7 @@ Implicit arguments are arguments that will be filled in automatically at invocat
 
 %TODO: http://docs.scala-lang.org/tutorials/tour/implicit-parameters.html
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
 def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
@@ -274,7 +274,7 @@ The most common usage of implicit arguments is simulating \textit{type classes} 
 
 As with a lot of other features, implicit arguments are supported only by methods, not by functions. Therefore, all of them have to be resolved and fixed when performing eta-expansion, along with all the type arguments. If we set the type arguments to a concrete type, we can provide the implementation in the same way as at the time of invocation, without any problem:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def radixSort(list: List[Int]): List[Int] = ???
 def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
@@ -285,7 +285,7 @@ val sort = radixSort _ or bubbleSort[Int]
 %TODO: Reference
 There is, however, one more option mentioned in [REFERENCE] - the type argument can be set to a type argument of an enclosing scope, making the implicit argument generic again. In this case, the scope in which the type argument is declared has to provide the implicit function implementation. As a result, the implicit argument has to be repeated in the method or class constructor signature.
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def implicitFun1[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 def implicitFun2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
@@ -295,12 +295,12 @@ def implicitFun2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 def implicitFun[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)d
 \end{lstlisting}
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 \end{lstlisting}
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def implicitFun1[A <% Ordered[A]](list: List[A]): List[A] = ???
 def implicitFun2[A <% Ordered[A]](list: List[A]): List[A] = ???
@@ -312,7 +312,7 @@ Interesting thing is that the parser included in the IntelliJ IDEA IDE\footnote{
 
 %TODO: IntelliJ parser has no problems, compilation shows error
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def fun: (List[A]) => List[String] = implicitFun1 _ or implicitFun2
 \end{lstlisting}
@@ -329,7 +329,7 @@ Traits in the role of interfaces represent key element of object-oriented progra
 
 The methods defined in traits can be implemented or overridden only by a different method, which will be invoked using virtual method calls. The function defined in the trait using a val keyword is basically a getter which returns the function value, invokable by itself. In this case, the getter has to be overridden, either by a custom getter, or by a field with automatically generated getter. An adapted function generated using the \lstinline|or()| method can be assigned to such a field and thus implementing the trait function getter. An example follows:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 trait TestTrait {
 def testMethod(arg: List[Int]): List[String]
@@ -354,7 +354,7 @@ override def testMethod(arg: List[Int]): List[String] = ???
 
 Unfortunately, a lot of the traits we need to provide implementations for are already existing and can use the method format. Manual workaround to implement the method is quite straightforward, but again, it generates unnecessary calls and duplicities in our code:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 ...
 private val adaptedFunction = impl1 _ or impl2
@@ -366,7 +366,7 @@ adaptedFunction(arg)
 %TODO: Add reference
 Or, using the solution that was previously mentioned in [PREVIOUS SECTION], we can even omit the private field declaration and use an expression syntax:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 override def testMethod(arg: List[Int]): List[String] = 
 (impl1 _ or impl2)(arg)

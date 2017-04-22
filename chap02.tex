@@ -13,7 +13,7 @@
 
 There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They can't be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 class Class {
 def method(arg: String): String = s"Called method($arg) on $this"
@@ -24,7 +24,7 @@ println(obj.method("Hello"))
 
 On the other hand, functions are first-class values that have a type and can be passed into other functions or methods, or be part of expressions. Internally, they are represented as closure objects, carrying around their context and the compiled code stored as a method in the closure type. Functions are created using lambda expressions:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val function: (String) => Unit = arg => println(obj.method(arg))
 function("Hello again!")
@@ -40,21 +40,21 @@ The \lstinline|obj| reference is \textit{captured} inside the closure, the funct
 
 Because the strengths of Scala lie in its functional features, it is often handy to be able to convert methods to functions. This is called \textit{eta-expansion} and is quite straightforward (assuming we are inside the class):
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val methodFunction: (String) => String = arg => method(arg)
 \end{lstlisting}
 
 Scala has a special operator that makes it even simpler:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 val methodFunction = method _
 \end{lstlisting}
 
 And in some expression contexts, this conversion is implicit:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 List("One", "Two", "Three").map(method)
 \end{lstlisting}
@@ -80,7 +80,7 @@ The first-class value functions have to be anchored somewhere in the Scala type 
 
 Scala as a language doesn't support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 trait Function0[+R]
 ...
@@ -89,7 +89,7 @@ trait Function22[-T1, ..., -T22, +R]
 
 These traits have syntactic aliases in the language:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 () => R
 ...
@@ -107,7 +107,7 @@ The necessity to represent functions with various argument numbers as various tr
 
 One of the features that support both the functional flavor of Scala and the DSL building capabilities is the possibility to call methods like infix operators. Any method that has exactly one argument can be called using this special syntax:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 class RichInt {
   def plus(other: RichInt) = ???
@@ -118,7 +118,7 @@ val res = x plus y
 
 The syntax is even more powerful if we take into consideration that Scala allow the methods to have non-alphanumeric names:
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def +(other: RichInt) = ???
 ...
@@ -131,7 +131,7 @@ This approach allows us to use the infix syntax with existing methods and with m
 
 \section{Def Macros}
 
-\lstset{language=Scala}
+\lstset{style=Scala}
 \begin{lstlisting}
 def printAst(arg: Any): Any = macro printAst_impl
 
