@@ -93,12 +93,14 @@
 \usepackage[scaled]{beramono}
 
 \usepackage{color}
-\definecolor{bluekeywords}{rgb}{0.13,0.13,1}
+%\definecolor{bluekeywords}{rgb}{0.13,0.13,1}
+\definecolor{bluekeywords}{rgb}{0,0,0.5}
 \definecolor{greencomments}{rgb}{0,0.5,0}
 \definecolor{redstrings}{rgb}{0.9,0,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 
-\lstset{
+\lstdefinestyle{Scala}{  
+	language=Scala,
 	showspaces=false,
 	showtabs=false,
 	breaklines=true,
@@ -106,6 +108,28 @@
 	breakatwhitespace=true,
 	columns=fullflexible,
 	escapeinside={(*@}{@*)},
+	otherkeywords={},
+	commentstyle=\color{greencomments},
+	keywordstyle=\color{bluekeywords}\bfseries,
+	stringstyle=\color{redstrings},
+	basicstyle=\ttfamily,
+	numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+	numbersep=12pt,                   % how far the line-numbers are from the code
+	numberstyle=\color{mygray}, % the style that is used for the line-numbers
+	rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+	stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
+}
+
+\lstset{
+	language=Scala,
+	showspaces=false,
+	showtabs=false,
+	breaklines=true,
+	showstringspaces=false,
+	breakatwhitespace=true,
+	columns=fullflexible,
+	escapeinside={(*@}{@*)},
+	otherkeywords={},
 	commentstyle=\color{greencomments},
 	keywordstyle=\color{bluekeywords}\bfseries,
 	stringstyle=\color{redstrings},
