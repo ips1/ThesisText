@@ -84,9 +84,15 @@ val funAorB = funA or funB
 \subsubsection{Disadvantages}
 \subsubsection{Consequences}
 
+\section{Scala API implementation}
+
+\subsection{Consequences of the choice}
+
 The \lstinline|or()| method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case, a function. More specifically, any of the function types mentioned in \ref{subsec:functiontypes}. Because Scala doesn't support extension methods, we need to introduce a new type for functions containing this functionality, and an implicit conversion from the normal function type.
 
 We need to cover all of the 23 original function type traits with custom type extensions, which will be mostly duplicated code - this reduces the maintainability and flexibility of the code. The trait files can be generated, but any change has to be reflected in the generating script first, before re-generating the code.
+
+\subsection{Using the API with methods}
 
 Another thing to consider is that in most cases, the selection mechanism will be used with methods, not functions. As mentioned in \ref{subsec:etaexpansion}, Scala allows a simple conversion from methods to functions, which can be implicit in some cases. It would be preferable to omit the explicit conversions wherever it's possible.
 
@@ -109,7 +115,7 @@ Now, in order to keep the same pattern working, we need to declare our \lstinlin
 \lstset{style=Scala}
 \begin{lstlisting}
 trait FunctionAdaptor[T, R] extends (T) => R {
-  def or(fun: (T) => R): (T) => R = ???
+def or(fun: (T) => R): (T) => R = ???
 }
 \end{lstlisting}
 
@@ -134,9 +140,7 @@ val fun = method1 _ or method2 _  or method3
 %TODO: Def macros?
 %TODO: Move to a different section
 
-\section{Scala API implementation}
-
-
+\section{The API problems and their solution}
 
 \subsection{Covariance and contravariance}
 %TODO: Object-oriented polymorphism
@@ -376,6 +380,9 @@ override def testMethod(arg: List[Int]): List[String] =
 %TODO: summary of the API approach, definition of key terms and points in adaptive lifecycle - method definition, function / closure creation (eta expansion), function combination, 
 
 \section{Identifier selection}
+\label{sec:identifier}
+
+%TODO: Move this section somewhere else
 
 The functions that we are going to select from have to be identifiable in the entire application. More specifically, we need to be able to store the runtime measurements for every function throughout the entire execution process. The functions might be referenced and called from various points in the library user's code. Additionally, we know nothing about the runtime state of the application memory at the point of entry into our function. So the auxiliary data have to be stored statically, in a special memory section dedicated exclusively to the framework, and the access has to be thread safe.
 
