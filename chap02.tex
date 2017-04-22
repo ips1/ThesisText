@@ -1,3 +1,143 @@
 \chapter{Scala programming language}
 
+\section{Important language features}
+
+%TODO: scala implicit casts
+
+%TODO: scala function types (and nececity to duplicate code)
+
+%TODO: extending function type, overriding apply()
+
+\subsection{Methods and functions in Scala}
+\label{subsec:metandfun}
+
+There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They can't be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+class Class {
+def method(arg: String): String = s"Called method($arg) on $this"
+}
+val obj = new Class()
+println(obj.method("Hello"))
+\end{lstlisting}
+
+On the other hand, functions are first-class values that have a type and can be passed into other functions or methods, or be part of expressions. Internally, they are represented as closure objects, carrying around their context and the compiled code stored as a method in the closure type. Functions are created using lambda expressions:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+val function: (String) => Unit = arg => println(obj.method(arg))
+function("Hello again!")
+List("One", "Two", "Three").foreach(function)
+\end{lstlisting}
+
+The \lstinline|obj| reference is \textit{captured} inside the closure, the function is not tied to any class. 
+
+
+
+\subsection{Eta-expansion}
+\label{subsec:etaexpansion}
+
+Because the strengths of Scala lie in its functional features, it is often handy to be able to convert methods to functions. This is called \textit{eta-expansion} and is quite straightforward (assuming we are inside the class):
+
+\lstset{language=Scala}
+\begin{lstlisting}
+val methodFunction: (String) => String = arg => method(arg)
+\end{lstlisting}
+
+Scala has a special operator that makes it even simpler:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+val methodFunction = method _
+\end{lstlisting}
+
+And in some expression contexts, this conversion is implicit:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+List("One", "Two", "Three").map(method)
+\end{lstlisting}
+
+In this example, the conversion is implicitly applied to an argument of a method in order to meet the parameter type. The expansion in this case will be always implicit, unless one of the following conditions is met:
+\begin{enumerate}
+	\item The method has overloads.
+	\item There is an implicit typecast required from the expanded type to the parameter type.
+\end{enumerate}
+
+%TODO: Generic methods vs. functions
+
+%TODO: methods vs. functions in scala, eta expanstion
+
+%TODO: multiple combination
+
+%TODO: covariance and contravariance
+
+\subsection{Function types}
+\label{subsec:functiontypes}
+
+The first-class value functions have to be anchored somewhere in the Scala type system in order for the type inference, type checking and other mechanisms to work correctly. The type of a function is unambiguously determined by its signature, i.e. the number and types of arguments and the type of the return type. Consequentially, the function types have to be generic and able to accept different numbers of type arguments.
+
+Scala as a language doesn't support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+trait Function0[+R]
+...
+trait Function22[-T1, ..., -T22, +R]
+\end{lstlisting}
+
+These traits have syntactic aliases in the language:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+() => R
+...
+(T1, ..., T22) => R
+\end{lstlisting}
+
+Functions with more than 22 arguments can't exist in Scala and have to be replaced by function accepting tupled arguments.
+
+The necessity to represent functions with various argument numbers as various traits leads to code duplication.
+
 \section{DSLs in Scala}
+
+\subsection{Infix operators}
+\label{subsec:infixops}
+
+One of the features that support both the functional flavor of Scala and the DSL building capabilities is the possibility to call methods like infix operators. Any method that has exactly one argument can be called using this special syntax:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+class RichInt {
+  def plus(other: RichInt) = ???
+}
+...
+val res = x plus y
+\end{lstlisting}
+
+The syntax is even more powerful if we take into consideration that Scala allow the methods to have non-alphanumeric names:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def +(other: RichInt) = ???
+...
+val res = x + y
+\end{lstlisting}
+
+This approach allows us to use the infix syntax with existing methods and with methods that weren't designed with the intention to be used that way. It has, however, a downside as well - it doesn't allow us to create an infix operator that would accept as its first argument a type without actually changing the type and adding the method to its definition. Scala doesn't directly support declaring extension methods on types (unlike C\#, Kotlin and other languages) and so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
+
+% TODO: Compare to infix operators in Kotlin
+
+\section{Def Macros}
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def printAst(arg: Any): Any = macro printAst_impl
+
+def printAst_impl(c: Context)(arg: c.Expr[Any]): c.Expr[Any] = {
+  import c.universe._
+  println(showRaw(arg.tree))
+  arg
+}
+\end{lstlisting}

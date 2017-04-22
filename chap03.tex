@@ -46,73 +46,97 @@ For a framework that will be used repeatedly by a variety of other developers, t
 
 Scala is a programming language that has absorbed a lot of concepts from the functional programming language world. Above all the key concept that functions are \textit{first-class values} and can be passed around the same way as code.
 
-The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. In a purely functional language, this could be solved using a \textit{higher-order function}\footnote{A function whose arguments and return type are other functions.}. It is a common approach
+The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. This could be solved using a \textit{higher- function}\footnote{A function whose arguments and return type are other functions.}, which is a common approach in functional languages, well known from list manipulating patterns like \textit{map}, \textit{filter}, or \textit{fold}.
 
-\lstset{language=Haskell}
+Scala supports this approach both in language features and in its standard libraries - as mentioned in \ref{subsec:metandfun}, functions are first class values and can be arguments of other methods or functions. A simple example could be function composition, which is implemented as a method on the function type traits (see \ref{subsec:functiontypes}):
+
+\lstset{language=Scala}
 \begin{lstlisting}
-funA :: Ord a => [a] -> [a]
-funB :: Ord a => [a] -> [a]
-
-fun = selectFrom funA funB
-
-fun :: Ord a => [a] -> [a]
+val timesTwo = (x: Int) => { x * 2 }
+val plusOne = (x: Int) => { x + 1 }
+val timesTwoPlusOne = timesTwo.andThen(plusOne)
 \end{lstlisting}
+
+We can achieve even more readable and natural looking code if we take advantage of the infix operator syntax (see \ref{subsec:infixops}):
+
+\lstset{language=Scala}
+\begin{lstlisting}
+val timesTwoPlusOne = timesTwo andThen plusOne
+\end{lstlisting}
+
+Chaining of the methods / operators is possible as well:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+val manyOperations = timesTwo andThen plusOne andThen plusOne andThen timesTwo
+\end{lstlisting}
+
+Inspired by this readable and very simple syntax to compose functions which relies on only the basic syntactic features of Scala, we can try to design the API of the selection mechanism in the exactly same way:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+def or(fun: (T) => R): (T) => R = ???
+...
+val funAorB = funA or funB
+\end{lstlisting}
+
+\subsubsection{Advantages}
+\subsubsection{Disadvantages}
+\subsubsection{Consequences}
+
+The \lstinline|or()| method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case, a function. More specifically, any of the function types mentioned in \ref{subsec:functiontypes}. Because Scala doesn't support extension methods, we need to introduce a new type for functions containing this functionality, and an implicit conversion from the normal function type.
+
+We need to cover all of the 23 original function type traits with custom type extensions, which will be mostly duplicated code - this reduces the maintainability and flexibility of the code. The trait files can be generated, but any change has to be reflected in the generating script first, before re-generating the code.
+
+Another thing to consider is that in most cases, the selection mechanism will be used with methods, not functions. As mentioned in \ref{subsec:etaexpansion}, Scala allows a simple conversion from methods to functions, which can be implicit in some cases. It would be preferable to omit the explicit conversions wherever it's possible.
+
+We can try combining methods with Scala function composition:
+\lstset{language=Scala}
+\begin{lstlisting}
+val composed = method1 andThen method2
+\end{lstlisting}
+
+This code won't compile with a suggestion to add the \lstinline|_| operator to \lstinline|method1| in order to treat it as a partially applied function (and to be able to call \lstinline|andThen()| method). Scala unfortunately doesn't perform implicit eta-expansion on the target of a method call. So after fixing the example, we get a fully working result:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+val composed = method1 _ andThen method2
+\end{lstlisting}
+
+On \lstinline|method2|, the eta-expansion is performed implicitly, because it's an argument of a method without overloads.
+
+Now, in order to keep the same pattern working, we need to declare our \lstinline|or()| method in the following way:
+\lstset{language=Scala}
+\begin{lstlisting}
+trait FunctionAdaptor[T, R] extends (T) => R {
+  def or(fun: (T) => R): (T) => R = ???
+}
+\end{lstlisting}
+
+If there is a suitable implicit conversion from \lstinline|(T) => R| to \lstinline|FunctionAdaptor[T,R]|, it is possible to use it in the same way as the \lstinline|andThen()| method:
+
+\lstset{language=Scala}
+\begin{lstlisting}
+val fun = method1 _ or method2 or method3
+\end{lstlisting}
+
+Chaining in this case will not cause any problem, because the return value of the \lstinline|or()| method has the type of \lstinline|(T) => R| and can be combined again. It is, however, necessary to identify the case in the implementation and to handle it, otherwise, we would be building a tree of function pairs to choose from instead of choosing from all N values at once.
+
+Note that changing or overloading the \lstinline|or()| method to accept directly \lstinline|FunctionAdaptor[T,R]| to handle the chaining case would break the syntax, as there would be implicit typecast (or even a function overload) blocking the implicit eta-expansion (see \ref{subsec:etaexpansion}). The following example demonstrates the result:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def or(fun: FunctionAdaptor[T,R]): (T) => R = ???
+...
+val fun = method1 _ or method2 _  or method3
+\end{lstlisting}
+
+%TODO: Def macros?
+%TODO: Move to a different section
 
 \section{Scala API implementation}
 
-%TODO: scala implicit casts
 
-%TODO: scala function types (and nececity to duplicate code)
-
-%TODO: extending function type, overriding apply()
-
-\subsection{Methods and functions in Scala}
-
-There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They can't be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
-
-\begin{lstlisting}
-class Class {
-def method(arg: String): String = s"Called method($arg) on $this"
-}
-val obj = new Class()
-println(obj.method("Hello"))
-\end{lstlisting}
-
-On the other hand, functions are first-class values that have a type and can be passed into other functions or methods, or be part of expressions. Internally, they are represented as closure objects, carrying around their context and the compiled code stored as a method in the closure type. Functions are created using lambda expressions:
-
-\begin{lstlisting}
-val function: (String) => Unit = arg => println(obj.method(arg))
-function("Hello again!")
-List("One", "Two", "Three").foreach(function)
-\end{lstlisting}
-
-The \lstinline|obj| reference is \textit{captured} inside the closure, the function is not tied to any class. 
-
-Because the strengths of Scala lie in its functional features, it is often handy to be able to convert methods to functions. This is called \textit{eta-expansion} and is quite straightforward (assuming we are inside the class):
-
-\begin{lstlisting}
-val methodFunction: (String) => String = arg => method(arg)
-\end{lstlisting}
-
-Scala has a special operator that makes it even simpler:
-
-\begin{lstlisting}
-val methodFunction = method _
-\end{lstlisting}
-
-And in some expression contexts, this conversion is implicit:
-
-\begin{lstlisting}
-List("One", "Two", "Three").map(method)
-\end{lstlisting}
-
-%TODO: Generic methods vs. functions
-
-%TODO: methods vs. functions in scala, eta expanstion
-
-%TODO: multiple combination
-
-%TODO: covariance and contravariance
 
 \subsection{Covariance and contravariance}
 %TODO: Object-oriented polymorphism
