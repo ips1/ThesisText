@@ -406,7 +406,21 @@ selectInQuery
 Having meaningful identifiers leads to readable logs or measurement history dumps and to easier debugging in general. It, however, imposes new requirements on the user of the library and makes the API more complex. In addition, the identifiers would in almost all the cases exactly match the name of the function implementation.
 
 \subsection{Randomly generated identifiers}
-If we abandoned the idea of meaningfulness, we could assign automatically generated identifiers without the user having to specify them. Possible candidates could be sequential numbers or GUIDs. The identifiers would have to be created and matched with the function definitions or combi
+If we abandoned the idea of meaningfulness, we could assign automatically generated identifiers without the user having to specify them. Possible candidates could be sequential numbers or GUIDs. The identifiers would have to be created and matched with the function definitions at compile time, because the functions can be used repeatedly and in different contexts. This could be achieved using the Scala def macros (see \ref{sec:defmacros}). The main disadvantage of this approach is the impossibility of keeping the identifiers synchronized across various compilations and thus reusing the measured data in longer terms.
+
+\subsection{Fully qualified names of the methods combined}
+The most reasonable approach is to identify the methods using the same key that is used in the compilation process. It will keep the information value and won't complicate the API for the user. Retrieving the name of the method is, however, not trivial. Considering the following example:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def method(x: Int): Int = ???
+def printName[T, R](fun: (T) => R) =
+  println(fun.getClass.getTypeName)
+...
+printName(method)
+\end{lstlisting}
+
+Line 5 will print out \textit{Test\$\$anonfun\$main\$1}, a name of a closure class generated to encapsulate lambda expression. The method passed into the \lstinline|printName()| method was eta-expanded and thus replaced by a lambda expression with a single call inside. The lambda expression gets compiled and so at runtime, we have absolutely no 
 
 %TODO: Evaluation, advantages, disadvantages, generation
 
