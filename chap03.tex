@@ -379,8 +379,14 @@ override def testMethod(arg: List[Int]): List[String] =
 
 %TODO: summary of the API approach, definition of key terms and points in adaptive lifecycle - method definition, function / closure creation (eta expansion), function combination, 
 
-\section{Identifier selection}
-\label{sec:identifier}
+\section{Measurement storage location}
+\label{sec:storing}
+
+The main concern of the selection mechanism design that is invisible to the user is all the data that will be gathered at runtime and used to select the appropriate variant. Assuming we have a function combined from two different implementations and it gets invoked at various points throughout the execution of the process, we have multiple options where to store the measurements.
+
+The first idea might be to store all the measured runtime data inside the function object itself - we have a custom type FunctionAdaptor, that is hidden to the user and that carries the references to function implementation, so it could hold the measurements for them as well.
+
+The 
 
 %TODO: Move this section somewhere else
 
@@ -420,7 +426,15 @@ def printName[T, R](fun: (T) => R) =
 printName(method)
 \end{lstlisting}
 
-Line 5 will print out \textit{Test\$\$anonfun\$main\$1}, a name of a closure class generated to encapsulate lambda expression. The method passed into the \lstinline|printName()| method was eta-expanded and thus replaced by a lambda expression with a single call inside. The lambda expression gets compiled and so at runtime, we have absolutely no 
+Line 5 will print out \textit{Test\$\$anonfun\$main\$1}, a name of a closure class generated to encapsulate lambda expression. The method passed into the \lstinline|printName()| method was eta-expanded and thus replaced by a lambda expression with a single call inside. The lambda expression gets compiled and so at runtime we have absolutely no way of finding out which method is called inside.
+
+There are two basic ways how to handle the problem:
+\begin{enumerate}
+	\item Use the enclosing closure type names instead
+	\item Fetch the actual names at compile time
+\end{enumerate}
+
+The first approach leads to unique, but uninformative names, that can get mixed when recompiling the program, so it wouldn't be safe to preserve the measurements. Additionally, if we use the method in more different lambda expressions (or if it gets eta-expanded implicitly multiple times in the code), it will have different identifiers for these cases. This isn't so problematic, it copies the behavior of 
 
 %TODO: Evaluation, advantages, disadvantages, generation
 
