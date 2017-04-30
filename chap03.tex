@@ -93,6 +93,7 @@ The \lstinline|or()| method, in order to be used as an infix operator, has to be
 We need to cover all of the 23 original function type traits with custom type extensions, which will be mostly duplicated code - this reduces the maintainability and flexibility of the code. The trait files can be generated, but any change has to be reflected in the generating script first, before re-generating the code.
 
 \subsection{Using the API with methods}
+\label{subsec:apimethods}
 
 Another thing to consider is that in most cases, the selection mechanism will be used with methods, not functions. As mentioned in \ref{subsec:etaexpansion}, Scala allows a simple conversion from methods to functions, which can be implicit in some cases. It would be preferable to omit the explicit conversions wherever it's possible.
 
@@ -115,7 +116,7 @@ Now, in order to keep the same pattern working, we need to declare our \lstinlin
 \lstset{style=Scala}
 \begin{lstlisting}
 trait FunctionAdaptor[T, R] extends (T) => R {
-def or(fun: (T) => R): (T) => R = ???
+  def or(fun: (T) => R): (T) => R = ???
 }
 \end{lstlisting}
 
@@ -379,43 +380,81 @@ override def testMethod(arg: List[Int]): List[String] =
 
 %TODO: summary of the API approach, definition of key terms and points in adaptive lifecycle - method definition, function / closure creation (eta expansion), function combination, 
 
-\section{Measurement storage location}
+%TODO: Thread safety
+
+\section{Run history storage location}
 \label{sec:storing}
 
 The main concern of the selection mechanism design that is invisible to the user is all the data that will be gathered at runtime and used to select the appropriate variant. Assuming we have a function combined from two different implementations and it gets invoked at various points throughout the execution of the process, we have multiple options where to store the measurements.
 
-The first idea might be to store all the measured runtime data inside the function object itself - we have a custom type FunctionAdaptor, that is hidden to the user and that carries the references to function implementation, so it could hold the measurements for them as well.
+All of the options were actually implemented and the API allows the user to chose storage location for every usage of the combiner.
 
-The 
+\subsection{Local}
 
-%TODO: Move this section somewhere else
+The first and most straightforward approach is to store all the measured runtime data inside the function object itself - we have a custom type \inlinecode{FunctionAdaptor} that is hidden to the user and that carries the references to function implementation, so it could hold the measurements for them as well.
 
-The functions that we are going to select from have to be identifiable in the entire application. More specifically, we need to be able to store the runtime measurements for every function throughout the entire execution process. The functions might be referenced and called from various points in the library user's code. Additionally, we know nothing about the runtime state of the application memory at the point of entry into our function. So the auxiliary data have to be stored statically, in a special memory section dedicated exclusively to the framework, and the access has to be thread safe.
+The measurement data are specific for every instance of the adaptor and limited to it. This could have some use cases, for example classes that hold immutable data and provide some functionality that is based on the contained data, which is expected to be invoked repeatedly. The run history will then be specific for the data held by the instance and thus perfectly reflect performance in this one case.
 
-%TODO: Thread safety
+There is a limitation connected to this use case - user of the API himself has to make sure that the adaptor instance will survive and be used in every call. Let's consider the following example:
 
-The historical runtime measurements (run history) of a function can be identified using various approaches.
-
-\subsection{Arbitrary identifiers}
-User of the library could assign custom identifiers to the functions. Main advantage of this approach is the possibility to include description or documentation of the specific implementation in the identifiers. For example:
-
+\lstset{style=Scala}
 \begin{lstlisting}
-quickSort
-heapSort
+def processData(data: List[Int]): Int = 
+  (impl1 _ or impl2 withStorage Storage.Local)(data)
 \end{lstlisting}
 
+In this case, during every invocation of the method \inlinecode{processData}, there will be new local instance of the \inlinecode{FunctionAdaptor} created by the \inlinecode{or} call. This instance will be used for the single call and then thrown away with the measured data. In order for this example to work properly, the adaptor has to be stored away:
+
+\lstset{style=Scala}
 \begin{lstlisting}
-joinQuery
-selectInQuery
+val impl = impl1 _ or impl2 withStorage Storage.Local
+def processData(data: List[Int]): Int = impl(data)
 \end{lstlisting}
 
-Having meaningful identifiers leads to readable logs or measurement history dumps and to easier debugging in general. It, however, imposes new requirements on the user of the library and makes the API more complex. In addition, the identifiers would in almost all the cases exactly match the name of the function implementation.
+\subsection{Global}
 
-\subsection{Randomly generated identifiers}
-If we abandoned the idea of meaningfulness, we could assign automatically generated identifiers without the user having to specify them. Possible candidates could be sequential numbers or GUIDs. The identifiers would have to be created and matched with the function definitions at compile time, because the functions can be used repeatedly and in different contexts. This could be achieved using the Scala def macros (see \ref{sec:defmacros}). The main disadvantage of this approach is the impossibility of keeping the identifiers synchronized across various compilations and thus reusing the measured data in longer terms.
+Another option is to store all the measured data globally, in a static area of the memory accessible from all contexts. A unique identifier has to be used to identify every one of the functions and methods combined.
 
-\subsection{Fully qualified names of the methods combined}
-The most reasonable approach is to identify the methods using the same key that is used in the compilation process. It will keep the information value and won't complicate the API for the user. Retrieving the name of the method is, however, not trivial. Considering the following example:
+The main advantage of this approach is that the run data are collected and stored from all invocation in the entire process, so there is more data to base the decision process on. This is usually the preferred approach for some business logic or utility methods in long-running services.
+
+\subsection{Persistent}
+
+The globally accessible runtime data can be 
+
+This would be most useful (and probably the only means of using the ScalaAdaptive) for short-running tools with more variants of implementing the main logic. If the logic is invoked only once (or only a couple of times) during one invocation, there will never be enough data collected in a single run and it is necessary to persist the run history, saving data from multiple runs.
+
+As the selection algorithms are delivering better results with growing data size, persisting the run history improves the selection mechanism in all the programs.
+
+What can be a little problematic is deciding on when to persist the data. The logical solution to minimize the time spent on writing data is to store the entire run history once at the end of execution of the program. The runtime support, however, doesn't have any method of detecting when the program is about to end - JVM doesn't guarantee finalizers being called and relying on notifications from the user would complicate the API and generally be problematic.
+
+The other approach is to update the persisted history with every run. Its downside is that the I/O operation might have negative impact on the performance if the function is called often and its run is fast. This impact can be limited by buffering the I/O - using the default Java I/O buffering mechanism would require leaving the file open for the entire application run, so custom buffer would be preferred. The buffer could be flushed upon every n-th write.
+
+There are more problems connected with this solution, namely:
+\begin{enumerate}
+\item Running multiple instances of the application at once (collisions on the persisted data file) - especially if the file is left open
+\item Changes in the application code (outdated run data, changed identifiers, etc.)
+\item ...
+\end{enumerate}
+%TODO: More
+
+\section{Run history storage identifiers}
+
+In the globally accessible run history data storage, the data have to be assigned to a specific function. A unique identifier that would be derivable from the function objects passed into the \inlinecode{FunctionAdaptor} is required, so that whenever an adapted function is being executed, the runtime can access its history. 
+
+In this case, references can't be used, because the \inlinecode{FunctionAdaptor} objects and the function objects wrapped inside can exist in multiple instances, can be deallocated and reallocated.
+
+\subsection{Type name}
+
+Functions in Scala are instances implementing the \inlinecode{FunctionN} trait. The default implementations are anonymous closure classes that are compiled from lambda expressions. Two different functions originated in two different lambda expressions and thus have two different type names, the ones that were generated and assigned by the compiler. The fully qualified type name can be used as the identifier of a function
+
+Using the type names as unique identifiers is safe and straightforward, the only disadvantage is that they aren't very readable, the compiler uses the name of the type that contained the lambda expression followed by sequential number.
+
+If the \inlinecode{FunctionN} trait has a different than default implementation, the type name identification might fail - the trait can be implemented by a single class wrapping other values. In this case, all functions implemented by that class would share the run history.
+
+\subsection{Method name}
+\label{subsec:methodnameident}
+
+The most common usage pattern is the one where the functions used with the \inlinecode{or} method are eta-expanded methods (see \ref{subsec:apimethods}). The eta-expansion internally replaces the method name with a lambda expression wrapping the method call into a function. Consider the following example:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -426,18 +465,193 @@ def printName[T, R](fun: (T) => R) =
 printName(method)
 \end{lstlisting}
 
-Line 5 will print out \textit{Test\$\$anonfun\$main\$1}, a name of a closure class generated to encapsulate lambda expression. The method passed into the \lstinline|printName()| method was eta-expanded and thus replaced by a lambda expression with a single call inside. The lambda expression gets compiled and so at runtime we have absolutely no way of finding out which method is called inside.
+Line 5 will print out \textit{Test\$\$anonfun\$main\$1}, a name of a closure class generated to encapsulate lambda expression. The closure itself gets compiled and so at runtime, there is no way of finding out, which method was called inside (i.e. which method it was expanded from).
 
-There are two basic ways how to handle the problem:
+If we, in case of eta-expanded methods, use the type name identifier, we run into a little problem - if a method is used in multiple \inlinecode{or} expressions, a different closure class is generated for each expression where it's eta-expanded. So in the following example, run history data of \inlinecode{method1} wouldn't be shared for runs originating from \inlinecode{combined1} and \inlinecode{combined2}:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val combined1 = method1 _ or method2
+val combined2 = method1 _ or method3
+\end{lstlisting}
+
+More convenient would be to use directly the names of the methods that are being eta-expanded. The names have to be extracted at compile time, using the def macros (see \ref{sec:defmacros}). At the moment of implicit conversion from \inlinecode{FunctionN} to \inlinecode{FunctionAdapterN}, the AST\footnote{Abstract syntax tree.} of the \inlinecode{FunctionN} expression can be examined - if it's a lambda expression containing one method call, the method name can be extracted.
+
+Using method name identifier has some disadvantages as well. Firstly, all method overloads share the same identifier. Additionally, generic type arguments are not included in the identifier either.
+
+\subsection{Custom identifier}
+
+In order to handle the specific cases where type name and method name identifiers don't distinguish correctly between different functions, there is also a possibility of choosing a custom, arbitrary identifier. This has to be triggered specifically by the user in the API and should be used in the cases where:
+
 \begin{enumerate}
-	\item Use the enclosing closure type names instead
-	\item Fetch the actual names at compile time
+	\item User knows that the automatically assigned identifiers won't be sufficient
+	\item User wants to replace default type identifier with custom identifier because of readability
 \end{enumerate}
-
-The first approach leads to unique, but uninformative names, that can get mixed when recompiling the program, so it wouldn't be safe to preserve the measurements. Additionally, if we use the method in more different lambda expressions (or if it gets eta-expanded implicitly multiple times in the code), it will have different identifiers for these cases. This isn't so problematic, it copies the behavior of 
 
 %TODO: Evaluation, advantages, disadvantages, generation
 
+\section{Extracting method name from eta-expansion AST}
+
+In order to retrieve the method name to be used as an identifier (as explained in \ref{subsec:methodnameident}), we need to do the following:
+
+\begin{enumerate}
+	\item Replace the implicit conversion method from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN} by a def macro
+	\item Inside the macro, analyze the AST, detect eta-expansion method call
+	\item If there is a method call:
+	\begin{enumerate}
+		\item Generate the identifier expression as a \inlinecode{getTypeName} call on the receiver of the method call, followed by the method name
+		\item Generate the conversion code with explicitly specified identifier expression
+	\end{enumerate}
+	\item Otherwise generate the conversion code with implicit identifier	
+\end{enumerate}
+
+\subsection{Eta-expansion AST format}
+
+The AST that is generated from a simple eta-expansion of a method is always a Block whose return value expression is the lambda function. The Block can have two forms depending on the method call target:
+
+\begin{enumerate}
+	\item \textbf{The target is a constant in the outer scope of the block or \textit{this}}
+	
+	There are no statements in the block:
+	\begin{lstlisting}
+	Block(
+	  List(), 
+	  Function(...))
+	\end{lstlisting}
+	\item \textbf{The target is a variable in the outer scope or an expression}
+	
+	There is a single statement in the block that declares a local variable and assigns it the result of the expression or variable:
+	
+	\begin{lstlisting}
+	Block(
+	  List(
+	    ValDef(
+	      Modifiers(SYNTHETIC), 
+	        TermName("eta$0$1"), 
+	        TypeTree(), 
+	        Apply(
+	          Select(
+	            This(
+	              TypeName("ClassName")), 
+	            TermName("getClassInstance")), 
+	          List()))), 
+	  Function(...))
+	\end{lstlisting}
+\end{enumerate}
+
+This expression evaluation subtree holds the target type (on the line 10 in previous snippet). It is necessary to extract it and use it in the identifier.
+
+The function subtree looks the same in all the cases:
+
+\begin{lstlisting}
+Function(
+  List(
+    ValDef(
+      Modifiers(PARAM | SYNTHETIC), 
+      TermName("arg"), 
+      TypeTree(), 
+      EmptyTree)), 
+  Apply(...))
+\end{lstlisting}
+
+It consists of a declaration of the lambda arguments and a single Apply expression that represents the entire body. It can have multiple forms depending again on the method call target:
+
+\begin{enumerate}
+\item \textbf{The target is \textit{this}}
+
+The method can be called on \textit{this} instance. For example:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+printAst(this.methodName _)
+printAst(methodName _)
+\end{lstlisting}
+
+The resulting Apply subtree follows:
+
+\begin{lstlisting}
+Apply(
+  Select(
+  This(
+      TypeName("ClassName")), 
+    TermName("methodName")),
+  List(
+    Ident(
+      TermName("arg"))))
+\end{lstlisting}
+
+In this case, the elements on lines 4 and 5 are important - the name of the type and the name of the method.
+
+\item \textbf{The target is a constant in the outer scope}
+
+For example:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val instance = new ClassName()
+printAst(instance.methodName _)
+\end{lstlisting}
+
+This code will result into Apply subtree with 
+
+\begin{lstlisting}
+Apply(
+  Select(
+  Select(
+      This(
+        TypeName("ClassName")),
+      TermName("instance"))
+    TermName("methodName")),
+  List(
+    Ident(
+      TermName("arg"))))
+\end{lstlisting}
+
+The elements necessary for constructing the identifiers are on lines 5 and 7.
+
+\item \textbf{The target is an expression or variable in the outer scope}
+
+For example:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def getClassInstance(): ClassName = new ClassName()
+printAst(getClassName().methodName _)
+\end{lstlisting}
+
+In this case, the expression was evaluated outside of the function and we have already the type name, we need to retrieve the method name from the subtree:
+
+\begin{lstlisting}
+Apply(
+  Select(
+    Ident(
+      TermName("eta$0$1")), 
+    TermName("methodName")), 
+  List(
+    Ident(
+      TermName("arg"))))
+\end{lstlisting}
+
+The name is on line 5.
+
+\end{enumerate}
+
+\subsection{Generating the identifier expression}
+
+We've been able to extract the type name and the method name so far. Unfortunately, the type name is the name that is used to refer to the type in given scope, including all the imports and type aliases. We need to retrieve the fully qualified name of the type. This can't be done directly in the macro, because the types don't exist in its execution context.
+
+An expression that will retrieve the fully qualified name at runtime has to be generated instead. Supposing the type name is \inlinecode{ClassName} and the method name is \inlinecode{methodName}, we would like to generate the following code:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+classOf[ClassName].getTypeName + ".methodName"
+\end{lstlisting}
+
+\begin{forest}
+	[IP]
+\end{forest}
+
+	
 \section{Delayed measuring}
 
 %TODO: Use cases - configuration generation, expression tree building, query building...
