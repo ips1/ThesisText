@@ -495,7 +495,7 @@ In order to handle the specific cases where type name and method name identifier
 In order to retrieve the method name to be used as an identifier (as explained in \ref{subsec:methodnameident}), we need to do the following:
 
 \begin{enumerate}
-	\item Replace the implicit conversion method from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN} by a def macro
+	\item Replace the implicit conversion method from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN} by a def macro (see \ref{sec:defmacros})
 	\item Inside the macro, analyze the AST, detect eta-expansion method call
 	\item If there is a method call:
 	\begin{enumerate}
@@ -507,36 +507,78 @@ In order to retrieve the method name to be used as an identifier (as explained i
 
 \subsection{Eta-expansion AST format}
 
+First step in the macro implementation has to be parsing the input AST and detecting patterns that are generated from eta-expansions by the compiler. Using the \inlinecode{printAst()} macro mentioned in \ref{subsec:buildingast}, the following facts were discovered:
+
+\begin{itemize}
+	\item The eta-expansion is already replaced by the equivalent code in AST, so it can't be detected directly
+	\item The result of eta-expansion is a lambda expression (function literal)
+\lstset{style=Dump}
+\begin{lstlisting}
+Function(...)
+\end{lstlisting}
+	\item The lambda expression is always wrapped in a block, being its return value
+	
+\lstset{style=Dump}
+\begin{lstlisting}
+Block(
+  List(...), 
+  Function(...))
+\end{lstlisting}	
+	
+	\item If the target of the invocation is either a constant or \textit{this}, it is captured in the lambda expression closure (i.e., the constant or \textit{this} is referenced directly from the function body)
+	
+	\item If the target of the invocation is a variable or a result of a more complicated expression, it is extracted to the enclosing block, its result is stored in a variable local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function, and to avoid the target being changed throughout the lifetime of the function.
+	
+\begin{lstlisting}
+Block(
+  List(
+    ValDef(
+      Modifiers(SYNTHETIC), 
+      TermName("eta$0$1"), 
+      TypeTree(), 
+      Apply(
+        Select(
+          This(
+            TypeName("ClassName")), 
+          TermName("getClassInstance")), 
+        List()))), 
+  Function(...))
+\end{lstlisting}
+
+	
+	\item The lambda expression (function literal) generated for the eta-expansion contains only the method invocation and the type applications (if the method is generic) - all the other expressions that are part of the eta-expansion are extracted to an outer, enclosing block, their results are stored in variables local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function.
+\end{itemize}
+
 The AST that is generated from a simple eta-expansion of a method is always a Block whose return value expression is the lambda function. The Block can have two forms depending on the method call target:
 
 \begin{enumerate}
 	\item \textbf{The target is a constant in the outer scope of the block or \textit{this}}
 	
 	There are no statements in the block:
-	\begin{lstlisting}
-	Block(
-	  List(), 
-	  Function(...))
-	\end{lstlisting}
+\begin{lstlisting}
+Block(
+  List(), 
+  Function(...))
+\end{lstlisting}
 	\item \textbf{The target is a variable in the outer scope or an expression}
 	
 	There is a single statement in the block that declares a local variable and assigns it the result of the expression or variable:
 	
-	\begin{lstlisting}
-	Block(
-	  List(
-	    ValDef(
-	      Modifiers(SYNTHETIC), 
-	        TermName("eta$0$1"), 
-	        TypeTree(), 
-	        Apply(
-	          Select(
-	            This(
-	              TypeName("ClassName")), 
-	            TermName("getClassInstance")), 
-	          List()))), 
-	  Function(...))
-	\end{lstlisting}
+\begin{lstlisting}
+Block(
+  List(
+    ValDef(
+      Modifiers(SYNTHETIC), 
+        TermName("eta$0$1"), 
+        TypeTree(), 
+        Apply(
+          Select(
+            This(
+              TypeName("ClassName")), 
+            TermName("getClassInstance")), 
+          List()))), 
+  Function(...))
+\end{lstlisting}
 \end{enumerate}
 
 This expression evaluation subtree holds the target type (on the line 10 in previous snippet). It is necessary to extract it and use it in the identifier.
@@ -572,7 +614,7 @@ The resulting Apply subtree follows:
 \begin{lstlisting}
 Apply(
   Select(
-  This(
+    This(
       TypeName("ClassName")), 
     TermName("methodName")),
   List(
@@ -638,7 +680,7 @@ The name is on line 5.
 
 \subsection{Generating the identifier expression}
 
-We've been able to extract the type name and the method name so far. Unfortunately, the type name is the name that is used to refer to the type in given scope, including all the imports and type aliases. We need to retrieve the fully qualified name of the type. This can't be done directly in the macro, because the types don't exist in its execution context.
+We've been able to extract the type name and the method name subtrees so far. Unfortunately, the type name is the name that is used to refer to the type in given scope, including all the imports and type aliases. We need to retrieve the fully qualified name of the type. This can't be done directly in the macro, because the types don't exist in its execution context.
 
 An expression that will retrieve the fully qualified name at runtime has to be generated instead. Supposing the type name is \inlinecode{ClassName} and the method name is \inlinecode{methodName}, we would like to generate the following code:
 
@@ -647,10 +689,33 @@ An expression that will retrieve the fully qualified name at runtime has to be g
 classOf[ClassName].getTypeName + ".methodName"
 \end{lstlisting}
 
+
+
 \begin{forest}
-	[IP]
+	[Block
+	  [Statements
+	    [ValDef]
+	  ]
+	  [Function]
+	]
 \end{forest}
 
+We need to transform the block, keeping the definition in the statement part, but wrapping the \inlinecode{Function} into the transforming function call.
+	
+\begin{forest}
+	[Block
+	[Statements
+	[ValDef]
+	]
+	[Apply
+	  [toAdaptor]
+	  [ArgumentList
+	    [Function]
+	    [ExtractedIdentifier]
+	  ]
+	]
+	]
+\end{forest}
 	
 \section{Delayed measuring}
 
