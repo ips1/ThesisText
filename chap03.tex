@@ -46,7 +46,7 @@ For a framework that will be used repeatedly by a variety of other developers, t
 
 Scala is a programming language that has absorbed a lot of concepts from the functional programming language world. Above all the key concept that functions are \textit{first-class values} and can be passed around the same way as code.
 
-The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. This could be solved using a \textit{higher- function}\footnote{A function whose arguments and return type are other functions.}, which is a common approach in functional languages, well known from list manipulating patterns like \textit{map}, \textit{filter}, or \textit{fold}.
+The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. This could be solved using a \textit{higher-order function}\footnote{A function whose arguments and return type are other functions.}, which is a common approach in functional languages, well known from list manipulating patterns like \textit{map}, \textit{filter}, or \textit{fold}.
 
 Scala supports this approach both in language features and in its standard libraries - as mentioned in \ref{subsec:metandfun}, functions are first class values and can be arguments of other methods or functions. A simple example could be function composition, which is implemented as a method on the function type traits (see \ref{subsec:functiontypes}):
 
@@ -447,7 +447,9 @@ In this case, references can't be used, because the \inlinecode{FunctionAdaptor}
 
 Functions in Scala are instances implementing the \inlinecode{FunctionN} trait. The default implementations are anonymous closure classes that are compiled from lambda expressions. Two different functions originated in two different lambda expressions and thus have two different type names, the ones that were generated and assigned by the compiler. The fully qualified type name can be used as the identifier of a function
 
-Using the type names as unique identifiers is safe and straightforward, the only disadvantage is that they aren't very readable, the compiler uses the name of the type that contained the lambda expression followed by sequential number.
+Using the type names as unique identifiers is safe and straightforward. A small disadvantage is that they aren't very readable, the compiler uses the name of the type that contained the lambda expression followed by sequential number. 
+
+There is also a subtle danger connected - in case of persisting the run history, the closure classes might get renamed automatically upon recompiling. The compiler usually assigns the closure names sequentially, so this could happen by just inserting another lambda expression into the enclosing class code before the current one. Run history data might even get mixed up as the newly added lambda expression could have the former name of the original closure (by taking its position in the sequence).
 
 If the \inlinecode{FunctionN} trait has a different than default implementation, the type name identification might fail - the trait can be implemented by a single class wrapping other values. In this case, all functions implemented by that class would share the run history.
 
@@ -499,24 +501,30 @@ In order to retrieve the method name to be used as an identifier (as explained i
 	\item Inside the macro, analyze the AST, detect eta-expansion method call
 	\item If there is a method call:
 	\begin{enumerate}
-		\item Generate the identifier expression as a \inlinecode{getTypeName} call on the receiver of the method call, followed by the method name
-		\item Generate the conversion code with explicitly specified identifier expression
+		\item Generate the identifier expression as a \inlinecode{getTypeName} call on the target of the method call, followed by the method name
+		\item Generate the conversion code with explicitly specified reference expression
 	\end{enumerate}
-	\item Otherwise generate the conversion code with implicit identifier	
+	\item Otherwise generate the conversion code with implicit reference	
 \end{enumerate}
+
+The conversion is done using the \inlinecode{toAdapter()} method with two overloads:
+\begin{itemize}
+	\item Accepting only the function - implicit reference is used (type name of the closure)
+	\item Accepting the function and a custom reference - the reference provided is used
+\end{itemize}
 
 \subsection{Eta-expansion AST format}
 
 First step in the macro implementation has to be parsing the input AST and detecting patterns that are generated from eta-expansions by the compiler. Using the \inlinecode{printAst()} macro mentioned in \ref{subsec:buildingast}, the following facts were discovered:
 
 \begin{itemize}
-	\item The eta-expansion is already replaced by the equivalent code in AST, so it can't be detected directly
-	\item The result of eta-expansion is a lambda expression (function literal)
+	\item The eta-expansion is already replaced by the equivalent code in AST, so it can't be detected directly.
+	\item The result of eta-expansion is a lambda expression (function literal).
 \lstset{style=Dump}
 \begin{lstlisting}
 Function(...)
 \end{lstlisting}
-	\item The lambda expression is always wrapped in a block, being its return value
+	\item The lambda expression is always wrapped in a block, being its return value.
 	
 \lstset{style=Dump}
 \begin{lstlisting}
@@ -525,10 +533,11 @@ Block(
   Function(...))
 \end{lstlisting}	
 	
-	\item If the target of the invocation is either a constant or \textit{this}, it is captured in the lambda expression closure (i.e., the constant or \textit{this} is referenced directly from the function body)
+	\item If the target of the invocation is either a constant or \textit{this}, it is captured in the lambda expression closure (i.e., the constant or \textit{this} is referenced directly from the function body).
 	
 	\item If the target of the invocation is a variable or a result of a more complicated expression, it is extracted to the enclosing block, its result is stored in a variable local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function, and to avoid the target being changed throughout the lifetime of the function.
 	
+\lstset{style=Dump}
 \begin{lstlisting}
 Block(
   List(
@@ -545,46 +554,9 @@ Block(
   Function(...))
 \end{lstlisting}
 
-	
-	\item The lambda expression (function literal) generated for the eta-expansion contains only the method invocation and the type applications (if the method is generic) - all the other expressions that are part of the eta-expansion are extracted to an outer, enclosing block, their results are stored in variables local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function.
-\end{itemize}
+	\item The function node contains argument definition and the expression itself, which is a single function application.
 
-The AST that is generated from a simple eta-expansion of a method is always a Block whose return value expression is the lambda function. The Block can have two forms depending on the method call target:
-
-\begin{enumerate}
-	\item \textbf{The target is a constant in the outer scope of the block or \textit{this}}
-	
-	There are no statements in the block:
-\begin{lstlisting}
-Block(
-  List(), 
-  Function(...))
-\end{lstlisting}
-	\item \textbf{The target is a variable in the outer scope or an expression}
-	
-	There is a single statement in the block that declares a local variable and assigns it the result of the expression or variable:
-	
-\begin{lstlisting}
-Block(
-  List(
-    ValDef(
-      Modifiers(SYNTHETIC), 
-        TermName("eta$0$1"), 
-        TypeTree(), 
-        Apply(
-          Select(
-            This(
-              TypeName("ClassName")), 
-            TermName("getClassInstance")), 
-          List()))), 
-  Function(...))
-\end{lstlisting}
-\end{enumerate}
-
-This expression evaluation subtree holds the target type (on the line 10 in previous snippet). It is necessary to extract it and use it in the identifier.
-
-The function subtree looks the same in all the cases:
-
+\lstset{style=Dump}
 \begin{lstlisting}
 Function(
   List(
@@ -596,100 +568,73 @@ Function(
   Apply(...))
 \end{lstlisting}
 
-It consists of a declaration of the lambda arguments and a single Apply expression that represents the entire body. It can have multiple forms depending again on the method call target:
+	
+%	\item The lambda expression (function literal) generated for the eta-expansion contains only the method invocation and the type applications (if the method is generic) - all the other expressions that are part of the eta-expansion are extracted to an outer, enclosing block, their results are stored in variables local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function.
+\end{itemize}
 
-\begin{enumerate}
-\item \textbf{The target is \textit{this}}
+This has a few consequences for our case. We need to generate our conversion and method retrieval code into the block return value, because we need to be able to access the invocation targets that can be defined in the block itself. The target and the method name will always be in the single Apply node representing the function body.
 
-The method can be called on \textit{this} instance. For example:
+If the method doesn't accept any type arguments, the tree is quite simple:
 
-\lstset{style=Scala}
-\begin{lstlisting}
-printAst(this.methodName _)
-printAst(methodName _)
-\end{lstlisting}
-
-The resulting Apply subtree follows:
-
+\lstset{style=Dump}
 \begin{lstlisting}
 Apply(
   Select(
-    This(
-      TypeName("ClassName")), 
-    TermName("methodName")),
-  List(
-    Ident(
-      TermName("arg"))))
-\end{lstlisting}
-
-In this case, the elements on lines 4 and 5 are important - the name of the type and the name of the method.
-
-\item \textbf{The target is a constant in the outer scope}
-
-For example:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val instance = new ClassName()
-printAst(instance.methodName _)
-\end{lstlisting}
-
-This code will result into Apply subtree with 
-
-\begin{lstlisting}
-Apply(
-  Select(
-  Select(
-      This(
-        TypeName("ClassName")),
-      TermName("instance"))
-    TermName("methodName")),
-  List(
-    Ident(
-      TermName("arg"))))
-\end{lstlisting}
-
-The elements necessary for constructing the identifiers are on lines 5 and 7.
-
-\item \textbf{The target is an expression or variable in the outer scope}
-
-For example:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-def getClassInstance(): ClassName = new ClassName()
-printAst(getClassName().methodName _)
-\end{lstlisting}
-
-In this case, the expression was evaluated outside of the function and we have already the type name, we need to retrieve the method name from the subtree:
-
-\begin{lstlisting}
-Apply(
-  Select(
-    Ident(
-      TermName("eta$0$1")), 
+    ...invocation target expression..., 
     TermName("methodName")), 
-  List(
-    Ident(
-      TermName("arg"))))
+  List(...function arguments...))
 \end{lstlisting}
 
-The name is on line 5.
+Where the \textit{invocation target expression} can have multiple forms based on the original expression, and can depend on the enclosing block variables. It isn't, however, important for us, as we can work with the expression as whole. The function arguments are not needed either.
 
-\end{enumerate}
+If the method is generic, the type arguments need to be applied in order to convert it to a function (which can't be generic). In this case, the tree gets a little more complicated:
 
-\subsection{Generating the identifier expression}
+\lstset{style=Dump}
+\begin{lstlisting}
+Apply(
+  TypeApply(
+    Select(
+      ...invocation target expression..., 
+      TermName("genericMethod")), 
+    List(...type arguments...))), 
+  List(...function arguments...))
+\end{lstlisting}
 
-We've been able to extract the type name and the method name subtrees so far. Unfortunately, the type name is the name that is used to refer to the type in given scope, including all the imports and type aliases. We need to retrieve the fully qualified name of the type. This can't be done directly in the macro, because the types don't exist in its execution context.
+The method call is wrapped in a TypeApply node before being invoked using the Apply node. The TypeApply node can in our case be ignored.
 
-An expression that will retrieve the fully qualified name at runtime has to be generated instead. Supposing the type name is \inlinecode{ClassName} and the method name is \inlinecode{methodName}, we would like to generate the following code:
+And the most complicated case we can encounter is when the method has some implicit arguments as well:
+
+\lstset{style=Dump}
+\begin{lstlisting}
+Apply(
+  Apply(
+    TypeApply(
+      Select(
+        ...invocation target expression...,
+        TermName("genericMethodImplicit")), 
+      List(...type arguments...)), 
+    List(...function arguments...)), 
+  List(...implicit arguments...))
+\end{lstlisting}
+
+One more Apply node is added to the topmost level - the implicit arguments are applied after applying the actual function arguments. Their definition contains another nested block and lambda expression, but again, it is not necessary for our case. We just need to extract the invocation target and the method name.
+
+\subsection{Generating the conversion}
+
+Supposing we have the invocation target expression and the method name, we need to create the identifier string expression that will be used in the manual \inlinecode{toAdapter} invocation.
+
+In order to extract the fully qualified name of the method call target, we need to generate the following expression:
 
 \lstset{style=Scala}
 \begin{lstlisting}
-classOf[ClassName].getTypeName + ".methodName"
+invocationTarget.getClass.getTypeName + ".methodName"
 \end{lstlisting}
 
+The AST representing this expression has to be wrapped in the \inlinecode{MethodNameReference} construction application (it is a case class with automatically generated \inlinecode{apply()} method) to get the resulting reference.
 
+In all the cases, the \inlinecode{toAdapter} method has to be generated to replace the macro function. The function literal from the original AST has to be passed in as the first argument, and optionally, the second argument can be provided if the extraction of the method name was successful.
+
+The original simplified tree looks like this:
 
 \begin{forest}
 	[Block
@@ -700,7 +645,7 @@ classOf[ClassName].getTypeName + ".methodName"
 	]
 \end{forest}
 
-We need to transform the block, keeping the definition in the statement part, but wrapping the \inlinecode{Function} into the transforming function call.
+We need to transform the block, keeping the definition in the statement part, but wrapping the \inlinecode{Function} into the \inlinecode{toAdapter} call.
 	
 \begin{forest}
 	[Block
@@ -711,11 +656,63 @@ We need to transform the block, keeping the definition in the statement part, bu
 	  [toAdaptor]
 	  [ArgumentList
 	    [Function]
-	    [ExtractedIdentifier]
+	    [ExtractedReferenceExpression]
 	  ]
 	]
 	]
 \end{forest}
+
+\subsection{Extracting method overloads}
+
+The approach that was described so far has one small issue - it doesn't recognize function overloads, so all the overloads share the same identifier.
+
+ It wouldn't be difficult to extract the actual number of arguments that the method is being invoked with and include it in the reference. When attempting to extract the argument types of the lambda expression, we encounter a major problem - the function literal is generated without argument type specification, the TypeTree is empty:
+
+\lstset{style=Dump}
+\begin{lstlisting}
+ValDef(
+  Modifiers(PARAM | SYNTHETIC), 
+  TermName("i"), 
+  TypeTree(), 
+  EmptyTree)
+\end{lstlisting}
+
+This can be done and is quite similar to the following piece of code:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val function: (Int) => Int = { i => math.abs(i) + 1 }
+\end{lstlisting}
+
+In this case, the lambda expression doesn't have the type of its arguments specified either, because the compiler will infer it from the context in which the expression is used, in this case, from the type specifier of the variable.
+
+The compiler is able to infer the data type from the usage of the argument as well:
+\lstset{style=Scala}
+\begin{lstlisting}
+def method(i: Int): Int = ???
+val function = { i => method(i) }
+\end{lstlisting}
+
+The previous piece of code is correctly compiled by the Scala compiler, although some IDEs (namely IntelliJ IDEA 2016.3.4) aren't able to infer the type and mark the code as incorrect.
+
+Note that the eta-expansion is guided by the same rules, so whenever expanding a method without overloads, the compiler infers the types by itself:
+\lstset{style=Scala}
+\begin{lstlisting}
+def method(i: Int): Int = ???
+val function = method _
+\end{lstlisting}
+
+Upon expansion of a method with overloads, the resulting function type has to be provided and the inference flow goes in the other direction:
+\lstset{style=Scala}
+\begin{lstlisting}
+def method(i: Int): Int = ???
+def method(s: String): Int = ???
+val function: (String) => Int = method _
+\end{lstlisting}
+
+As a consequence, at the time of syntax analysis, the types aren't inferred yet and there is no way for us to find out which method overload is being called.
+
+The method overloads have to share the same identifier, but in most typical cases, this isn't a problem. Otherwise, it can be solved by using custom identifiers.
 	
 \section{Delayed measuring}
 
