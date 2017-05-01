@@ -132,6 +132,34 @@ This approach allows us to use the infix syntax with existing methods and with m
 \section{Def Macros}
 \label{sec:defmacros}
 
+Def Macros are quite a unique feature among all the widely used programming languages. It allows a library writer to write a code that will be executed upon compilation of the unit which references the library. This basically means that simple compiler extensions in Scala can behave like libraries, can be distributed and used just like one.
+
+The API is very simple - there are methods marked as \textit{macros} in the library code. Whenever a call of this method is being compiled, the compiler invokes the macro implementation, which is a normal Scala method. It will receive an AST\footnote{Abstract Syntax Tree - the product of the syntax analysis of a source code} of the arguments passed to the original method and produce an AST, which will replace it in the code.
+
+The feature was introduced in Scala 2.10 as an experimental feature, and it became very popular and successful. The current goal is to have a fully supported feature in Scala 2.12.
+
+%TODO: Example
+
+The only limitation is that the macro can't be used in the same compilation unit where its declaration and implementation is, as the Scala compiler has to have access to the already compiled implementation when compiling the usages.
+
+\subsection{Building syntax trees}
+\label{subsec:buildingast}
+
+The macro usually has to be able to perform 2 steps:
+
+\begin{enumerate}
+	\item Parse the AST of the arguments
+	\item Build a new syntax tree to replace it
+\end{enumerate}
+
+The syntax trees are represented by tree node classes with \inlinecode{apply()} and \inlinecode{unapply()} methods accepting / returning their descendants. The trees can be examined using pattern matching.
+
+Unfortunately, there is not a lot of documentation available for the syntax tree structure. The official Scala documentation has only a few examples and the types in the code lack the documentation as well (in Scala 2.11). 
+
+%TODO: Reference https://github.com/wolfe-pack/wolfe/wiki/Scala-AST-reference
+
+One of the possible options to find out how certain expressions are parsed into ASTs is to create a simple macro that will accept any expression, print its AST and replace itself by the same expression again:
+
 \lstset{style=Scala}
 \begin{lstlisting}
 def printAst(arg: Any): Any = macro printAst_impl
@@ -142,3 +170,14 @@ def printAst_impl(c: Context)(arg: c.Expr[Any]): c.Expr[Any] = {
   arg
 }
 \end{lstlisting}
+
+The output that is written to \textit{stdout} by a macro implementation is displayed as a warning in the compilation process, so there is no need to run the program to see the results of \inlinecode{printAst()}, it is sufficient just to compile it.
+
+For example, \inlinecode{printAst(x + 1)} produces the following compile-time warning:
+
+\lstset{style=Dump}
+\begin{lstlisting}
+Warning:scalac: Block(List(), Function(List(ValDef(Modifiers(PARAM | SYNTHETIC), TermName("i"), TypeTree(), EmptyTree)), Apply(Select(This(TypeName("MacroTest")), TermName("increment")), List(Ident(TermName("i"))))))
+\end{lstlisting}
+
+
