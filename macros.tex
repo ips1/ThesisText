@@ -124,8 +124,28 @@
 	stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
 }
 
+\lstdefinestyle{Dump}{  
+	breakindent=0pt,
+	breakatwhitespace,
+	columns=fullflexible,
+	showspaces=false,
+	showtabs=false,
+	breaklines=true,
+	showstringspaces=false,
+	breakatwhitespace=true,
+	columns=fullflexible,
+	escapeinside={(*@}{@*)},
+	otherkeywords={},
+	commentstyle=\color{greencomments},
+	keywordstyle=\color{bluekeywords}\bfseries,
+	stringstyle=\color{redstrings},
+	basicstyle=\ttfamily,
+	numbers=none,                    % where to put the line-numbers; possible values are (none, left, right)
+	rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+}
+
 \lstset{
-	language=Scala,
+%	language=Scala,
 	showspaces=false,
 	showtabs=false,
 	breaklines=true,
