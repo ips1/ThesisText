@@ -716,6 +716,35 @@ The method overloads have to share the same identifier, but in most typical case
 	
 \section{Delayed measuring}
 
+In some specific cases it might be useful to delay the measurement, or, in general, to measure invocation of a different function than the one that has multiple implementation. The implementations can affect something else than their own runtime. Some example use cases might be:
+
+\begin{itemize}
+	\item Configuration, or generation of configuration
+	\item Expression tree building
+	\item Query building
+	\item Method chain building
+\end{itemize}
+
+It is obvious that our API, which was designed to remain as simple as possible, doesn't support this case. We need to slightly extend it.
+
+\subsection{Decision context}
+
+Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the framework has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
+
+The contexts can interleave and we can't match the decision with the invocation by time or location. It is impossible to decide to which decision which invocation belongs automatically - we need support from the framework user. The user will have to explicitly state the context whenever invoking the measured function. By doing this, he will pinpoint the moment of decision that affected the invocation.
+
+Practically, we need to introduce a special object - the \textbf{measurement token} - which will represent the context. The \inlinecode{MultiFunction} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate a measurement token, that will be used to measure future function runs.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val getConfig = getFastConfig _ or getSlowConfig
+val (config, measure) = getConfig^()
+...
+measure(() => run(config))
+\end{lstlisting}
+
+This approach has one main disadvantage compared to the rest of the API - it isn't transparent. The user has to know that he is working with the \inlinecode{MultiFunction}, not just normal function. His assistance is, however, required by the nature of the problem.
+
 %TODO: Use cases - configuration generation, expression tree building, query building...
 
 %TODO: Problems - matching decision with measurement
