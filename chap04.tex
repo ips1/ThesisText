@@ -1,6 +1,21 @@
 \chapter{Performance evaluation}
 
+The second core part of the library is the logic of performance evaluation of the functions that are combined together.
+
+The process will be executed whenever the user invokes the function that was combined using the API described in %TODO: REFERENCE
+
+The system in general needs to do the following steps upon invocation:
+
+\begin{enumerate}
+	\item Locate the runtime history data of all the functions involved
+	\item Select the function to be invoked
+	\item Invoke the function and measure its runtime
+	\item Update the runtime history data with the new record
+\end{enumerate}
+
 \section{Data obtained by measurement}
+
+After invoking a function, we get the length of the run with high precision in nanoseconds.
 
 \section{Evaluation ???}
 
