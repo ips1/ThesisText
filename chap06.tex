@@ -32,3 +32,44 @@ Using non-deterministic decision tools in general lowers the maintainability of 
 Discovering and fixing bugs in a software system is a key part of its development and maintenance process. It is a very complex and time consuming activity, and its complexity grows considerably for the bugs that have non-deterministic occurrences. Whenever there is a bug in one of the implementations used with the framework, it is inherently non-deterministic, as it has effect only when the specific implementation is selected.
 
 \section{Other tests...?}
+
+\section{Usage from Java}
+
+\section{Usage from Kotlin}
+
+%TODO: Usage from Java & Kotlin
+
+\section{Implementation in other languages}
+
+The framework is implemented in Scala and can be used by any JVM-based languages, even though often without the comfort that provides Scala with its implicits and eta-expansion.
+
+The same functionality, however, could be used on other platform than JVM as well. The framework itself isn't complicated to reproduce and its runtime back-end is transferable to basically any platform. There would be minor complications with immutability of the data structures and expressiveness of Scala in some cases, but nothing show stopping.
+
+The key part of the framework that would cause problems upon reimplementation is the API, which relies heavily on Scala's DSL features (see \ref{sec:dsls}). It requires the following features from the language:
+
+\begin{itemize}
+	\item Implicit type conversions
+	\item Functions as first-class values
+	\item Eta-expansion of methods
+	\item Infix operator syntax for methods
+	\item Macros to parse and modify the AST upon compilation
+\end{itemize}
+
+With a subset of the features in the language, a limited API can be designed. Let's have a look at some language examples and what they offer.
+
+\subsection{Kotlin}
+
+\subsection{Java}
+
+\subsection{C\#}
+
+The C\# language has relatively advanced features and offers function types (\inlinecode{Func<TArg, TRetVal>}) that allow treating the functions as first class values. There is also a feature called \textit{Method groups}, which, in certain situations, lead to an implicit conversion of a method on an object to the corresponding function type - basically the same as eta-expansion.
+
+%TODO: Add examples
+
+The API in C\# could be based on method chaining and be quite similar to the one in Scala, although the method name extraction and the infix fluent-language syntax wouldn't be present.
+
+\subsection{Python}
+???
+
+\subsection{C / C++}
