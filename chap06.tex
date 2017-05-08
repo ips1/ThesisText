@@ -2,10 +2,33 @@
 
 An~example citation: \cite{Andel07}
 
-\section{Spark}
 
+\section{Artificial algorithm}
+\section{Sorting algorithm}
+\section{... General algorithm - predicting the big O notation ...}
+\section{SQL query selection}
+\section{Parsing / serializatin}
+\section{Spark}
 \subsection{What is Spark}
 \subsection{Usage}
 \subsection{Environment}
+\section{Server selection}
+
+\section{Problems with the practical use of the framework}
+
+\subsection{Selection overhead}
+\subsection{Maintainability}
+
+One of the main problems that such a framework is facing in a real-life software system is an engineering problem. The code of today's systems has to be kept working and maintained for several years, sometimes decades. During this period, bugs appear in the system, business requirements change and consequently, it is necessary to perform changes and adaptations in function code.
+
+Maintaining multiple implementations of the same functionality at once brings a lot of issues. The developers have to know exactly how all the implementations work and whenever it's necessary to modify the behavior, be able to perform changes in all of them to achieve the same result. Described process itself is very demanding and has a significant time impact on the development. 
+
+What's more, subtle differences in behavior of the implementations could be unintentionally introduced. These differences might not have visible effects immediately and may appear after several other modifications. At that moment, it will be extremely difficult to locate the problem, because the misbehavior caused by it won't be deterministic thanks to the nature of the selection algorithm.
+
+Using non-deterministic decision tools in general lowers the maintainability of the system.
+
+\subsection{Debugging}
+
+Discovering and fixing bugs in a software system is a key part of its development and maintenance process. It is a very complex and time consuming activity, and its complexity grows considerably for the bugs that have non-deterministic occurrences. Whenever there is a bug in one of the implementations used with the framework, it is inherently non-deterministic, as it has effect only when the specific implementation is selected.
 
 \section{Other tests...?}
