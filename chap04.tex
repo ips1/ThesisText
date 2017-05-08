@@ -19,13 +19,36 @@ After invoking a function, we get the length of the run with high precision in n
 
 \section{Evaluation ???}
 
+\subsection{Blackbox and whitebox evaluation}
+
+Whitebox approach - Predicting Execution Time of Computer Programs
+
+
+The blackbox approach is based on 
+
+Supposing that every one of the function has an input-size to execution time correlation. 
+
 \section{Selection strategies within a bucket}
 
 \subsection{Statistical tests}
 
 \section{Cross-bucket selection}
 
-\section{Function interpolation}
+\section{Function runtime prediction}
+
+\subsection{Function interpolation}
+
+\subsection{Constructing a model}
+
+The methods that were described so far are examples of the blackbox techniques - they don't analyze the function itself, they base all their predictions only on the runtime.
+
+More thorough predictions could be made after reaching the function code as well. It can be analyzed, key structures in the code identified (loops, branches, function calls, variables) and a model can be created using these information. The code can be instrumented and the measurement can be done for each of the structures mentioned. 
+
+The prediction will then be based on the model and the data measured for its elements.
+
+This approach has a few problems concerning our intended use cases. The model won't add any value to the predictions if the majority of the execution time will be spent waiting on an I/O operation. Specifically, it won't help with any of the cases where we are selecting a database query, remote server to connect to, etc.
+
+This approach wasn't implemented in our library, because it would require more architectural changes and an appropriate framework for analyzing and instrumenting the code. It could be based on [Predicting Execution Time of Computer Programs].
 
 \section{Experimental behavior with performance limits}
 Using available time to "obtain" more data
