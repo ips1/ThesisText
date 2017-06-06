@@ -7,12 +7,38 @@ An~example citation: \cite{Andel07}
 \section{Sorting algorithm}
 \section{... General algorithm - predicting the big O notation ...}
 \section{SQL query selection}
-\section{Parsing / serializatin}
 \section{Spark}
 \subsection{What is Spark}
+
+\subsection{Spark APIs}
+
+Spark currently supports three different APIs that can be used to construct Spark queries.
+
+\subsubsection{RDD}
+
+RDD (Resilient Distributed Dataset) was the first API introduced and is based on chaining higher order functions like \inlinecode{map()}, \inlinecode{filter()}, etc. RDDs contain custom JVM objects, Spark isn't aware of its structure. The query is typed and constructed using lambda expressions that work with these objects. It gets executed when a function that doesn't produce new RDD is called, e.g. \inlinecode{collect()} or \inlinecode{count()}. 
+
+Example of a simple query:
+\lstset{style=Scala}
+\begin{lstlisting}
+rdd.filter(_.id > 5000).count
+\end{lstlisting}
+
+Upon execution, the Spark worker engine works with the RDDs as a whole (partitions it, collects the results, etc.), but the operations on its members (filtering, transformation, grouping) are carried out by actually executing the lambdas. This approach is very simple and allows the user to write queries over custom data types without any limitation. The downside is that the Spark execution engine doesn't know what is going on within the lambdas, can't optimize the execution plan based on the query, and, when moving the parts of RDDs between the nodes, the objects have to be serialized and deserialized again.
+
+\subsubsection{Dataframes}
+
+Dataframes API 
+
+\subsubsection{Datasets}
+\subsection{RDD query selection}
+\subsection{RDD or Datasets selection}
 \subsection{Usage}
 \subsection{Environment}
 \section{Server selection}
+
+\section{JSON parsing libraries}
+\label{subsec:jsonparsing}
 
 \section{Problems with the practical use of the framework}
 
