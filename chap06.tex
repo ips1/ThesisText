@@ -52,6 +52,26 @@ Maintaining multiple implementations of the same functionality at once brings a 
 What's more, subtle differences in behavior of the implementations could be unintentionally introduced. These differences might not have visible effects immediately and may appear after several other modifications. At that moment, it will be extremely difficult to locate the problem, because the misbehavior caused by it won't be deterministic thanks to the nature of the selection algorithm.
 
 Using non-deterministic decision tools in general lowers the maintainability of the system.
+%TODO: finish THIS
+
+In cases where third-party libraries are used within the combined implementations, we introduce yet another factor of risk into the system - the libraries can change their behavior, can have undocumented differences in their solutions of input corner cases, etc.
+
+\subsection{Testing and verification}
+
+Upon maintenance of all the implementations used in our program, there will be inevitable changes made to every one of them. Before being released, the system has to go through the verification process. Common techniques of regression testing are insufficient in this case due to the non-deterministic nature of the adaptive selection in the system - some of the implementations might not be tested at all during the regression test, but might be selected in the production environment.
+
+The only way how to perform a regression test on the system is to change the \textit{ScalaAdaptive} framework configuration in the test environment, specifically the \textit{default policy} and the \textit{run selector}. Recommended settings are following:
+
+ \begin{itemize}
+ 	\item default policy: AlwaysSelectPolicy
+ 	\item run selector: LeastDataSelector
+ \end{itemize}
+
+Using this setup and ensuring that there are no history run data present, the system will go through all the options in round-robin style upon every run. The test task has to be performed enough times for all the options to reach their turn.
+
+The described testing process is cumbersome and can lead to errors in verification. For this reason, more emphasis should be put on \textit{Unit Testing} in a project containing the adaptively selected functions. If all the implementations are well covered by unit tests, all the hidden bugs and deviations of behavior should be immediately detected. In fact, there could be one common set of unit tests covering all the implementations, so that the test cases and acceptation conditions were the same.
+
+A simple framework for generating the unit tests for all the implementation would be useful and could be introduced as a part of continuation of the project.
 
 \subsection{Debugging}
 
