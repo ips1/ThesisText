@@ -81,6 +81,19 @@ Discovering and fixing bugs in a software system is a key part of its developmen
 
 \section{Usage from Java}
 
+Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of the ScalaAdaptive framework from Java is not supported. The reason is that the API of the framework depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
+
+There is, however, a very simple way how to utilize the framework in a Java project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class that internally holds the function created from the Java methods using the \inlinecode{or} operator. It will expose only one method with the same signature that would just delegate the call into the internal function.
+%TODO:  Add references to previous usage mentions
+
+To demonstrate this, we provide a simple Scala library \textit{AdaptiveJson} that can be imported in a form of \textit{jar} package into any Java project. Within the library, there is a single class, \textit{AdaptiveJsonParser}, which can be used to deserialize JSON string into a specified Java class. Internally, it uses the ScalaAdaptive framework to chose between multiple JSON parsers.
+
+The library is reusable and supposing that it is kept up to date and that all the major JSON parsing libraries are 
+
+%TODO: Reference the JSON parsing chapter
+
+As part of future work on the library, there could be a Java API added, enabling a direct usage from Java, although it would be very limited and not as expressive. More on the topic of API possibilities in other languages will be discussed later.
+
 \section{Usage from Kotlin}
 
 %TODO: Usage from Java & Kotlin
