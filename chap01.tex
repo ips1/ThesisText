@@ -1,1 +1,53 @@
-\chapter{Requirements and use cases}
+\chapter{Motivation and use cases}
+
+Almost every basic course of programming and algoritmisation uses the same example when talking about the complexity of algorithms and about methods of constructing them - sorting. Being a very common real-life problem with a variety of solutions using different principles with corresponding complexities, it is a nice practical introduction into this problematics. The outcome for the student is the following - it is always important to select the adequate algorithm for solving the problem.
+
+So now, let's expand the example a little bit. Supposing we have the basic arsenal of sorting algorithms including:
+
+\begin{itemize}
+	\item Selection sort
+	\item Insertion sort
+	\item Bubble sort
+	\item Quick sort
+	\item Merge sort
+	\item Heap sort
+	\item Radix sort *	
+\end{itemize}
+
+We know for sure that the first three algorithms have worse time complexity than the rest. In real conditions, this doesn't mean that they have to be necessarily slower on every input of every size. The faster algorithms often tend to have complex initialization and data preprocessing, which gives an advantage to asymptotically slower algorithms on inputs that are small enough that their processing time is comparable to the initialization. 
+
+In general, it is more useful to optimize for larger inputs, because the difference between algorithms with better asymptotic complexity\footnote{The so-called Big O notation} and the worse ones grows with the size of the input, so the impact of the complexity is much higher on larger inputs. In cases where the input size isn't limited, the algorithm with best possible asymptotic complexity should be preferred.
+
+The described approach might lead to inefficient computations over small inputs, which 
+
+Whenever using an algorithm, we need to think about the use case, the possible input data, and make a choice. If the requirements for the program change in the future, this choice could have a negative impact and have to be changed.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val result = algorithm1(input)
+\end{lstlisting}
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val result = algorithm2(input)
+\end{lstlisting}
+
+This process could be simply avoided by using all of the algorithm implementations and letting the program decide which one to choose at runtime.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val result = (algorithm1 or algorithm2)(input)
+\end{lstlisting}
+
+Doing so has a few valuable advantages:
+\begin{itemize}
+	\item It knows what the input is at the decision time
+	\item It might react to the state of the system
+	\item It knows what the performance of the algorithm was in the previous runs
+\end{itemize}
+
+In other words, the program can adapt its runtime to various conditions in order to improve its performance.
+
+The entire adaptation will be performed based on collected runtime data - no analysis of the functions will be required.
+
+%TODO: Big O notation reference?
