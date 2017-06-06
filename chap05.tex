@@ -1,4 +1,4 @@
-\chapter{Framework implementation}
+\chapter{ScalaAdaptive framework implementation}
 
 \section{Goals of implementation}
 
@@ -11,5 +11,31 @@ The main concerns upon implementing the framework were the following:
 	\item To use the Scala language features to make the code simpler and easier to maintain
 \end{itemize}
 
+\subsection{Development approach}
+
+\begin{itemize}
+	\item Prefer immutable structures
+	\item Prefer composition before inheritance
+	\item Use functional approach
+	\item In composition, use only trait types
+	\item Prefer Optional passing (railway oriented programming) for error handling
+\end{itemize}
+
+\subsubsection{Error handling}
+
+The framework is designed so that the number of exceptions handled in the code was minimized. The framework itself doesn't raise any exceptions in case of errors, and catches most of the exceptions from the libraries within to replace them with a None return value.
+
+This approach is known from the functional programming and takes advantage of monadic operations over the \textit{Option monad}\footnote{In Haskell and other languages known as Maybe monad.}. The return values can be mapped over using the \textit{bind} operator, which allows smooth function chaining and the error propagation through the chain.
+
 \section{Main architecture}
+\subsection{API implementation}
+\subsubsection{MultiFunctions and FunctionAdaptors}
+\subsubsection{FunctionConfig}
+\subsection{History storage}
+\subsubsection{Serialization}
+\subsection{Run selectors}
+\subsubsection{Discrete}
+\subsubsection{Continuous}
+\subsection{Policies}
+\subsection{Configuration}
 \section{Extending the functionality}
