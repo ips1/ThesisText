@@ -40,6 +40,7 @@ After having invoked the function and evaluated its runtime, the evaluation data
 
 
 \section{Selection strategies}
+\label{sec:selection_strategies}
 
 The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input \inlinecode{in} of the function \inlinecode{f()} and by the evaluation data gathered in previous runs.
 
@@ -77,11 +78,12 @@ Naturally, the \textit{descriptor function} itself shouldn't have a significant 
 The task of the strategies listed in this section is to make an approximation of the \(g_1\) function and use it to compute \(g_1(h(in))\) upon every invocation and to select the function with the best (minimal) result.
 
 \subsubsection{Simple linear regression}
+\label{subsubsec:simple_linear_regression}
 
 First strategy supposes that the function \(h\) can be approximated precisely enough using a linear function \(h'\) in the following form:
-\[h'(x) = \alpha' x + \beta'\].
+\[h'(x) = a' x + b'\].
 
-This approximation is a \textit{simple linear regression model}. The slope \(\alpha'\) and intercept \(\beta'\) of the linear function can be determined using a least squares method, which minimizes the squares of the distances of the actual function values from the ones predicted by the model.
+This approximation is a \textit{simple linear regression model}. The slope \(a'\) and intercept \(b'\) of the linear function can be determined using a least squares method, which minimizes the squares of the distances of the actual function values from the ones predicted by the model.
 
 A big advantage of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. 
 
@@ -93,19 +95,19 @@ The main problem is that the linear regression model applied to a case where the
 	\label{fig:selection_sort_linear_trendline}
 \end{figure}
 
-In order to know the accuracy of the model, we can perform statistical tests on it. We can test the true slope \(\alpha)\) of the hypothetical original linear function, against a constant value \(\alpha_0\). Suppose we have a linear regression model \(h'(x) = \alpha' x + \beta'\) constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). The hypotheses would be the following:
+In order to ensure the accuracy of the model, we can perform statistical tests on it. We can test the true slope \(a\) of the hypothetical original linear function, against a constant value \(a_0\). Suppose we have a linear regression model \(h'(x) = a' x + b'\) constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). The hypotheses would be the following:
 
-\[H_0: \alpha = \alpha_0 \]
+\[H_0: a = a_0 \]
 
-\[H_1: \alpha \neq \alpha_0 \]
+\[H_1: a \neq a_0 \]
 
 The test statistics \(T\) for the test can be computed using the following formula:
 
-\[T = \frac{\alpha' - \alpha_0}{se(\alpha')}\]
+\[T = \frac{a' - a_0}{se(a')}\]
 
 where
 
-\[se(\alpha') = \sqrt{\frac{\sqrt{MSE}}{ \sqrt{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 }}} \]
+\[se(a') = \sqrt{\frac{\sqrt{MSE}}{ \sqrt{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 }}} \]
 
 and
 
@@ -113,46 +115,111 @@ and
 
 The \(\bar{x}\) is the average of \(x_i\) and \(y_i' = h'(x_i)\).
 
-Now, the \(T\) follows a \textit{t-distribution} with \(n-2\) degrees of freedom, so \(H_0\) is not rejected on the significance level
+Now, the \(T\) follows a \textit{t-distribution} with \(n-2\) degrees of freedom, so \(H_0\) is not rejected on the significance level $\alpha$ in the following case:
+
+\[- t_{n - 2}(\alpha / 2) < T < t_{n - 2}(\alpha / 2)\]
+
+The $t_{n - 2}(\alpha / 2)$ is the $\alpha$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom.
+
+In our case, we have no specific $a_0$ that we want to test against, we simply want to know, if the data measured have a linear relation. We can achieve this by putting $a_0 = 0$. If we reject $H_0$ on the significance level $\alpha$, there is a $1 - \alpha$ probability of the data having a linear relation, and in such a situation, we can use the $a'$ slope of the simple linear regression model without too many issues.
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=90mm]{./img/linear_cantreject.png}}}
+	\caption{Linear regression of 100 run time samples from a function with linear complexity where $H_0$ couldn't be rejected.}
+	\label{fig:linear_cantreject}
+\end{figure}
+
+Unfortunately, the test tends to get affected by random fluctuations in function run times, which are quite common, especially for simple functions with short execution. The figure \ref{fig:linear_cantreject} shows a regression performed on a sample of 100 run times of a function with linear complexity. The slope of the linear approximation seems to match the measured data reasonably well, but the hypothesis $H_0$ of the statistical test couldn't be rejected on the significance level $\alpha = 0.05$. 
+
+On the other hand, figure \ref{fig:quadratic_rejected} shows a regression performed on a sample of 100 run times of a function with quadratic complexity, and in this case, the hypothesis $H_0$ of the was rejected in favor of $H_1$ on the same significance level $\alpha = 0.05$.
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=90mm]{./img/quadratic_rejected.png}}}
+	\caption{Linear regression of 100 run time samples from a function with quadratic complexity where $H_0$ was rejected.}
+	\label{fig:quadratic_rejected}
+\end{figure}
 
 \subsubsection{Window-bound linear regression}
+\label{subsubsec:window_bound_regression}
 
-\subsubsection{Function interpolation}
+Tobe able to apply the strategy described in section \ref{subsubsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ for the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on a smaller subset.
 
-\subsubsection{Model construction}
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/window_examples.png}}}
+	\caption{Examples of subsets of the data from figure \ref{fig:selection_sort_linear_trendline} with linear regressions.}
+	\label{fig:window_examples}
+\end{figure}
 
-The methods that were described so far are examples of the blackbox techniques - they don't analyze the function itself, they base all their predictions only on the runtime.
+When selecting a function for a specific \textit{input descriptor} $desc$, a window around its value of specific width $w$ can be selected and the regression model built upon it. We do it by selecting the data samples $x_k, y_k$ where $\abs{x_k - desc} < w$, and using them as the entire data set.
 
-More thorough predictions could be made after reaching the function code as well. It can be analyzed, key structures in the code identified (loops, branches, function calls, variables) and a model can be created using these information. The code can be instrumented and the measurement can be done for each of the structures mentioned. 
+The window width $w$ can be selected in multiple ways. Using a fixed number across all the functions and all the data samples wouldn't be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want to split the set. This wouldn't help us in a case where there are a few extreme values of \textit{input descriptors} in the data set and the rest of the values lies together. 
 
-The prediction will then be based on the model and the data measured for its elements.
+The most complicated but also the most adaptive window selection method is based on analysis of the entire data set - we sort the samples using the \textit{input descriptor} and compute the distances of each pair of the neighboring ones, make an average of these distances and set the $w$ as $avg * m$, where m is the expected number of samples in one window. For the value of $m$, we can chose a number of about $50-100$.
 
-This approach has a few problems concerning our intended use cases. The model won't add any value to the predictions if the majority of the execution time will be spent waiting on an I/O operation. Specifically, it won't help with any of the cases where we are selecting a database query, remote server to connect to, etc.
+\subsubsection{Local regression}
 
-This approach wasn't implemented in our library, because it would require more architectural changes and an appropriate framework for analyzing and instrumenting the code. It could be based on [Predicting Execution Time of Computer Programs].
+The approach explained in \ref{subsubsec:window_bound_regression} can be extended further - the locally constructed linear regression models can be used to build up a model for the entire data set. This leads to a model that is non-linear, in other words, the function that approximates the original data relation is not a linear function.
 
-\section{Selection strategies within a bucket}
+One possible regression method that behaves this way is \textit{LOESS} (Local Regression). It uses methods similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The result is a \textit{Loess Curve}, which is a function that is artificially constructed and doesn't have any simple (or even known) formula. This is the one of the advantages - the original relation between \textit{input descriptors} and the run times didn't have to be expressed by a nice simple function in order to be modeled correctly.
 
-\subsection{Statistical tests}
+%TODO: Add some sources
+
+There is also a few disadvantages of this strategy. First of all, the entire local regression model has to be recomputed whenever there is a new data in the dataset, the model can't be simply updated like the \textit{simple linear regression}. Secondly, it is much more computationally complicated and the model construction takes non-trivial time, so it has a negative impact of the framework overhead, especially when used with short and simple functions. Next, there is no simple way how to perform statistical tests on the accuracy of the model. The last downside of \textit{local regression} is its inability to predict further behavior past the minimum and maximum data sample.
+
+\subsubsection{Whitebox model construction}
+
+The methods that were described so far are examples of the blackbox techniques - they don't analyze the function itself, they base all their predictions only on the runtime measured.
+
+More thorough predictions could be made after examining the function code as well. It can be analyzed, key structures in the code identified (loops, branches, function calls, variables) and a model can be created using these information. The code can be instrumented and the measurement can be done for each of the structures mentioned. It would require more complex runtime measurement data, but the framework is prepared for this. The prediction will then be based on the model and the data measured for its elements.
+
+%TODO: Add reference / bibliography
+Similar approach was taken in [Predicting Execution Time of Computer Programs] with the goal of predicting program execution time on a specified input with very high precision.
+%TODO: Add results?
+
+This approach has a few problems concerning the intended use cases of ScalaAdaptive framework. The model won't add any value to the predictions if the majority of the execution time will be spent waiting on an I/O operation. Specifically, it won't help with any of the cases where we are selecting a database query, remote server to connect to, etc.
+
+For these reasons and because of the complexity, it wasn't implemented in the framework, but it represents a potential future work that could be done on the topic.
+
+\subsection{Comparison of predictive strategies}
+
+\subsection{Non-predictive strategies}
+
+\subsubsection{T-test for two functions}
 
 If we assume that the measured function run times come from a normal distribution, we can use methods of statistical testing to determine whether one function is faster than the other with given certainty. 
 
-\subsubsection{Deciding between two functions}
+\subsubsection{T-test for multiple functions}
 
-Let's suppose we have two data samples 
+\section{Grouping}
 
-\subsubsection{Deciding between multiple functions}
+\section{Selection policies}
 
+The selection process and all the strategies described in \ref{sec:selection_strategies} are quite complex and have non-trivial overhead, especially 
 
-The fact that the actual distribution of the function run times most likely won't be normal can be 
+\textit{Selection policies} are a concept introduced into the ScalaAdaptive framework with the purpose of lowering the execution overhead of all the selection strategies described in this chapter. Every \textit{combined function} has a \textit{selection policy} associated with it.
 
-\section{Cross-bucket selection}
+In the function selection chain, the \textit{policy} gets evaluated right after invoking the function and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
 
-\section{Function runtime prediction}
+The possible results of the \textit{policy} evaluation are the following:
 
-\subsection{Function interpolation}
+\begin{itemize}
+	\item Select function using the selection strategy
+	\item Gather more data for the least-executed function
+	\item Use the function selected last time
+	\item Use the most selected function
+\end{itemize}
 
-\section{Experimental behavior with performance limits}
-Using available time to "obtain" more data
+We can notice that these results require only the basic statistical data about previous selection processes. This is the key idea of the \textit{policies} - the decision and the execution should depend only on these simple statistics, except for the case where selection strategy is required.
+
+The \textit{policy} evaluation process also replaces the current \textit{policy} with a new one. This technically creates a state machine - the state of the function is represented by the active \textit{policy}, and whenever the function is invoked, a result is produced and new \textit{policy} becomes active. This corresponds to producing output and moving to a new state in a state machine.
+
+The advantage of the \textit{policy} system over a regular state machine is its extensibility and reusability - there are no rules directly in the state machine (i.e. here in the \textit{combined function}). All the logic of deciding on the result and the next \textit{policy} is in the \textit{policy} node itself. So the entire behavior of the state machine is defined by the initial \textit{policy}, which is specified by the user upon creating the \textit{combined function}. As a result, reusable policies that are parametrized can be used in various chains of policies, smaller chains can be put together, etc.
+%TODO: Reference to the API
+
+\subsection{Statistical data}
+
+The only input that the \textit{policy} receives when making decision is a statistical summary of previous selection results of the \textit{combined function}. The process itself is supposed to be fast and reflect just the trends in the selection, not to replace the whole selection strategy process as described in section \ref{sec:selection_strategies}, so the statistical data don't contain the entire run history of all the functions involved.
+
+On the other hand, the \textit{policies} are a handy tool to limit the damage of the 
 
 %TODO - when do I need more data?
