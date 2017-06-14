@@ -115,11 +115,11 @@ and
 
 The \(\bar{x}\) is the average of \(x_i\) and \(y_i' = h'(x_i)\).
 
-Now, the \(T\) follows a \textit{t-distribution} with \(n-2\) degrees of freedom, so \(H_0\) is not rejected on the significance level $\alpha$ in the following case:
+Now, the \(T\) follows a \textit{t-distribution} with \(n-2\) degrees of freedom, so \(H_0\) is rejected on the significance level $\alpha$ in favor of $H_1$ in the following case:
 
-\[- t_{n - 2}(\alpha / 2) < T < t_{n - 2}(\alpha / 2)\]
+\[\abs{T} > t_{n - 2}(1-\frac{\alpha}{2})\]
 
-The $t_{n - 2}(\alpha / 2)$ is the $\alpha$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom.
+The $t_{n - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom.
 
 In our case, we have no specific $a_0$ that we want to test against, we simply want to know, if the data measured have a linear relation. We can achieve this by putting $a_0 = 0$. If we reject $H_0$ on the significance level $\alpha$, there is a $1 - \alpha$ probability of the data having a linear relation, and in such a situation, we can use the $a'$ slope of the simple linear regression model without too many issues.
 
@@ -184,9 +184,77 @@ For these reasons and because of the complexity, it wasn't implemented in the fr
 
 \subsection{Non-predictive strategies}
 
+In some cases, the function run time doesn't depend on the input, or the relation isn't significant enough. In such a case, we consider all the runs of the function equal and we want to decide based on the historical measurements which one of the functions has a higher chance of being faster.
+
+The trivial solutions being the following:
+\begin{itemize}
+	\item Select the function with the lowest average run time
+	\item Select the function with the lowest minimal runtime
+	\item Select the function with the lowest maximal runtime
+\end{itemize}
+
+Each of these strategies does make sense and might be useful in some cases, the problem is that they can't give us the certainty with which the function is better. Again, using statistical methods to express the level of certainty we require from the decision, can solve the problem.
+
 \subsubsection{T-test for two functions}
 
-If we assume that the measured function run times come from a normal distribution, we can use methods of statistical testing to determine whether one function is faster than the other with given certainty. 
+If we assume that the measured function run times come from a normal distribution, we can use the methods of statistical testing to determine whether one function is faster than the other with given significance. 
+
+Suppose we have two samples of run times for the two functions involved, $X_1, ..., X_n$ and $Y_1, ..., Y_m$. Next, suppose that these samples come from normal distributions with expectations $\mu_1$ and $\mu_2$, respectively. These expectations are unknown for as, just like the variances. The goal is to test the expectations of the two samples against each other. 
+
+Based on these requirements, we will use a \textit{two-sample t-test}. The default hypotheses for the test are:
+
+\[
+H_0: \mu_1 = \mu_2
+\]
+\[
+H_1: \mu_1 \ne  \mu_2
+\]
+
+and the test statistics
+
+\[
+T = \sqrt{\frac{nm}{n + m}}\frac{\bar{X}_n + \bar{Y}_m}{S}
+\]
+
+where $\bar{X}_n$ and $\bar{Y}_m$ are the sample averages and $S$ is the common variance estimate computed as a weighed average of the sample variances:
+
+\[
+S^2 = \frac{1}{n + m -2} ((n-1)S_X^2 + (m-1)S_Y^2)
+\]
+
+with $S_X^2$ and $S_Y^2$ being the sample variances:
+
+\[
+S_X^2 = \frac{1}{n-1} \sum_{i=1}^{n}(X_i - \bar{X}_n)^2
+\]
+\[
+S_Y^2 = \frac{1}{m-1} \sum_{i=1}^{m}(Y_i - \bar{Y}_m)^2
+\]
+
+The hypothesis $H_0$ will be rejected in favor of hypothesis $H_1$ with the significance level $\alpha$ if
+
+\[\abs{T} > t_{n + m - 2}(1-\frac{\alpha}{2})\]
+
+The $t_{n + m - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n+m-2$ degrees of freedom.
+
+Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have significantly different expectations, i.e., one of the functions is expected to give better results than the other. In order to find out which of the functions is the favored one, we need to use a \textit{one-sided test}. To do so, we introduce additional hypotheses:
+
+\[
+H_2: \mu_1 > \mu_2
+\]
+\[
+H_3: \mu_1 < \mu_2
+\]
+
+Now we can reject the hypothesis $H_0$ in favor of $H_2$ if
+
+\[T > t_{n + m - 2}(1-\alpha)\]
+
+or reject the hypothesis $H_0$ in favor of $H_3$ if
+
+\[T < -t_{n + m - 2}(1-\alpha)\]
+
+By performing the \textit{one-sided tests} with $H_2$ and $H_3$ as alternatives, we can easily determine, which of the functions has lower expectation of run time and is a candidate to be selected to run.
 
 \subsubsection{T-test for multiple functions}
 
@@ -194,19 +262,19 @@ If we assume that the measured function run times come from a normal distributio
 
 \section{Selection policies}
 
-The selection process and all the strategies described in \ref{sec:selection_strategies} are quite complex and have non-trivial overhead, especially 
+The selection process and all the strategies described in \ref{sec:selection_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data. In a common scenario where we expect the system to come to a decision about the best function (either overall, or for every group of \textit{input descriptors}), it would be handy if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
 
-\textit{Selection policies} are a concept introduced into the ScalaAdaptive framework with the purpose of lowering the execution overhead of all the selection strategies described in this chapter. Every \textit{combined function} has a \textit{selection policy} associated with it.
+Similarly, it might be desirable to control the overhead time spent on the selection, or, in general, on invoking the functions using selection (which might lead to a bad decision), either per a specific time period, or per a specific action of the system (user request, processing unit, etc.). All of these decisions are taken at a higher level than the run time history analysis performed by the selection strategies.  
 
-In the function selection chain, the \textit{policy} gets evaluated right after invoking the function and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
+\textit{Selection policies} are a concept introduced into the ScalaAdaptive framework that tries to address these cases, with the main purpose of lowering its execution overhead. Every \textit{combined function} has a \textit{selection policy} associated with it. In the function selection chain, the \textit{policy} gets evaluated right after invoking the function and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
 
 The possible results of the \textit{policy} evaluation are the following:
 
 \begin{itemize}
-	\item Select function using the selection strategy
-	\item Gather more data for the least-executed function
-	\item Use the function selected last time
-	\item Use the most selected function
+	\item \textbf{SelectNew} - Select function using the selection strategy
+	\item \textbf{GatherData} - Gather more data for the least-executed function
+	\item \textbf{UseLast} - Use the function selected last time
+	\item \textbf{UseMost} - Use the most selected function
 \end{itemize}
 
 We can notice that these results require only the basic statistical data about previous selection processes. This is the key idea of the \textit{policies} - the decision and the execution should depend only on these simple statistics, except for the case where selection strategy is required.
@@ -220,6 +288,44 @@ The advantage of the \textit{policy} system over a regular state machine is its 
 
 The only input that the \textit{policy} receives when making decision is a statistical summary of previous selection results of the \textit{combined function}. The process itself is supposed to be fast and reflect just the trends in the selection, not to replace the whole selection strategy process as described in section \ref{sec:selection_strategies}, so the statistical data don't contain the entire run history of all the functions involved.
 
-On the other hand, the \textit{policies} are a handy tool to limit the damage of the 
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/run_schema.png}}}
+	\caption{Process of \textit{combined function} invocation.}
+	\label{fig:run_schema}
+\end{figure}
+
+On the other hand, the \textit{policies} are a handy tool to limit the damage of the selection process on the system. For this, it is necessary to observe and to store various times connected with the selection and execution. Figure \ref{fig:run_schema} shows the whole process with policy being evaluated with the SelectNew result, split into individual parts. Upon every invocation, the following is tracked:
+
+\begin{itemize}
+	\item Selection and run history storage time (2 and 4)
+	\item Function execution time (3)
+	\item Total time spent on the SelectNew result (2, 3 and 4)
+\end{itemize}
+
+These times are added up to a sum for every function after every SelectNew result. In addition, the total time spent on running the lest-executed function is tracked when GatherData result is received, and also added up. The policy can work with these totals and analyze the changes that happen to them overtime. The policies are designed to be immutable, but contain state themselves, and the state changes when switching to a new policy.
+
+In addition, number of times each function was selected, total number of times we received the SelectNew and GatherData result and the total number of times the combined function was invoked has to be tracked. The user-implemented policy has the following data available to decide:
+
+\begin{itemize}
+	\item Total run count of the combined function
+	\item Total number of times the last function was selected
+	\item Total number of times the most selected function was selected
+	\item Total number of times any function was selected
+	\item Total number of times of gathering new data (GatherData result)
+	\item Total time spent on function execution (after SelectNew result)
+	\item Total time spent on selection and storage overhead (after SelectNew result)
+	\item Total time spent on processing the SelectNew result
+	\item Total time spent on processing the GatherData result
+\end{itemize}
+
+\subsection{Implemented policies}
+
+A simple description of policies that were implemented as part of the framework and used in its evaluation follows. Note that it is very simple to create own customized policies and the topic will be covered later.
+
+
+
+\subsection{Possible improvements}
+
+Part of the statistical data could be a factor of combined certainty of all the selections of a specific function. This factor could be combined from the selection results of the strategies that would support it (in the statistical test based strategies, it could be a p-value, strength of the test, or similar) and would serve as a decision factor for more complex policies with a statistical approach as well.
 
 %TODO - when do I need more data?
