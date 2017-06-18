@@ -38,11 +38,9 @@ The \textit{wall clock time} is measured by fetching high-precision system time 
 
 After having invoked the function and evaluated its runtime, the evaluation data have to be stored before passing the return value back to the caller. Multiple types of storage can be used for that.
 
+\subsection{Selecting a function}
 
-\section{Selection strategies}
-\label{sec:selection_strategies}
-
-The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input \inlinecode{in} of the function \inlinecode{f()} and by the evaluation data gathered in previous runs.
+The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input \inlinecode{in} of the function \inlinecode{f()} and by the evaluation data gathered in previous runs. We can use one of a various strategies to decide on the result.
 
 The most straightforward approach would be to look at the function run history and select the function with the lowest average runtime in the measured runs. This solution has a few problems. First of all, the runtime of the inner functions \inlinecode{f1()}, ..., \inlinecode{fn()} might depend on the input \inlinecode{in}, which could lead to incorrect assumptions if the historical data were measured on runs with various inputs. And secondly, the method doesn't solve the case where the data don't give us an exact answer, for example if there are too few, if the historical results are too scattered (which might have been caused by different conditions upon invocation, etc.), and in general when we can't make a clear decision and need to collect more data instead.
 
@@ -50,9 +48,10 @@ The \textit{input dependency} problem might be solved in various ways. Methods t
 
 As for the \textit{uncertainty} problem, the key is to collect a fixed amount of data first before using any of the strategies. Additionally, a techniques from statistical testing can be used so that the strategy could have a maximal probability of an error (a wrong decision).
 
-Based on these observations, a couple of strategies to select function were proposed and implemented as a part of the ScalaAdaptive framework. The user of the framework can decide by himself on which one to use.
+Based on these observations, a couple of strategies to select function were proposed and implemented as a part of the ScalaAdaptive framework, and will be described in further sections. The user of the framework can decide by himself on which one to use.
 
-\subsection{Predictive strategies}
+\section{Predictive strategies}
+\label{sec:predictive_strategies}
 
 These strategies are useful solely for the purpose of the functions for which the runtime is directly related to the input of the function, e.g. size of a data structure, length of a data file, a number, etc. The computational complexity of algorithms is usually expressed as a function of the size of the algorithm's input. The actual runtime depends on the complexity, as every computational step has to take some CPU time. 
 
@@ -77,8 +76,8 @@ Naturally, the \textit{descriptor function} itself shouldn't have a significant 
 
 The task of the strategies listed in this section is to make an approximation of the \(g_1\) function and use it to compute \(g_1(h(in))\) upon every invocation and to select the function with the best (minimal) result.
 
-\subsubsection{Simple linear regression}
-\label{subsubsec:simple_linear_regression}
+\subsection{Simple linear regression}
+\label{subsec:simple_linear_regression}
 
 First strategy supposes that the function \(h\) can be approximated precisely enough using a linear function \(h'\) in the following form:
 \[h'(x) = a' x + b'\].
@@ -139,10 +138,10 @@ On the other hand, figure \ref{fig:quadratic_rejected} shows a regression perfor
 	\label{fig:quadratic_rejected}
 \end{figure}
 
-\subsubsection{Window-bound linear regression}
-\label{subsubsec:window_bound_regression}
+\subsection{Window-bound linear regression}
+\label{subsec:window_bound_regression}
 
-Tobe able to apply the strategy described in section \ref{subsubsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ for the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on a smaller subset.
+Tobe able to apply the strategy described in section \ref{subsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ for the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on a smaller subset.
 
 \begin{figure}[h!]
 	\centerline{\mbox{\includegraphics[width=110mm]{./img/window_examples.png}}}
@@ -156,9 +155,9 @@ The window width $w$ can be selected in multiple ways. Using a fixed number acro
 
 The most complicated but also the most adaptive window selection method is based on analysis of the entire data set - we sort the samples using the \textit{input descriptor} and compute the distances of each pair of the neighboring ones, make an average of these distances and set the $w$ as $avg * m$, where m is the expected number of samples in one window. For the value of $m$, we can chose a number of about $50-100$.
 
-\subsubsection{Local regression}
+\subsection{Local regression}
 
-The approach explained in \ref{subsubsec:window_bound_regression} can be extended further - the locally constructed linear regression models can be used to build up a model for the entire data set. This leads to a model that is non-linear, in other words, the function that approximates the original data relation is not a linear function.
+The approach explained in \ref{subsec:window_bound_regression} can be extended further - the locally constructed linear regression models can be used to build up a model for the entire data set. This leads to a model that is non-linear, in other words, the function that approximates the original data relation is not a linear function.
 
 One possible regression method that behaves this way is \textit{LOESS} (Local Regression). It uses methods similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The result is a \textit{Loess Curve}, which is a function that is artificially constructed and doesn't have any simple (or even known) formula. This is the one of the advantages - the original relation between \textit{input descriptors} and the run times didn't have to be expressed by a nice simple function in order to be modeled correctly.
 
@@ -166,7 +165,7 @@ One possible regression method that behaves this way is \textit{LOESS} (Local Re
 
 There is also a few disadvantages of this strategy. First of all, the entire local regression model has to be recomputed whenever there is a new data in the dataset, the model can't be simply updated like the \textit{simple linear regression}. Secondly, it is much more computationally complicated and the model construction takes non-trivial time, so it has a negative impact of the framework overhead, especially when used with short and simple functions. Next, there is no simple way how to perform statistical tests on the accuracy of the model. The last downside of \textit{local regression} is its inability to predict further behavior past the minimum and maximum data sample.
 
-\subsubsection{Whitebox model construction}
+\subsection{Whitebox model construction}
 
 The methods that were described so far are examples of the blackbox techniques - they don't analyze the function itself, they base all their predictions only on the runtime measured.
 
@@ -180,9 +179,7 @@ This approach has a few problems concerning the intended use cases of ScalaAdapt
 
 For these reasons and because of the complexity, it wasn't implemented in the framework, but it represents a potential future work that could be done on the topic.
 
-\subsection{Comparison of predictive strategies}
-
-\subsection{Non-predictive strategies}
+\section{Non-predictive strategies}
 
 In some cases, the function run time doesn't depend on the input, or the relation isn't significant enough. In such a case, we consider all the runs of the function equal and we want to decide based on the historical measurements which one of the functions has a higher chance of being faster.
 
@@ -195,8 +192,8 @@ The trivial solutions being the following:
 
 Each of these strategies does make sense and might be useful in some cases, the problem is that they can't give us the certainty with which the function is better. Again, using statistical methods to express the level of certainty we require from the decision, can solve the problem.
 
-\subsubsection{T-test for two functions}
-\label{subsubsec:t_test_two}
+\subsection{T-test for two functions}
+\label{subsec:t_test_two}
 
 If we assume that the measured function run times come from a normal distribution, we can use the methods of statistical testing to determine whether one function is faster than the other with given significance. 
 
@@ -257,10 +254,10 @@ or reject the hypothesis $H_0$ in favor of $H_3$ if
 
 By performing the \textit{one-sided tests} with $H_2$ and $H_3$ as alternatives, we can easily determine, which of the functions has lower expectation of run time and is a candidate to be selected to run.
 
-\subsubsection{T-test for multiple functions}
-\label{subsubsec:t_test_multiple}
+\subsection{T-test for multiple functions}
+\label{subsec:t_test_multiple}
 
-The selection strategy that was described in \ref{subsubsec:t_test_two} works only with two functions. If we want to select from three or more, we need to modify the strategy.
+The selection strategy that was described in \ref{subsec:t_test_two} works only with two functions. If we want to select from three or more, we need to modify the strategy.
 
 The goal of selecting among three or more functions is not as clear as it was for the two functions alternative. Ideally, we would like to be able to identify a function that is significantly better that every one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function can't be selected, because we are not able to rule out the 
 possibility that there is a faster option.
@@ -301,7 +298,7 @@ In our case, however, a type-I error in one of the individual tests doesn't nece
 
 Now, we are able to decide about a function whether it's significantly better than all of the others. In the selection strategy, this test will be performed for all the functions one by one and the first one where the $H_0$ is rejected in favor of $H_1$ gets selected. This means performing at most $k$ of these combined tests. In this case, the type-I error in any of the tests leads to a critical error of the selection process and we should try to keep it as unlikely as possible, by applying one of the correction techniques discussed. A simple example of such a technique could be the \textit{Bonferroni correction}, which sets the $\alpha'$ of the individual tests to $\alpha / k$ for $\alpha$ being the desired significance overall and $k$ the number of samples.
 
-\subsubsection{Window-bound t-test}
+\subsection{Window-bound t-test}
 
 The t-test methods as described in this section work with all the run data collected and use it to make a decision about the function with the best performance. It works under the assumption that the run times of a specific function have a normal distribution. This could be the truth only for the functions with constant complexity - whenever the function run time depends on the input, the distribution of the sample of measurements depends heavily on the distribution of the \textit{input descriptors}. 
 
@@ -321,11 +318,11 @@ Even if we assumed that the inputs were distributed normally and that the relati
 
 If we wanted to use the t-test strategy on the functions with non-constant complexity, the same approach as with the \textit{simple linear regression} can be taken - we can perform the t-test just for a subset of the historical data with very similar \textit{input descriptors}. Instead of assuming that the relation in the small window is linear, we want it to be constant and normally distributed. Consequently, even smaller window sizes should be selected, so that these assumptions held at least approximately. The t-test significance levels and strengths will be approximate as well, but our goal is to get reasonable results, we don't need to be precise.
 
-The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms. Obviously, there is a relation to the input size, so the simple t-test wouldn't help us in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - 0-3000, 7000-10000 and 17000-20000. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsubsec:t_test_two} and \ref{subsubsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
+The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms. Obviously, there is a relation to the input size, so the simple t-test wouldn't help us in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - 0-3000, 7000-10000 and 17000-20000. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
 
 If we reduce the window size to a constant 0, we will get a method in which only the results for inputs with the same descriptor are tested. This might be useful in cases where we know that the function will be called 
 
-\subsection{Strategy comparison}
+\section{Strategy comparison}
 
 The predictive strategies don't handle well more historical results for the same \textit{input descriptor}.
 
@@ -404,6 +401,10 @@ A simple description of policies that were implemented as part of the framework 
 
 Part of the statistical data could be a factor of combined certainty of all the selections of a specific function. This factor could be combined from the selection results of the strategies that would support it (in the statistical test based strategies, it could be a p-value, strength of the test, or similar) and would serve as a decision factor for more complex policies with a statistical approach as well.
 
+The \textit{policies} were designed as a concept that is completely independent from the actual selection strategies and history analysis, to be faster and reusable. One of the improvements that would require closer tying would be to allow the \textit{policies} to choose the selection strategy, or to influence it somehow, by limiting it to a subset of data, etc. Another improvement that might seem useful is to allow the \textit{policies} to analyze the whole history data. This would, however, mean a lot of additional overhead time when evaluating the \textit{policy} and is not desirable.
+
+A different improvement approach might be to give the selection strategies a state that could involve their decision. The state would be managed by the combined function and it could even be the same state that is used by the \textit{policies}. 
+
 %TODO - when do I need more data?
 
 \section{Grouping}
@@ -417,8 +418,8 @@ The main advantage of the grouping approach is the separate statistics and polic
 %TODO Reference to the policy
 
 Some of the most common ways how to group values for the input descriptors might be:
-\begin{enumerate}
+\begin{itemize}
 	\item Logarithmic - orders of magnitude
 	\item Linear - tens, hundreds, thousands
 	\item Fixed - predefined finite number of groups
-\end{enumerate}
+\end{itemize}
