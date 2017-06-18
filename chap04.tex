@@ -150,7 +150,7 @@ Tobe able to apply the strategy described in section \ref{subsubsec:simple_linea
 	\label{fig:window_examples}
 \end{figure}
 
-When selecting a function for a specific \textit{input descriptor} $desc$, a window around its value of specific width $w$ can be selected and the regression model built upon it. We do it by selecting the data samples $x_k, y_k$ where $\abs{x_k - desc} < w$, and using them as the entire data set.
+When selecting a function for a specific \textit{input descriptor} $d$, a window around its value of specific width $w$ can be selected and the regression model built upon it. We do it by selecting the data samples $x_k, y_k$ where $\abs{x_k - d} < w$, and using them as the entire data set.
 
 The window width $w$ can be selected in multiple ways. Using a fixed number across all the functions and all the data samples wouldn't be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want to split the set. This wouldn't help us in a case where there are a few extreme values of \textit{input descriptors} in the data set and the rest of the values lies together. 
 
@@ -196,6 +196,7 @@ The trivial solutions being the following:
 Each of these strategies does make sense and might be useful in some cases, the problem is that they can't give us the certainty with which the function is better. Again, using statistical methods to express the level of certainty we require from the decision, can solve the problem.
 
 \subsubsection{T-test for two functions}
+\label{subsubsec:t_test_two}
 
 If we assume that the measured function run times come from a normal distribution, we can use the methods of statistical testing to determine whether one function is faster than the other with given significance. 
 
@@ -257,8 +258,83 @@ or reject the hypothesis $H_0$ in favor of $H_3$ if
 By performing the \textit{one-sided tests} with $H_2$ and $H_3$ as alternatives, we can easily determine, which of the functions has lower expectation of run time and is a candidate to be selected to run.
 
 \subsubsection{T-test for multiple functions}
+\label{subsubsec:t_test_multiple}
 
-\section{Grouping}
+The selection strategy that was described in \ref{subsubsec:t_test_two} works only with two functions. If we want to select from three or more, we need to modify the strategy.
+
+The goal of selecting among three or more functions is not as clear as it was for the two functions alternative. Ideally, we would like to be able to identify a function that is significantly better that every one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function can't be selected, because we are not able to rule out the 
+possibility that there is a faster option.
+
+For simplicity and possibility to support the decision of the selection strategy with the significance level and the probability connected to it, we will consider only the case where one function is better than all the others.
+
+Suppose we have $k$ samples $X_{1,1}, ..., X_{1, n_1}, ..., X_{k,1}, ..., X_{k, n_k}$ from normal distributions with unknown expectations $\mu_1, ..., \mu_k$ and unknown variances. We would like to compare the expectations and find out whether there is a significant difference or not.
+
+Common techniques for testing hypotheses about the expectations of multiple samples involve \textit{ANOVA}\footnote{Analysis of variance} or its modified version, the \textit{Kruskal-Wallis test}. The tests are based on variance comparison, assume that the samples have similar standard deviations, and can decide about the following hypotheses:
+
+%TODO: Add references to the tests
+
+\[
+H_0: \mu_1 = \mu_2 = ... = \mu_k
+\]
+\[
+H_1: \exists i, j: \mu_i \neq \mu_j
+\]
+
+These multiple-sample tests are usually preferred over performing multiple t-tests, because it is necessary to correct the significance level by artificially lowering the significance level of the t-tests, which leads to lower test strengths. In our case, however, this approach has a few problems. Firstly, we want to actually find out which of the samples is the deviating one, or, if there are more, which one is the most deviating one. Additionally, we need only one-sided alternative (to find out the lowest expectation). 
+
+As a result, we need to modify our hypotheses. Lets consider a simple alternative first - suppose we want to test $\mu_1$ against all the other expectations:
+
+\[
+H_0: \mu_1 = \mu_2 \vee ... \vee \mu_1 = \mu_k
+\]
+\[
+H_1: \mu_1 < \mu_2 \wedge ... \wedge \mu_1 < \mu_k
+\]
+
+$H_0$ is basically saying that there is at least one other sample with the same expectation, and the one-sided alternative $H_1$ puts $\mu_1$ as the lowest of all the expectations.
+
+We can perform a simple t-test of $H_{j,0}: \mu_1 = \mu_j$ against $H_{j,1}: \mu_1 < \mu_j$ $\forall j = 2, ..., k$. It is clear that the $H_0$ can be rejected in favor of $H_1$ only if all of the $H_{j,0}$ were rejected in favor of $H_{j,1}$. 
+
+As mentioned before, the procedure of combining statistical tests usually requires to artificially lower the significance level of the individual tests with the goal of keeping the significance level of the whole set of tests reasonably low. These methods are based on the assumption that committing a type-I error in any of the individual tests leads to a type-I error overall, and the probability of committing at least one gets higher with the number of tests.
+
+In our case, however, a type-I error in one of the individual tests doesn't necessarily lead to a type-I error in the whole test. Suppose that $H_0$ is true, so for an $l \geq 1$ $\exists i_1,...,i_l: \mu_1 = \mu_{i_1} \wedge ... \wedge \mu_1 = \mu_{i_l}$. In order to commit a type-I error, we need to reject $H_{i_j,0}$ $\forall j = 1, ..., l$, thus committing the type-I error on the individual tests $l$-times. At the same time, we need to decide correctly about the remaining $k-l$ tests. So the probability of committing a type-I error overall is $\alpha^l(1-\alpha)^{k-l}$, and consequentially, the significance level of the entire test gets even lower than $\alpha$. The assumption is that the number $k$ of the functions involved will be low enough not to affect the significance too much.
+
+Now, we are able to decide about a function whether it's significantly better than all of the others. In the selection strategy, this test will be performed for all the functions one by one and the first one where the $H_0$ is rejected in favor of $H_1$ gets selected. This means performing at most $k$ of these combined tests. In this case, the type-I error in any of the tests leads to a critical error of the selection process and we should try to keep it as unlikely as possible, by applying one of the correction techniques discussed. A simple example of such a technique could be the \textit{Bonferroni correction}, which sets the $\alpha'$ of the individual tests to $\alpha / k$ for $\alpha$ being the desired significance overall and $k$ the number of samples.
+
+\subsubsection{Window-bound t-test}
+
+The t-test methods as described in this section work with all the run data collected and use it to make a decision about the function with the best performance. It works under the assumption that the run times of a specific function have a normal distribution. This could be the truth only for the functions with constant complexity - whenever the function run time depends on the input, the distribution of the sample of measurements depends heavily on the distribution of the \textit{input descriptors}. 
+
+Even if we assumed that the inputs were distributed normally and that the relation was linear, the whole procedure could only decide about the better function overall, which might not be desirable in the cases where we want to select different function for different inputs based on their size or other factors (in the way the predictive strategies work).
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=90mm]{./img/quick_vs_selection.png}}}
+	\caption{Run times of quick sort algorithm (blue dots) and selection sort algorithm (red dots) by input size.}
+	\label{fig:quick_vs_selection}
+\end{figure}
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/window_t_test_examples.png}}}
+	\caption{Examples of subsets of the data from figure \ref{fig:quick_vs_selection}}
+	\label{fig:window_t_test_examples}
+\end{figure}
+
+If we wanted to use the t-test strategy on the functions with non-constant complexity, the same approach as with the \textit{simple linear regression} can be taken - we can perform the t-test just for a subset of the historical data with very similar \textit{input descriptors}. Instead of assuming that the relation in the small window is linear, we want it to be constant and normally distributed. Consequently, even smaller window sizes should be selected, so that these assumptions held at least approximately. The t-test significance levels and strengths will be approximate as well, but our goal is to get reasonable results, we don't need to be precise.
+
+The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms. Obviously, there is a relation to the input size, so the simple t-test wouldn't help us in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - 0-3000, 7000-10000 and 17000-20000. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsubsec:t_test_two} and \ref{subsubsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
+
+If we reduce the window size to a constant 0, we will get a method in which only the results for inputs with the same descriptor are tested. This might be useful in cases where we know that the function will be called 
+
+\subsection{Strategy comparison}
+
+The predictive strategies don't handle well more historical results for the same \textit{input descriptor}.
+
+\begin{itemize}
+	\item \textbf{Dependency on the input}
+	If the function doesn't have any input, or the input doesn't affect the expected run time (the complexity is constant), non-predictive strategies should be used.
+	\item \textbf{Expected input values}
+	If the function is expected to be invoked with a discrete and very limited set of inputs, non-predictive strategy is preferred. On the other hand, if the function will be called repeatedly with randomly distributed inputs, the predictive strategies are a better choice.
+\end{itemize}
 
 \section{Selection policies}
 
@@ -329,3 +405,20 @@ A simple description of policies that were implemented as part of the framework 
 Part of the statistical data could be a factor of combined certainty of all the selections of a specific function. This factor could be combined from the selection results of the strategies that would support it (in the statistical test based strategies, it could be a p-value, strength of the test, or similar) and would serve as a decision factor for more complex policies with a statistical approach as well.
 
 %TODO - when do I need more data?
+
+\section{Grouping}
+
+The problem with input dependency and with different expected decisions for various inputs can be partially solved by grouping the history data and the function statistics according to the input into multiple groups. When deciding using the policies or selecting using one of the strategies described, only the data from the relevant group (based on the current input) is used. This way, all of the policies and selection strategies can be applied.
+
+The grouping can be based on the \textit{input descriptor}, but can also use other factors of the input, e.g., if there are some boolean flags passed to the function that affect its functionality, it is usually a good idea to use it in the grouping.
+
+The main advantage of the grouping approach is the separate statistics and policy evaluation - this way, using the policies that stop the selection after having already decided, can be more effective as only the small group has to be decided.
+
+%TODO Reference to the policy
+
+Some of the most common ways how to group values for the input descriptors might be:
+\begin{enumerate}
+	\item Logarithmic - orders of magnitude
+	\item Linear - tens, hundreds, thousands
+	\item Fixed - predefined finite number of groups
+\end{enumerate}
