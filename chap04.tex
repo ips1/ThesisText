@@ -358,6 +358,7 @@ The advantage of the \textit{policy} system over a regular state machine is its 
 %TODO: Reference to the API
 
 \subsection{Statistical data}
+\label{subsec:statistical_data}
 
 The only input that the \textit{policy} receives when making decision is a statistical summary of previous selection results of the \textit{combined function}. The process itself is supposed to be fast and reflect just the trends in the selection, not to replace the whole selection strategy process as described in section \ref{sec:selection_strategies}, so the statistical data don't contain the entire run history of all the functions involved.
 
@@ -393,9 +394,73 @@ In addition, number of times each function was selected, total number of times w
 
 \subsection{Implemented policies}
 
-A simple description of policies that were implemented as part of the framework and used in its evaluation follows. Note that it is very simple to create own customized policies and the topic will be covered later.
+As mentioned earlier, \textit{policies} are designed to be reusable as a building-blocks. The immutable \textit{policy} itself is the only holder of the state and change of state can be performed only by transitioning to a different \textit{policy}. Its functionality and very simple decision-making process can be visualized using a transition diagram, which shows the \textit{policy} itself as a red square, all the other \textit{policies} as a gray square and green arrows as state transitions. The transitions might be conditional, in such a case, the condition splits the arrow into two. The transition can produce a result which is shown next to the transition arrow. If a result is produced, the \textit{policy} makes a decision and next \textit{policy} will be evaluated during the following invocation. If a result isn't produced, the \textit{policy} just delegates the decision to the next \textit{policy} which is evaluated immediately. The chain of evaluation stops when a result is produced.
 
+The transition conditions use \textit{policy} parameters, which are passed to a \textit{policy} in the constructor, and the current statistic data explained in section \ref{subsec:statistical_data}. It can also use static data and methods that it has access to. The parameters of the top-level (starting) \textit{policy} are passed in by the user creating it, the parameters of the other policies in the chain are fixed when the \textit{policies} are created, usually during the decision of the top-level \textit{policy}, which typically builds the entire policy chain (that can be cyclic and leads back to it).
 
+The transition diagrams and short descriptions of some \textit{policies} will follow.
+
+\subsubsection{Building blocks}
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/helper_policies.png}}}
+	\caption{Transition diagram of the basic building-block policies.}
+	\label{fig:helper_policies}
+\end{figure}
+
+Figure \ref{fig:helper_policies} shows the main policies that serve as a building-blocks. The most important is the \textbf{Repeat until \textit{condition}} \textit{policy}, parametrized by a \textit{condition}, result \textit{R}, which it keeps producing until the \textit{condition} becomes true, and the policy \textit{P}, which it makes transition to at that moment. The \textbf{Always do} \textit{policy} represents an infinite loop producing the same result \textit{R} every time, and the \textbf{Do once} \textit{policy} produces the result \textit{R} once and immediately makes transition to the policy \textit{P}.
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=75mm]{./img/start_policy.png}}}
+	\caption{Transition diagram of the \textbf{Start policy}.}
+	\label{fig:start_policy}
+\end{figure}
+
+Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accepts the gather frequency \textit{GF}, number of invocation times before moving to a next policy \textit{N}, and the policy itself \textit{P}. It's a little more complicated and specialized version of the \textbf{Repeat until} policy - it keeps producing the SelectNew result, and every \textit{GF}-th invocation, it produces the GatherData result. It might be useful at the beginning, when it's necessary to gather data for all of the functions and perform some selections so that the following policies had statistical data to base their decision on.
+
+\subsubsection{Stop selecting when decided}
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=75mm]{./img/stop_selecting_when_decided.png}}}
+	\caption{Transition diagram of the \textbf{Stop selecting  when decided} policy.}
+	\label{fig:stop_selecting_when_decided}
+\end{figure}
+
+In order to limit the overhead, it might be useful to completely stop selecting when we are sure that one of the functions gets selected a lot more often. The \textbf{Stop selecting when decided} policy shown in figure \ref{fig:stop_selecting_when_decided} keeps selecting new function until both the total number of invocations exceeds minimum run count \textit{MR} and the rate of the number of times that the last selected function was selected and the total number of invocations exceeds the minimum percentage \textit{MP}. After that, it will keep using the last function forever. 
+
+The advantage of falling back to the infinite \textbf{Always use last} policy is its basically zero overhead - no condition is evaluated in the decision process. So this policy is useful for the fast functions where keeping low overhead for the long-term is critical. It can't however, undo a wrong decision, reflect a change in conditions, or anything else.
+
+\subsubsection{Pause selection after streak}
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=85mm]{./img/pause_selection_after_streak.png}}}
+	\caption{Transition diagram of the \textbf{Pause selection after streak} policy.}
+	\label{fig:pause_selection_after_streak}
+\end{figure}
+
+To lower the number of selections, an approach based on the streak lengths cans be used as well. It is implemented by the \textbf{Pause selection after streak} policy in figure \ref{fig:pause_selection_after_streak}. Its functionality is defined by the \textit{SL} (streak length) and \textit{RE} (retry every) arguments. Whenever one function is selected \textit{SL} times in a row, the selection process stops and the UseLast result is being produced. Once every \textit{RE} times, a new selection attempt is done, looping back to the original policy. If the same function is selected once again, the streak gets longer by one and the selection process stops again. If, however, a different function is selected this time, the streak becomes zero and we start selecting again.
+
+The described behavior is the preferred way of limiting the selection overhead. By setting the streak length to a reasonable number (20-100, based on the data, situation, etc.), we can assure that if one function is significantly better than the others, it will be used without the need to select it. The retry that happens every once in a while make sure that any changes in the environment will be reflected and will reset the system back to the beginning.
+
+\subsubsection{Limited overhead, gather time and selection time}
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=85mm]{./img/limited_overhead.png}}}
+	\caption{Transition diagram of the \textbf{Limited overhead} policy.}
+	\label{fig:limited_overhead}
+\end{figure}
+
+Policies can be used to limit the framework involvement per a real-time period, so that the selection overhead, or overhead generated by gathering data or wrongly selecting the slower function doesn't damage the system more than a specified limit. The \textbf{Limited overhead} policy in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it can't select anymore and keeps using the most selected function until the end of the period.
+
+\begin{figure}[h!]
+	\centerline{\mbox{\includegraphics[width=85mm]{./img/limited_gather_time.png}}}
+	\caption{Transition diagram of the \textbf{Limited gather time} policy.}
+	\label{fig:limited_gather_time}
+\end{figure}
+
+In exactly the same way, the time spent on executing the function for the result GatherData and the whole process of selection and execution for the SelectNew result can be limited. The figure \ref{fig:limited_gather_time} demonstrates the \textbf{Limited gather time} policy, which keeps producing GatherData until total gather time reaches \textit{AGT} (allowed gather time), after that, it continues with the SelectNew result until total selection time reaches \textit{AST} (allowed selection time). A loop producing UseMost follows, for the rest of the real-time period specified by \textit{RP} (reset period).
+
+This policy gives us control over the time spent on selecting results in real-time. If we get a lot of requests at the same time, receive a large batch of data to process or for any reason need to momentarily increase the throughput of the system, the time or overhead limits get depleted very quickly and the UseMost fallback result means reasonably good performance with a minimum overhead.
 
 \subsection{Possible improvements}
 
