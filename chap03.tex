@@ -7,7 +7,7 @@ API (Application Programming Interface) is a key component of every framework or
 
 APIs can be found on multiple levels of abstraction in a specific piece of software - % TODO 
 
-.In our case, the API will be used to access functionality of our framework after adding our classes to the project.
+.In our case, the API will be used to access functionality of our library after adding our classes to the project.
 
 \section{Basic API requirements}
 
@@ -28,7 +28,7 @@ And some possible \textbf{extensions} to the API:
 
 \section{Goals of the API design}
 
-For a framework that will be used repeatedly by a variety of other developers, the API design is crucial and has several principal goals:
+For a library that will be used repeatedly by a variety of other developers, the API design is crucial and has several principal goals:
 
 \begin{enumerate}
 	\item Keeping the API calls simple in simple cases
@@ -734,9 +734,9 @@ It is obvious that our API, which was designed to remain as simple as possible, 
 
 \subsection{Decision context}
 
-Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the framework has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
+Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the library has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
 
-The contexts can interleave and we can't match the decision with the invocation by time or location. It is impossible to decide to which decision which invocation belongs automatically - we need support from the framework user. The user will have to explicitly state the context whenever invoking the measured function. By doing this, he will pinpoint the moment of decision that affected the invocation.
+The contexts can interleave and we can't match the decision with the invocation by time or location. It is impossible to decide to which decision which invocation belongs automatically - we need support from the library user. The user will have to explicitly state the context whenever invoking the measured function. By doing this, he will pinpoint the moment of decision that affected the invocation.
 
 Practically, we need to introduce a special object - the \textbf{measurement token} - which will represent the context. The \inlinecode{MultiFunction} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate a measurement token, that will be used to measure future function runs.
 
