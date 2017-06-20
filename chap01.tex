@@ -11,7 +11,7 @@ So now, let's expand the example a little bit. Supposing we have the basic arsen
 	\item Quick sort
 	\item Merge sort
 	\item Heap sort
-	\item Radix sort *	
+	\item Radix sort
 \end{itemize}
 
 We know for sure that the first three algorithms have worse time complexity than the rest. In real conditions, this doesn't mean that they have to be necessarily slower on every input of every size. The faster algorithms often tend to have complex initialization and data preprocessing, which gives an advantage to asymptotically slower algorithms on inputs that are small enough that their processing time is comparable to the initialization. 
@@ -49,5 +49,13 @@ Doing so has a few valuable advantages:
 In other words, the program can adapt its runtime to various conditions in order to improve its performance.
 
 The entire adaptation will be performed based on collected runtime data - no analysis of the functions will be required.
+
+\section{Use cases}
+
+We can introduce a couple of basic scenarios where the adaptivity might help with the overall performance.
+
+\subsection{Algorithms with different complexities}
+
+Imagine we have two different algorithms 
 
 %TODO: Big O notation reference?
