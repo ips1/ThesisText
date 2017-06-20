@@ -1,7 +1,169 @@
 \chapter{Evaluation}
 
-An~example citation: \cite{Andel07}
+\section{Real problem application}
 
+In this section, we will try to suggest a couple of problems where the ScalaAdaptive library could be used to improve the overall performance. The problems will be described and an example usage of the library will be provided, along with evaluation of its effects.
+
+\subsection{JSON parsing}
+
+JSON\footnote{JavaScript Object Notation} is a data-exchange format that can hold serialized object trees and collections based on the notation for object (technically key-value dictionaries) literals in JavaScript. The format has recently become extremely popular due to its simplicity, data efficiency and readability, and as of today, is basically a standard for communication HTTP REST APIs. Most of the systems with distributed architecture that communicate over such an API (typically client-server applications) need to serialize and deserialize JSON upon sending a request or receiving a response, which might occur quite often.
+
+%TODO: A lot of abbreviations here...
+
+The problem concerning JSON and other similar formats (XML, ProtocolBuffers, etc.) is that there is a variety of libraries available to perform the serialization and deserialization, and we have to decide for one when designing our application. The API tends to be very similar, and for many systems, the performance might be the issue. There are performance tests available that compare the performance of the libraries, but the performance might be different for various sizes, structures, etc. In addition, in the \textit{Capturing Performance Assumptions using Stochastic Performance Logic} it is shown that the performance might vary in different versions.
+%TODO: Add reference and VERIFY!!!
+
+This library decision problem is a perfect use-case for ScalaAdaptive - we can create a simple wrapper library with the same API as the original libraries that will expose the functions combined from the original serialization and deserialization methods. The user will be abstracted from the ScalaAdaptive, and the libraries can be added or removed at any time very easily.
+
+\subsubsection{Combining GSON and Jackson}
+
+For the test, we will use two JSON libraries - GSON and Jackson, which are probably two of the most common libraries from the Java world. We will measure only the deserialization part (parsing of string containing JSON), which is the more time-complex operation. A library wrapper that exposes three parsing functions was created:
+\begin{itemize}
+	\item \inlinecode{parseWithGson()}
+	\item \inlinecode{parseWithJackson()}
+	\item \inlinecode{parse()} - previous two methods combined using ScalaAdaptive
+\end{itemize}
+
+The setup for the test is following:
+\begin{itemize}
+	\item TTestSelectionStrategy with $\alpha = 0.05$
+	\item PauseSelectionAfterStreakPolicy with streak length 10 and retry every 200th run
+\end{itemize}
+
+The grouping applied is logarithmic to the JSON input string length, i.e. $groupId = log(length)$. We expect different behavior for different groups. We will use three different JSON strings for the test:
+
+\begin{itemize}
+	\item Small - 9KB, 10 records array
+	\item Medium - 80KB, 100 records array
+	\item Large - 8MB, 1000 records array
+\end{itemize}
+
+We know that we will deal with fixed sizes of input files, so we can use the t-test selector without any problems, because every size will occupy one of the groups. If we knew that the sizes within a group might vary, we should use some other strategy.
+
+During the test, we ran each one of the three parsing functions 10000 times on the small JSON, 5000 times on the medium JSON and 200 times on the large JSON. We measured the total run time of all the functions, and the results can be seen in the table \ref{tab:json_parsing_results}. The measurements are in miliseconds and include complete runs of the parsing functions, including the overhead of ScalaAdaptive.
+
+\begin{table}[h!]
+\captionsetup{justification=centering,margin=0.5cm}
+\bgroup
+\def\arraystretch{1.5}%
+\begin{center}
+	\begin{tabular}{ | l | r | r | r | }
+		\hline
+		& \textbf{GSON} & \textbf{Jackson} & \textbf{Combined} \\ \hline
+		10000 * Small JSON & 1830.36 & 4883.24 & 2566.54 \\ \hline	
+		Small JSON average & 0.18 & 0.49 & 0.26 \\ \hline	
+		5000* Medium JSON & 4865.89 & 3142.05 & 3059.18 \\ \hline	
+		Medium JSON average & 0.97 & 0.63 & 0.61 \\ \hline	
+		200 * Large JSON & 15790.47 & 7298.75 & 7740.31 \\ \hline	
+		Large JSON average & 78.95 & 36.49 & 38.70 \\ \hline
+		Total time & 22486.71 & 15324.05 & 13366.03 \\
+		\hline
+	\end{tabular}
+\end{center}
+\egroup
+\caption{Results of the JSON parsing tests (times in ms).}
+\label{tab:json_parsing_results}
+\end{table}
+
+As we can see, the average time in all cases is roughly the same or a little worse than the time of the better alternative. The total time spent on parsing shows us that without using ScalaAdaptive, we would get worse performance no matter which function we used.
+
+We can compare the results with table \ref{tab:json_parsing_results_no_policy} showing the same test, only without the PauseSelectionAfterStreakPolicy. We see that by actually performing the selection every time, the overhead grows, which can be best seen on the small and medium inputs, where the results are significantly worse.
+
+\begin{table}[h!]
+		\captionsetup{justification=centering,margin=0.5cm}
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{center}
+		\begin{tabular}{ | l | r | r | r | }
+			\hline
+			& \textbf{GSON} & \textbf{Jackson} & \textbf{Combined} \\ \hline
+10000 * Small JSON  & 2180.20       & 5615.20          & 5667.64           \\ \hline
+Small JSON average  & 0.22          & 0.56             & 0.57              \\ \hline
+5000 * Medium JSON  & 4696.52       & 2944.04          & 3889.25           \\ \hline
+Medium JSON average & 0.94          & 0.59             & 0.78              \\ \hline
+200 * Large JSON    & 15829.39      & 7433.50          & 7772.41           \\ \hline
+Large JSON average  & 79.15         & 37.17            & 38.86             \\ \hline
+Total time          & 22706.11      & 15992.73         & 17329.30          \\ \hline
+		\end{tabular}
+	\end{center}
+	\egroup
+	\caption{Results of the JSON parsing tests without the PauseSelectionAfterStreakPolicy (times in ms).}
+	\label{tab:json_parsing_results_no_policy}
+\end{table}
+
+\subsection{Load balancing}
+
+A different sort of problems that ScalaAdaptive might help with is to adapt the system to the environment changes. We can demonstrate this on a simple example - the system that relies on a remote web service that runs in multiple instances on different web servers. The service itself is stateless, so we can perform the request on either of them. 
+
+Main goal of the replication is to distribute the work between more nodes, so that the response time remains low. A technique called load balancing should take care of distributing the requests evenly between the nodes often just using a simple round-robin technique. This, however, has to be done on the side of the service, through a common gateway. We will use the ScalaAdaptive to implement a simple load balancing on the side of the client (so that balance between services hosted at different locations could be done) by evaluating the response times and selecting the target node using our selection strategies. We will take advantage of the possibility to limit the maximal duration of historical data - we want to decide based only on the most recent measurements, because we suppose that they will change rapidly.
+
+There are two goals of this load balancing example:
+
+\begin{itemize}
+	\item To provide better performance than relying just on one node
+	\item To limit the load on the node that is currently under pressure (and thus slow)
+\end{itemize}
+
+Suppose we have a simple web service running on multiple nodes and a system that performs synchronously running requests to these nodes. The request has the following function form:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def request(url: String)(query: String): Option[String] = ???
+\end{lstlisting}
+
+We can take advantage of the possibility to curry the function and create the composed request that works with multiple nodes using the ScalaAdaptive API in the following way:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val balancedRequest =
+(
+  urls.tail.foldLeft(performRequest(urls.head) _) { (f, url) =>
+    f.or(performRequest(url)) } 
+  selectUsing Selection.NonPredictive 
+  limitedTo Duration.ofSeconds(20)
+)
+\end{lstlisting}
+
+For the actual test, we used two instances of the web server running on different ports of the same machine. We simulated the problems with load on the machines by artificially changing the response times of the servers every 50 seconds according to a set of predefined scenarios. From the client application, we sent one request every 0.5 seconds directly to each one of the servers and one using our balanced method. The results for three different scenarios can be seen in figure \ref{fig:load_balance_scen}. The lines represent response time evolution in time - direct requests are marked with blue and orange, the balanced request is gray. We can observe that most of the time, the gray line copies the lower of the two remaining lines. Sometimes, the gray line repeatedly reaches the higher line, which means that the balanced request is sent to the slower server in order to gather fresh run data.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{
+		\mbox{
+			\includegraphics[width=110mm]{./img/load_balance_scen1.png}
+		}
+	}
+	\centerline{
+		\mbox{\includegraphics[width=110mm]{./img/load_balance_scen2.png}}
+	}
+	\centerline{
+		\mbox{\includegraphics[width=110mm]{./img/load_balance_scen3.png}}
+	}
+	\caption{Time evolution of response times for request methods in scenarios 1, 2 and 3 (from top to bottom).}
+	\label{fig:load_balance_scen}
+\end{figure}
+
+The average response times in these scenarios are shown in the table \ref{tab:load_balance_resp_avgs}. The balanced response time is always lower than the worse of the response times. In case where the load alternates between the two servers (scenario 2), the balanced version has the best average response time. If, on the other hand, only one server fluctuates and the other one keeps a relatively low response time (scenario 3), the balanced version is slightly worse than the server that doesn't fluctuate. Nevertheless, the second goal of moving the load between the servers is completed in all three scenarios.
+
+\begin{table}[h!]
+	\centering
+	\captionsetup{justification=centering,margin=0.5cm}
+		\bgroup
+	\def\arraystretch{1.5}%
+	
+	\begin{tabular}{|l|r|r|r|}
+		\hline
+		& \textbf{Server 1} (blue)& \textbf{Server 2} (orange)& \textbf{Balanced} (gray)\\ \hline
+		Scenario 1 & 74.20             & 70.48             & 68.38             \\ \hline
+		Scenario 2 & 80.92             & 81.77             & 72.52             \\ \hline
+		Scenario 3 & 81.97             & 94.39             & 85.38             \\ \hline
+	\end{tabular}
+	\egroup
+	\caption{Average response times for the request methods in scenarios 1, 2 and 3 in miliseconds.}
+\label{tab:load_balance_resp_avgs}
+\end{table}
+
+A disadvantage of ScalaAdaptive that complicates the usage in this area is the fact that it doesn't support measuring run times of asynchronous functions, i.e. functions that perform callbacks or complete promises upon finishing.
 
 \section{Artificial algorithm}
 \section{Sorting algorithm}
@@ -35,14 +197,15 @@ Dataframes API
 \subsection{RDD or Datasets selection}
 \subsection{Usage}
 \subsection{Environment}
-\section{Server selection}
-
-\section{JSON parsing libraries}
-\label{subsec:jsonparsing}
 
 \section{Problems with the practical use of the framework}
 
 \subsection{Selection overhead}
+
+The policy system and a few specific policies that limit the overhead were introduced because of that and the results are satisfying.
+
+In all of the applications presented in this chapter, the overhead was counted in - the real performance of the combined function was compared with the performance of the original, non-combined ones. The overhead is significant and has to be counted with, but with correct selection strategy and an appropriate overhead-saving policy, the impact is not significant enough.
+
 \subsection{Maintainability}
 
 One of the main problems that such a framework is facing in a real-life software system is an engineering problem. The code of today's systems has to be kept working and maintained for several years, sometimes decades. During this period, bugs appear in the system, business requirements change and consequently, it is necessary to perform changes and adaptations in function code.
@@ -60,7 +223,7 @@ In cases where third-party libraries are used within the combined implementation
 
 Upon maintenance of all the implementations used in our program, there will be inevitable changes made to every one of them. Before being released, the system has to go through the verification process. Common techniques of regression testing are insufficient in this case due to the non-deterministic nature of the adaptive selection in the system - some of the implementations might not be tested at all during the regression test, but might be selected in the production environment.
 
-The only way how to perform a regression test on the system is to change the \textit{ScalaAdaptive} framework configuration in the test environment, specifically the \textit{default policy} and the \textit{run selector}. Recommended settings are following:
+The only way how to perform a regression test on the system is to change the \textit{ScalaAdaptive} library configuration in the test environment, specifically the \textit{default policy} and the \textit{run selector}. Recommended settings are following:
 
  \begin{itemize}
  	\item default policy: AlwaysSelectPolicy
@@ -71,22 +234,35 @@ Using this setup and ensuring that there are no history run data present, the sy
 
 The described testing process is cumbersome and can lead to errors in verification. For this reason, more emphasis should be put on \textit{Unit Testing} in a project containing the adaptively selected functions. If all the implementations are well covered by unit tests, all the hidden bugs and deviations of behavior should be immediately detected. In fact, there could be one common set of unit tests covering all the implementations, so that the test cases and acceptation conditions were the same.
 
-A simple framework for generating the unit tests for all the implementation would be useful and could be introduced as a part of continuation of the project.
+A simple library for generating the unit tests for all the implementation would be useful and could be introduced as a part of continuation of the project.
 
 \subsection{Debugging}
 
-Discovering and fixing bugs in a software system is a key part of its development and maintenance process. It is a very complex and time consuming activity, and its complexity grows considerably for the bugs that have non-deterministic occurrences. Whenever there is a bug in one of the implementations used with the framework, it is inherently non-deterministic, as it has effect only when the specific implementation is selected.
+Discovering and fixing bugs in a software system is a key part of its development and maintenance process. It is a very complex and time consuming activity, and its complexity grows considerably for the bugs that have non-deterministic occurrences. Whenever there is a bug in one of the implementations used with the library, it is inherently non-deterministic, as it has effect only when the specific implementation is selected.
+
+\subsection{Same API requirement}
+
+In order to create a combined function from two different algorithms implemented in two different libraries or frameworks, we need to adapt them to share the same API. This could be a very simple task for some basic algorithms (converting number formats, wrapping arguments, etc.), but it might get complicated when more complex structures get involved. Even for such a basic example like the sorting algorithms, we get a variety of interface options:
+
+\begin{itemize}
+	\item Does it sort list, array or an abstract sequence?
+	\item Does the algorithm sort in-place, or produces a new sequence?
+\end{itemize}
+
+Creating wrappers for the API that solve these issues is not trivial - data structures have to be converted, copied, etc., which will cause more unnecessary overhead. This overhead might get more significant with the complexity of data structures that we need to convert between the two APIs that we need to adapt.
+
+It requires 
 
 \section{Other tests...?}
 
 \section{Usage from Java}
 
-Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of the ScalaAdaptive framework from Java is not supported. The reason is that the API of the framework depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
+Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of the ScalaAdaptive library from Java is not supported. The reason is that the API of the library depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
 
-There is, however, a very simple way how to utilize the framework in a Java project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class that internally holds the function created from the Java methods using the \inlinecode{or} operator. It will expose only one method with the same signature that would just delegate the call into the internal function.
+There is, however, a very simple way how to utilize the library in a Java project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class that internally holds the function created from the Java methods using the \inlinecode{or} operator. It will expose only one method with the same signature that would just delegate the call into the internal function.
 %TODO:  Add references to previous usage mentions
 
-To demonstrate this, we provide a simple Scala library \textit{AdaptiveJson} that can be imported in a form of \textit{jar} package into any Java project. Within the library, there is a single class, \textit{AdaptiveJsonParser}, which can be used to deserialize JSON string into a specified Java class. Internally, it uses the ScalaAdaptive framework to chose between multiple JSON parsers.
+To demonstrate this, we provide a simple Scala library \textit{AdaptiveJson} that can be imported in a form of \textit{jar} package into any Java project. Within the library, there is a single class, \textit{AdaptiveJsonParser}, which can be used to deserialize JSON string into a specified Java class. Internally, it uses the ScalaAdaptive library to chose between multiple JSON parsers.
 
 The library is reusable and supposing that it is kept up to date and that all the major JSON parsing libraries are 
 
@@ -94,17 +270,13 @@ The library is reusable and supposing that it is kept up to date and that all th
 
 As part of future work on the library, there could be a Java API added, enabling a direct usage from Java, although it would be very limited and not as expressive. More on the topic of API possibilities in other languages will be discussed later.
 
-\section{Usage from Kotlin}
-
-%TODO: Usage from Java & Kotlin
-
 \section{Implementation in other languages}
 
-The framework is implemented in Scala and can be used by any JVM-based languages, even though often without the comfort that provides Scala with its implicits and eta-expansion.
+The library is implemented in Scala and can be used by any JVM-based languages, even though often without the comfort that provides Scala with its implicits and eta-expansion.
 
-The same functionality, however, could be used on other platform than JVM as well. The framework itself isn't complicated to reproduce and its runtime back-end is transferable to basically any platform. There would be minor complications with immutability of the data structures and expressiveness of Scala in some cases, but nothing show stopping.
+The same functionality, however, could be used on other platform than JVM as well. The library itself isn't complicated to reproduce and its runtime back-end is transferable to basically any platform. There would be minor complications with immutability of the data structures and expressiveness of Scala in some cases, but nothing show stopping.
 
-The key part of the framework that would cause problems upon reimplementation is the API, which relies heavily on Scala's DSL features (see \ref{sec:dsls}). It requires the following features from the language:
+The key part of the library that would cause problems upon reimplementation is the API, which relies heavily on Scala's DSL features (see \ref{sec:dsls}). It requires the following features from the language:
 
 \begin{itemize}
 	\item Implicit type conversions
@@ -116,8 +288,6 @@ The key part of the framework that would cause problems upon reimplementation is
 
 With a subset of the features in the language, a limited API can be designed. Let's have a look at some language examples and what they offer.
 
-\subsection{Kotlin}
-
 \subsection{Java}
 
 \subsection{C\#}
@@ -128,7 +298,6 @@ The C\# language has relatively advanced features and offers function types (\in
 
 The API in C\# could be based on method chaining and be quite similar to the one in Scala, although the method name extraction and the infix fluent-language syntax wouldn't be present.
 
-\subsection{Python}
-???
+A complication would be the async methods that are quite common in C\#. Measuring their runtime would require chaining continuations on the resulting tasks.
 
 \subsection{C / C++}
