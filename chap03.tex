@@ -1,41 +1,31 @@
 \chapter{Adaptation API design and implementation}
 \label{chapter:api}
 
-\section{The importance of API design}
-
-API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action.
-
-APIs can be found on multiple levels of abstraction in a specific piece of software - % TODO 
-
-.In our case, the API will be used to access functionality of our library after adding our classes to the project.
+API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action.In our case, the API will be used to access functionality of our library from library user's own code. 
 
 \section{Basic API requirements}
 
-The library itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations.
-In the optimal case, the library would be just added as a reference into the project and some minor changes would be done at the highest level, i.e. in the class method definitions, traits, adapters, etc. The business logic of the application should remain intact.
+The library itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations. The typical use-case of our API could be described in the following way:
+
+\textit{User has a class with two methods, \inlinecode{method1()} and \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.}
+
+The important point is that we want the result of combining the methods to be transparent, a part of the API. The caller shouldn't know and shouldn't have to know that he is calling a method that is somehow special. This allows us to locate the adaptation framework interaction to one place and gives us the possibility to quickly replace it or remove it completely.
+
 We can make a list of the \textbf{basic requirements}:
 \begin{enumerate}
-	\item Mark two or more methods as linked together (stating that they can be called interchangeably)
-	\item Perform a call to the group of linked methods
-	\item %TODO
-\end{enumerate}
-
-And some possible \textbf{extensions} to the API:
-\begin{enumerate}
-	\item Separate the selecting call and the evaluation call
-	\item %TODO
+	\item Create a method by combining two or more different methods (stating that they can be called interchangeably)
+	\item Define some basic adaptation behavior for the function
+	\item Make some more complex configuration changes for the whole library
 \end{enumerate}
 
 \section{Goals of the API design}
 
-For a library that will be used repeatedly by a variety of other developers, the API design is crucial and has several principal goals:
+For a library that will be used repeatedly by a variety of other developers, the API design is crucial and has two principal goals:
 
 \begin{enumerate}
-	\item Keeping the API calls simple in simple cases
-	\item Giving the caller more options in more complicated cases
+	\item Keeping the API calls simple in basic use cases
+	\item Giving the caller freedom to customize more in more complicated use cases
 \end{enumerate}
-
-\section{Advantages and disadvantages of Scala in API design}
 
 % TODO: Macros
 
@@ -49,11 +39,11 @@ For a library that will be used repeatedly by a variety of other developers, the
 
 \subsection{Function composition}
 
-Scala is a programming language that has absorbed a lot of concepts from the functional programming language world. Above all the key concept that functions are \textit{first-class values} and can be passed around the same way as code.
+Scala is a programming language that has absorbed a lot of concepts from the functional programming language world. Above all the key concept that functions are \textit{first-class values} and can be passed around the same way as code. A little complication is that functions and methods are a different concept in Scala (as explained in section \ref{sec:metandfun}). So let's first consider the case where we work solely with functions.
 
 The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. This could be solved using a \textit{higher-order function}\footnote{A function whose arguments and return type are other functions.}, which is a common approach in functional languages, well known from list manipulating patterns like \textit{map}, \textit{filter}, or \textit{fold}.
 
-Scala supports this approach both in language features and in its standard libraries - as mentioned in \ref{subsec:metandfun}, functions are first class values and can be arguments of other methods or functions. A simple example could be function composition, which is implemented as a method on the function type traits (see \ref{subsec:functiontypes}):
+Scala supports this approach both in language features and in its standard libraries - as mentioned in \ref{sec:metandfun}, functions are first class values and can be arguments of other methods or functions. A simple example could be function composition, which is implemented as a method on the function type traits (see \ref{subsec:functiontypes}):
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -93,9 +83,9 @@ val funAorB = funA or funB
 
 \subsection{Consequences of the choice}
 
-The \lstinline|or()| method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case, a function. More specifically, any of the function types mentioned in \ref{subsec:functiontypes}. Because Scala doesn't support extension methods, we need to introduce a new type for functions containing this functionality, and an implicit conversion from the normal function type.
+The \lstinline|or()| method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case, a function. More specifically, any of the function types mentioned in \ref{subsec:functiontypes}. Because Scala doesn't support extension methods, we need to introduce a new type for functions containing this behavior, and an implicit conversion from the normal function type.
 
-We need to cover all of the 23 original function type traits with custom type extensions, which will be mostly duplicated code - this reduces the maintainability and flexibility of the code. The trait files can be generated, but any change has to be reflected in the generating script first, before re-generating the code.
+Theoretically, we need to cover all of the 23 original function type traits with custom type extensions, which will be mostly duplicated code - this reduces the maintainability and flexibility of the code. The trait files can be generated, but any change has to be reflected in the generating script first, before re-generating the code.
 
 \subsection{Using the API with methods}
 \label{subsec:apimethods}
@@ -302,7 +292,7 @@ def implicitFun2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 
 // Following line won't compile:
 // def implicitFun[A](list: List[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)
-def implicitFun[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)d
+def implicitFun[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)
 \end{lstlisting}
 
 \lstset{style=Scala}
@@ -366,11 +356,9 @@ Unfortunately, a lot of the traits we need to provide implementations for are al
 
 \lstset{style=Scala}
 \begin{lstlisting}
-...
 private val adaptedFunction = impl1 _ or impl2
 override def testMethod(arg: List[Int]): List[String] = 
-adaptedFunction(arg)
-...
+  adaptedFunction(arg)
 \end{lstlisting}
 
 %TODO: Add reference
