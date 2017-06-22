@@ -1,28 +1,19 @@
 \chapter{Scala programming language}
 
-\section{Important language features}
+The adaptive library introduced in this work is created in Scala, an advanced programming language that is based on the JVM runtime. In this chapter, a brief overview of some of the language aspects that are important for the API design.
 
-Scala is an advanced programming language that is based on the JVM runtime and provides a variety of features.
+The basic paradigm of Scala is object-orientation - it is based on the same principles as Java and its language constructs get mapped to Java constructs upon compilation. In addition to this, Scala aims to enable full-scale function development in the same context as well. It is quite a unique concept among the common and production-used languages, which tend to adopt some functional features (higher-order functions, lambdas), but stop at some point and don't add more advanced mechanisms (type classes, monads).
 
-The basic paradigm of Scala is object-orientation - it is based on the same principles as Java and its language constructs get mapped to Java constructs upon compilation.
-
-The main concern of Scala is, however, to enable full-scale functional development in the environment of this OOP language. 
-
-%TODO: scala implicit casts
-
-%TODO: scala function types (and nececity to duplicate code)
-
-%TODO: extending function type, overriding apply()
-
-\subsection{Methods and functions in Scala}
-\label{subsec:metandfun}
+\section{Methods and functions in Scala}
+\label{sec:metandfun}
 
 There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They can't be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 class Class {
-def method(arg: String): String = s"Called method($arg) on $this"
+  def method(arg: String): String = 
+    s"Called method($arg) on $this"
 }
 val obj = new Class()
 println(obj.method("Hello"))
@@ -32,14 +23,63 @@ On the other hand, functions are first-class values that have a type and can be 
 
 \lstset{style=Scala}
 \begin{lstlisting}
-val function: (String) => Unit = arg => println(obj.method(arg))
+val function: (String) => Unit = 
+  arg => println(obj.method(arg))
 function("Hello again!")
 List("One", "Two", "Three").foreach(function)
 \end{lstlisting}
 
-The \lstinline|obj| reference is \textit{captured} inside the closure, the function is not tied to any class. 
+The \lstinline|obj| reference is \textit{captured} inside the closure, the function is not tied to any class. The methods represent the basic building block of the object-oriented approach, being the single point that can access or modify the private internal state of the object. The functions are a foundation of the functional part of the language, because they can be passed around as values.
 
+We can create an illusion of functions behaving like methods by declaring them as a class fields:
 
+\lstset{style=Scala}
+\begin{lstlisting}
+class Class(val field: String) {
+  val print: () => Unit = () => println(field)
+}
+val instance = new Class("Test")
+instance.print()
+\end{lstlisting}
+
+In this case, the class contains an immutable field \inlinecode{print} containing a function. The function references another field, the reference is stored in the function closure. And the invocation is done by accessing the \inlinecode{print} field and invoking the result.
+
+%TODO: Function limitations - generics, etc.
+
+\subsection{Function types}
+\label{subsec:functiontypes}
+
+The first-class value functions have to be anchored somewhere in the Scala type system in order for the type inference, type checking and other mechanisms to work correctly. The type of a function is unambiguously determined by its signature, i.e. the number and types of arguments and the type of the return type. Consequentially, the function types have to be generic and able to accept different numbers of type arguments.
+
+Scala as a language doesn't support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+trait Function0[+R]
+...
+trait Function22[-T1, ..., -T22, +R]
+\end{lstlisting}
+
+These traits have syntactic aliases in the language:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+() => R
+...
+(T1, ..., T22) => R
+\end{lstlisting}
+
+Functions with more than 22 arguments can't exist in Scala and have to be replaced by function accepting tupled arguments. The necessity to represent functions with various argument numbers as multiple traits leads to code duplication wherever we want to interact directly with function types and support any argument number.
+
+Function invocation is represented by an \inlinecode{apply} method declared in all the function trait types with the following signature:
+\lstset{style=Scala}
+\begin{lstlisting}
+def apply(v1: T1, ..., vN: TN): R
+\end{lstlisting}
+
+Scala automatically converts the \inlinecode{()} operator on an instance to a call of the \inlinecode{apply} method on the same instance with given arguments. This works for any class instance, we can make any type \textit{callable} in Scala.
+
+The default function implementations in Scala are created using lambda expressions, which are compiled to a separate closure class that extends the corresponding function trait type. We can, however, create our own function trait implementations that will be treated by all Scala code and libraries in the same way as any function. The only thing required is to provide implementation of the \inlinecode{apply} method.
 
 \subsection{Eta-expansion}
 \label{subsec:etaexpansion}
@@ -79,40 +119,32 @@ In this example, the conversion is implicitly applied to an argument of a method
 
 %TODO: covariance and contravariance
 
-\subsection{Function types}
-\label{subsec:functiontypes}
-
-The first-class value functions have to be anchored somewhere in the Scala type system in order for the type inference, type checking and other mechanisms to work correctly. The type of a function is unambiguously determined by its signature, i.e. the number and types of arguments and the type of the return type. Consequentially, the function types have to be generic and able to accept different numbers of type arguments.
-
-Scala as a language doesn't support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-trait Function0[+R]
-...
-trait Function22[-T1, ..., -T22, +R]
-\end{lstlisting}
-
-These traits have syntactic aliases in the language:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-() => R
-...
-(T1, ..., T22) => R
-\end{lstlisting}
-
-Functions with more than 22 arguments can't exist in Scala and have to be replaced by function accepting tupled arguments.
-
-The necessity to represent functions with various argument numbers as various traits leads to code duplication.
-
 \section{DSLs in Scala}
 \label{sec:dsls}
+
+DSL (Domain Specific Language) is a programming language narrowly focused on solving a specific type of problems, which offers a higher level of expressiveness and therefore is easier to use than general-purpose languages. There is a large variety of areas where the DSLs are often employed, for example mathematical computations (R, MATLAB), database queries (SQL), build process (make, Ant), parsing (regular expressions) and many more.
+
+In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language, using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This speeds up the development enormously - there is no need to implement syntax parser, compiler, the target user doesn't have to have any specialized tools to actually use the language. A program written in such a language will just get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, and our own code can then interpret the structure and perform required tasks.
+
+These DSLs became recently very popular for defining configurations, build and deployment processes - an example could be the Gradle scripting language, which is actually a DSL in Groovy, or the Chef recipes, being just Ruby scripts.
+
+DSLs can be efficiently implemented only in languages with flexible-enough syntax not to limit the target language too much. Scala is one of these languages, along with for example Groovy. An example DSL, a ScalaTest framework [TODO: REFERENCE http://www.scalatest.org], can look the following way:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+an [Exception] should be thrownBy { s.charAt(-1) }
+greeting should equal ("hi") (after being lowerCased)
+\end{lstlisting}
+
+%TODO: What are DSLs
+
+%TODO: ref https://www.manning.com/books/dsls-in-action
+%TODO: http://www.scalatest.org/
 
 \subsection{Infix operators}
 \label{subsec:infixops}
 
-One of the features that support both the functional flavor of Scala and the DSL building capabilities is the possibility to call methods like infix operators. Any method that has exactly one argument can be called using this special syntax:
+One of the features that support both the functional flavor of Scala and the DSL building capabilities is the possibility to call methods like infix operators. Any method that has exactly one argument can be called using the following special syntax:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -123,7 +155,7 @@ class RichInt {
 val res = x plus y
 \end{lstlisting}
 
-The syntax is even more powerful if we take into consideration that Scala allow the methods to have non-alphanumeric names:
+This syntax is even more powerful if we take into consideration that Scala allow the methods to have non-alphanumeric names:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -132,9 +164,42 @@ def +(other: RichInt) = ???
 val res = x + y
 \end{lstlisting}
 
-This approach allows us to use the infix syntax with existing methods and with methods that weren't designed with the intention to be used that way. It has, however, a downside as well - it doesn't allow us to create an infix operator that would accept as its first argument a type without actually changing the type and adding the method to its definition. Scala doesn't directly support declaring extension methods on types (unlike C\#, Kotlin and other languages) and so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
+This approach allows us to use the infix syntax with existing methods and with methods that weren't designed with the intention to be used that way. It has, however, a downside as well - it doesn't allow us to create an infix operator that would accept as its first argument a type without actually changing the type and adding the method to its definition. 
 
-% TODO: Compare to infix operators in Kotlin
+Scala doesn't directly support declaring extension methods on types (unlike C\#, Kotlin and other languages) and so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
+
+\section{Implicit typecasts}
+
+Scala allows defining a custom set of implicit typecasts that can be used to automatically convert between types. The typecast from type \inlinecode{T} to type \inlinecode{U} is a method or a function with one argument of type \inlinecode{T} and a return value of type \inlinecode{U} declared with the \inlinecode{implicit} attribute:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+implicit def cast(t: T): U = ???
+\end{lstlisting}
+
+Now wherever an expression of type \inlinecode{T} is either used in a place where the type \inlinecode{U} is expected, or a selector (method or field name) unknown to type \inlinecode{T} but known to type \inlinecode{U} is applied to it, a call of our \inlinecode{cast} method is generated to convert the type. The implicit method has to be in scope at the moment of the typecast, the compiler will not locate it otherwise. The common practice is to gather all the implicit conversion methods into an object called \inlinecode{implicits} or \inlinecode{Implicits}, and let the user import all the methods of the object whenever he needs it:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+import my.project.Implicits._
+\end{lstlisting}
+
+The most typical use-case for the implicit conversions is adding new functionality to existing types. This can be used in DSLs as well, like in the following simple example:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+class RichInt(val i: Int) {
+  def times[T](fun: () => T): Unit =
+    Seq.range(0, i).foreach(_ => fun())
+}
+implicit def intToRichInt(i : Int): RichInt = new RichInt(i)
+def greet(): Unit = println("Hello!")
+4 times greet
+\end{lstlisting}
+
+In other languages (C\#, Kotlin), the same goal is achieved using extension methods, which is less flexible but more transparent solution.
+
+Implicit conversions are considered a potentially dangerous feature, for this reason, the implicit conversions have to be manually enabled either by a Scala compiler switch, or by importing \inlinecode{scala.language.implicitConversions}.
 
 \section{Def Macros}
 \label{sec:defmacros}
@@ -147,7 +212,7 @@ The feature was introduced in Scala 2.10 as an experimental feature, and it beca
 
 %TODO: Example
 
-The only limitation is that the macro can't be used in the same compilation unit where its declaration and implementation is, as the Scala compiler has to have access to the already compiled implementation when compiling the usages.
+The only limitation is that the macro can't be used in the same compilation unit where its declaration and implementation is, as the Scala compiler has to have access to the already compiled implementation when building the usages.
 
 \subsection{Building syntax trees}
 \label{subsec:buildingast}
@@ -159,9 +224,9 @@ The macro usually has to be able to perform 2 steps:
 	\item Build a new syntax tree to replace it
 \end{enumerate}
 
-The syntax trees are represented by tree node classes with \inlinecode{apply()} and \inlinecode{unapply()} methods accepting / returning their descendants. The trees can be examined using pattern matching.
+The syntax trees are represented by tree node classes with \inlinecode{apply()} and \inlinecode{unapply()} methods accepting / returning their descendants. We need to deconstruct the input, preferably using pattern matching, and then build an output tree by creating a new chain of nodes. For both actions, it is essential to know the structure of valid syntax trees that correspond to the code.
 
-Unfortunately, there is not a lot of documentation available for the syntax tree structure. The official Scala documentation has only a few examples and the types in the code lack the documentation as well (in Scala 2.11). 
+Unfortunately, there is not a lot of documentation available for the syntax tree structure. The official Scala documentation has only a few examples and the types in the code lack the documentation as well (in Scala 2.11). One of the most complete overviews of the syntax tree nodes and its building scheme can be found in [REF https://github.com/wolfe-pack/wolfe/wiki/Scala-AST-reference].
 
 %TODO: Reference https://github.com/wolfe-pack/wolfe/wiki/Scala-AST-reference
 
