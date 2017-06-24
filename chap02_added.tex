@@ -5,6 +5,7 @@ This chapter will provide a basic overview of the solution presented and of the 
 
 
 \section{Goals revisited}
+\label{sec:goals_revisited}
 
 In the introduction, the basic goal of the thesis was mentioned in a very general manner - as a simple-to-use framework that allows the user to introduce variants into his program. Now, we will go a little deeper and present more detailed goals and the consequences they have for the implementation.
 
@@ -83,4 +84,18 @@ The following extensions should be possible without changing the code of the fra
 	\item Change the history storage
 	\item Add, replace or extend the selection strategies
 	\item Implement custom policies
+\end{itemize}
+
+For this to work, the framework runtime will be created by composition with no close-coupling between modules. All of the runtime parts will communicate using trait interfaces. A simple form of IoC\footnote{Inversion of Control} configuration will be used for the composition.
+
+\section{Key parts of the system}
+
+Based on the extended goals presented in section \ref{sec:goals_revisited}, key parts of the solution can be identified and will be described in detail in the rest of the text.
+
+\begin{itemize}
+	\item \textbf{API and CombinedFunction} - a set of classes and methods that the user will be directly interacting with in order to create combined functions, and that will represent the combined functions and handle the invocation process
+	\item \textbf{Invocation policies} - a system of simple state machines to manage the invocation process with almost no overhead, handled directly in the CombinedFunction
+	\item \textbf{Selection strategies} - simple, stateless and isolated strategies that can decide about the most appropriate function to run given a historical measurements of all the functions
+	\item \textbf{Function selector and invoker} - module that will be responsible for selecting the method using a given strategy, invoking it, measuring the performance metrics and storing and retrieving the history data, which will be invoked by the CombinedFunction
+	\item \textbf{Configuration} - a static description of the Function selector and invoker, can be changed by the user
 \end{itemize}
