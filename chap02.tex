@@ -2,12 +2,12 @@
 
 The adaptive library introduced in this work is created in Scala, an advanced programming language that is based on the JVM runtime. In this chapter, a brief overview of some of the language aspects that are important for the API design.
 
-The basic paradigm of Scala is object-orientation - it is based on the same principles as Java and its language constructs get mapped to Java constructs upon compilation. In addition to this, Scala aims to enable full-scale function development in the same context as well. It is quite a unique concept among the common and production-used languages, which tend to adopt some functional features (higher-order functions, lambdas), but stop at some point and don't add more advanced mechanisms (type classes, monads).
+The basic paradigm of Scala is object-orientation - it is based on the same principles as Java and its language constructs get mapped to Java constructs upon compilation. In addition to this, Scala aims to enable full-scale function development in the same context as well. It is quite a unique concept among the common and production-used languages, which tend to adopt some functional features (higher-order functions, lambdas), but stop at some point and do not add more advanced mechanisms (type classes, monads).
 
 \section{Methods and functions in Scala}
 \label{sec:metandfun}
 
-There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They can't be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
+There is an important difference between methods and functions in Scala. Methods have the same concept as in Java or other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, arguments or static members. They cannot be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -51,7 +51,7 @@ In this case, the class contains an immutable field \inlinecode{print} containin
 
 The first-class value functions have to be anchored somewhere in the Scala type system in order for the type inference, type checking and other mechanisms to work correctly. The type of a function is unambiguously determined by its signature, i.e. the number and types of arguments and the type of the return type. Consequentially, the function types have to be generic and able to accept different numbers of type arguments.
 
-Scala as a language doesn't support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments:
+Scala as a language does not support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -69,7 +69,7 @@ These traits have syntactic aliases in the language:
 (T1, ..., T22) => R
 \end{lstlisting}
 
-Functions with more than 22 arguments can't exist in Scala and have to be replaced by function accepting tupled arguments. The necessity to represent functions with various argument numbers as multiple traits leads to code duplication wherever we want to interact directly with function types and support any argument number.
+Functions with more than 22 arguments cannot exist in Scala and have to be replaced by function accepting tupled arguments. The necessity to represent functions with various argument numbers as multiple traits leads to code duplication wherever we want to interact directly with function types and support any argument number.
 
 Function invocation is represented by an \inlinecode{apply} method declared in all the function trait types with the following signature:
 \lstset{style=Scala}
@@ -124,7 +124,7 @@ In this example, the conversion is implicitly applied to an argument of a method
 
 DSL (Domain Specific Language) is a programming language narrowly focused on solving a specific type of problems, which offers a higher level of expressiveness and therefore is easier to use than general-purpose languages. There is a large variety of areas where the DSLs are often employed, for example mathematical computations (R, MATLAB), database queries (SQL), build process (make, Ant), parsing (regular expressions) and many more.
 
-In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language, using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This speeds up the development enormously - there is no need to implement syntax parser, compiler, the target user doesn't have to have any specialized tools to actually use the language. A program written in such a language will just get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, and our own code can then interpret the structure and perform required tasks.
+In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language, using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This speeds up the development enormously - there is no need to implement syntax parser, compiler, the target user does not have to have any specialized tools to actually use the language. A program written in such a language will just get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, and our own code can then interpret the structure and perform required tasks.
 
 These DSLs became recently very popular for defining configurations, build and deployment processes - an example could be the Gradle scripting language, which is actually a DSL in Groovy, or the Chef recipes, being just Ruby scripts.
 
@@ -164,9 +164,9 @@ def +(other: RichInt) = ???
 val res = x + y
 \end{lstlisting}
 
-This approach allows us to use the infix syntax with existing methods and with methods that weren't designed with the intention to be used that way. It has, however, a downside as well - it doesn't allow us to create an infix operator that would accept as its first argument a type without actually changing the type and adding the method to its definition. 
+This approach allows us to use the infix syntax with existing methods and with methods that were not designed with the intention to be used that way. It has, however, a downside as well - it does not allow us to create an infix operator that would accept as its first argument a type without actually changing the type and adding the method to its definition. 
 
-Scala doesn't directly support declaring extension methods on types (unlike C\#, Kotlin and other languages) and so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
+Scala does not directly support declaring extension methods on types (unlike C\#, Kotlin and other languages) and so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
 
 \section{Implicit typecasts}
 
@@ -212,7 +212,7 @@ The feature was introduced in Scala 2.10 as an experimental feature, and it beca
 
 %TODO: Example
 
-The only limitation is that the macro can't be used in the same compilation unit where its declaration and implementation is, as the Scala compiler has to have access to the already compiled implementation when building the usages.
+The only limitation is that the macro cannot be used in the same compilation unit where its declaration and implementation is, as the Scala compiler has to have access to the already compiled implementation when building the usages.
 
 \subsection{Building syntax trees}
 \label{subsec:buildingast}
