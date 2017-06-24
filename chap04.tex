@@ -341,13 +341,13 @@ The predictive strategies do not handle well more historical results for the sam
 	If the function is expected to be invoked with a discrete and very limited set of inputs, non-predictive strategy is preferred. On the other hand, if the function will be called repeatedly with randomly distributed inputs, the predictive strategies are a better choice.
 \end{itemize}
 
-\section{Selection policies}
+\section{Invocation policies}
 
 The selection process and all the strategies described in sections \ref{sec:predictive_strategies} and \ref{sec:non_predictive_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data. In a common scenario where we expect the system to come to a decision about the best function (either overall, or for every group of \textit{input descriptors}), it would be handy if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
 
 Similarly, it might be desirable to control the overhead time spent on the selection, or, in general, on invoking the functions using selection (which might lead to a bad decision), either per a specific time period, or per a specific action of the system (user request, processing unit, etc.). All of these decisions are taken at a higher level than the run time history analysis performed by the selection strategies.  
 
-\textit{Selection policies} are a concept introduced into the ScalaAdaptive library that tries to address these cases, with the main purpose of lowering its execution overhead. Every \textit{combined function} has a \textit{selection policy} associated with it. In the function selection chain, the \textit{policy} gets evaluated right after invoking the \textit{combined function} and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
+\textit{Invocation policies} are a concept introduced into the ScalaAdaptive library that tries to address these cases, with the main purpose of lowering its execution overhead. Every \textit{combined function} has an \textit{invocation policy} associated with it. In the function selection chain, the \textit{policy} gets evaluated right after invoking the \textit{combined function} and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
 
 The possible results of the \textit{policy} evaluation are the following:
 
