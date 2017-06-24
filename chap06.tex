@@ -170,7 +170,18 @@ A disadvantage of ScalaAdaptive that complicates the usage in this area is the f
 \section{... General algorithm - predicting the big O notation ...}
 \section{SQL query selection}
 \section{Spark}
-\subsection{What is Spark}
+
+Apache Spark is a framework for distributed computing that is focused on data processing in a similar way to the MapReduce distributed computation paradigm. It works with distributed data sets that can be mapped, filtered, grouped or reduced, but unlike common implementations in Hadoop or other systems, it is focused on in-memory data processing on the nodes. Currently, it is one of the most used systems in distributed big data processing, designed to work with a large variety of distributed storage systems (HDFS, Cassandra, OpenStack Swift).
+
+The Spark framework represents one of the most interesting possibilities to use the ScalaAdaptive framework. The data processing queries are long-running tasks, so any overhead imposed by the selection is negligible. On the other hand, the potentially saved time on a faster implementation increases. In addition, the distributed computation model and the necessity to create an execution plan which depends on the data locations, sizes, etc. leads to large differences in execution times based on:
+
+\begin{itemize}
+	\item The query itself
+	\item The cluster it is running on (number of machines, cores, network)
+	\item The configuration of Apache Spark
+\end{itemize}
+
+The goal of this section is to show the basic ideas where the adaptivity might be used in such a framework.
 
 \subsection{Spark APIs}
 
@@ -178,21 +189,30 @@ Spark currently supports three different APIs that can be used to construct Spar
 
 \subsubsection{RDD}
 
-RDD (Resilient Distributed Dataset) was the first API introduced and is based on chaining higher order functions like \inlinecode{map()}, \inlinecode{filter()}, etc. RDDs contain custom JVM objects, Spark isn't aware of its structure. The query is typed and constructed using lambda expressions that work with these objects. It gets executed when a function that doesn't produce new RDD is called, e.g. \inlinecode{collect()} or \inlinecode{count()}. 
+RDD (Resilient Distributed Dataset) was the first API introduced and is basically a distributed dataset of JVM objects, which can be queried using higher order functions like \inlinecode{map()}, \inlinecode{filter()}, etc. Spark isn't aware of structure of the internal JVM objects, it is treating the individuals like blackboxes. The query is typed and constructed using lambda expressions that work with these objects. It gets executed when a function that doesn't produce new RDD is called, e.g. \inlinecode{collect()} or \inlinecode{count()}. 
 
-Example of a simple query:
 \lstset{style=Scala}
 \begin{lstlisting}
 rdd.filter(_.id > 5000).count
 \end{lstlisting}
 
-Upon execution, the Spark worker engine works with the RDDs as a whole (partitions it, collects the results, etc.), but the operations on its members (filtering, transformation, grouping) are carried out by actually executing the lambdas. This approach is very simple and allows the user to write queries over custom data types without any limitation. The downside is that the Spark execution engine doesn't know what is going on within the lambdas, can't optimize the execution plan based on the query, and, when moving the parts of RDDs between the nodes, the objects have to be serialized and deserialized again.
+Upon execution, the Spark worker engine works with the RDDs as a whole (partitions it, collects the results, etc.), but the operations on its members (filtering, transformation, grouping) are carried out by actually executing the lambda functions. This approach is very simple and allows the user to write queries over custom data types without any limitation. The downside is that the Spark execution engine doesn't know what is going on within the lambdas, can't optimize the execution plan based on the query, and, when moving the parts of RDDs between the nodes, the objects have to be serialized and deserialized again.
 
-\subsubsection{Dataframes}
+\subsubsection{DataFrames and Spark SQL}
 
-Dataframes API 
+DataFrames API was introduced later into the Spark framework with a goal of achieving better performance and scalability. The data within DataFrames are described by a schema, somehow similar to classic SQL schema - Spark knows exactly how are the data records structured. The queries are constructed using Spark SQL, a query language (DSL in Scala) that uses string names of the record attributes (or columns). As we can see in the following example, the actions are described by strings and parsed by Spark upon execution.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+df.filter("id > 5000").count
+\end{lstlisting}
+
+Spark therefore knows how exactly the mapping, filtering, reducing or grouping is going to happen and the Spark can use these information to optimize the execution, data distribution, can use it to make estimations, etc. when building the query plan. In addition, the data described by a schema can be easily persisted or transfered between nodes without the need to perform a JVM serialization. A major disadvantage is the necessity to provide the schema and the fact that the actual query is parsed at runtime and is untyped - errors in attribute names or conditions in general won't be detected upon compilation.
 
 \subsubsection{Datasets}
+
+The newest Spark API, Datasets, was introduced with a goal of combining the best from RDD and DataFrame approaches together. The query programming API is typed and works with JVM objects, just like RDD, but the internal representation is schema-based, like in DataFrames. In order for this to work, Spark uses a mechanism of encoders that can transform the JVM representation to the internal one and vice-versa. It also analyzes the content of the typed lambdas and uses the same optimization as with the DataFrames API.
+
 \subsection{RDD query selection}
 \subsection{RDD or Datasets selection}
 \subsection{Usage}
@@ -270,7 +290,33 @@ The library is reusable and supposing that it is kept up to date and that all th
 
 As part of future work on the library, there could be a Java API added, enabling a direct usage from Java, although it would be very limited and not as expressive. More on the topic of API possibilities in other languages will be discussed later.
 
-\section{Implementation in other languages}
+
+
+\section{Future work}
+
+\subsection{Extending the policy logic and connecting it to selectors}
+
+\subsection{Optimizing run time of the whole system}
+
+Instead of optimizing the run times of separate functions, we could aim for optimizing the whole system. We could, for example, have a set of different data structures that our algorithm will be working with. The data structures would have all the necessary operations implemented and presented using a trait or an abstract class. The framework would generate a factory method that would create one of the implementations, and then track the overall behavior of different methods on the implementations. 
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val data = createDataStructure(list)
+data.getMin()
+data.getMax()
+data.add(i)
+\end{lstlisting}
+
+\subsection{Selection strategies supporting multidimensional input descriptors}
+
+As mentioned in section \ref{sec:predictive_strategies}, algorithm complexities are quite commonly functions of multiple factors of the input. In order to create selection strategies that would be able to correctly decide in case of such algorithms, we would need to add support for \textit{input descriptors} with more factors. The predictive strategies would then have to construct multidimensional regression models and analyze the dependency on multiple factors.
+
+\subsection{Detecting the function dependency}
+
+The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation of input factor changes and run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the factors.
+
+\subsection{Implementation in other languages}
 
 The library is implemented in Scala and can be used by any JVM-based languages, even though often without the comfort that provides Scala with its implicits and eta-expansion.
 
@@ -288,9 +334,9 @@ The key part of the library that would cause problems upon reimplementation is t
 
 With a subset of the features in the language, a limited API can be designed. Let's have a look at some language examples and what they offer.
 
-\subsection{Java}
+\subsubsection{Java}
 
-\subsection{C\#}
+\subsubsection{C\#}
 
 The C\# language has relatively advanced features and offers function types (\inlinecode{Func<TArg, TRetVal>}) that allow treating the functions as first class values. There is also a feature called \textit{Method groups}, which, in certain situations, lead to an implicit conversion of a method on an object to the corresponding function type - basically the same as eta-expansion.
 
@@ -300,4 +346,4 @@ The API in C\# could be based on method chaining and be quite similar to the one
 
 A complication would be the async methods that are quite common in C\#. Measuring their runtime would require chaining continuations on the resulting tasks.
 
-\subsection{C / C++}
+\subsubsection{C / C++}
