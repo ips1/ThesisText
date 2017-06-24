@@ -1,0 +1,86 @@
+\chapter{Solution overview}
+
+This chapter will provide a basic overview of the solution presented and of the tasks that had to be solved in the process and that will be described with more details in later sections.
+
+
+
+\section{Goals revisited}
+
+In the introduction, the basic goal of the thesis was mentioned in a very general manner - as a simple-to-use framework that allows the user to introduce variants into his program. Now, we will go a little deeper and present more detailed goals and the consequences they have for the implementation.
+
+\subsubsection{A simple and fluent API}
+
+We would like the programmer to be able to simply combine two or more functions or methods (in any combination), resulting into a new function that can be called again.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def impl1(in: T): U = ???
+def impl2(in: T): U = ???
+val impl3: (T) => U = ???
+
+val function = impl1 _ or impl2 or impl3
+\end{lstlisting}
+
+This means that we are going to have to work with implicit typecasts from function types and with eta-expansion.
+
+\subsubsection{Transparent usage}
+
+The function that was created by the combining process should behave just like a normal function - the caller should not have to perform any special action and he should not be able to recognize that multiple implementations are involved.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val result1 = impl1(arg)
+val result2 = function(arg)
+\end{lstlisting}
+
+If the user, however, decides to combine the function that is already combined from $n$ simple functions one more time, the result should be a combination of $n+1$ functions, not a combination of $2$ functions where one of them is the original.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val newFunction = function or impl4
+\end{lstlisting}
+
+Similar behavior can be achieved by introducing custom function trait implementations and reflecting it in the typecast.
+
+\subsubsection{Measuring and storing run times}
+
+Whenever the function is called and one of the implementations run, the run time (or other metric) has to be measured and stored. The storage should be statically accessible, because the function can be invoked from different contexts and we would like to share the history across the entire application. In order to identify the implementation in the static storage, we would need an identifier, preferably the name of the method (if a method is used). For that, we are going to have to use a compile-time macro.
+
+\subsubsection{Selecting the most appropriate function in different cases}
+
+As the key part of the library, we want to select the function to run each time. The selection should have 2 basic outcomes:
+
+\begin{itemize}
+	\item Select the function that is expected to have better performance on given input in current conditions if we are certain enough
+	\item Select the function that we need to collect data for if we are not certain enough
+\end{itemize}
+
+The selection would be based on historical measurements of each function. We should be able to handle the following situations regarding the history data:
+
+\begin{itemize}
+	\item Functions whose run time does not depend significantly on the input - we expect that if one function has better performance than the other, it will not change with different input or environment
+	\item Functions whose run time depends on some characteristics of the input (e.g. if the sequence is sorted)
+	\item Functions whose run time is expected to be a function of the input (i.e. with non-constant complexity)
+	\item Functions whose run time depends on the execution environment and is expected to change over time
+\end{itemize}
+
+This leads to a few requirements. Multiple selection strategies meeting the requirements of these cases will be necessary - we need to propose some decision making procedures that will reflect the certainty using the methods of statistical testing with given significance level. The user will have a way to customize the function combination in order to identify the case and configure the selection process correctly.
+
+\subsubsection{Controlling the invocation behavior}
+
+The invocation behavior should change in some cases - when we are sure enough that one option is better than the other in general, when we need to gather more data, when we need to save time and cannot perform the selection, or in other cases. Every combined function should have its state and some behavior plan, which would reflect some basic statistics and events on the functions.
+
+We can achieve this by introducing a simple state machine logic and a language in form of a Scala DSL to create simple state machines.
+
+\subsubsection{Possibility to extend the framework}
+
+The framework should be modular, with its parts being easy to replace or extend. It should be possible for the user of the framework to incorporate his own implementations without having to change the framework code in any way, just by modifying the initial runtime construction.
+
+The following extensions should be possible without changing the code of the framework, only by adding custom implementations:
+
+\begin{itemize}
+	\item Change the metrics that is measured for the functions
+	\item Change the history storage
+	\item Add, replace or extend the selection strategies
+	\item Implement custom policies
+\end{itemize}
