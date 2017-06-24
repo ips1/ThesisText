@@ -184,6 +184,7 @@ The Spark framework represents one of the most interesting possibilities to use 
 The goal of this section is to show the basic ideas where the adaptivity might be used in such a framework.
 
 \subsection{Spark APIs}
+\label{subsec:spark_apis}
 
 Spark currently supports three different APIs that can be used to construct Spark queries.
 
@@ -213,7 +214,74 @@ Spark therefore knows how exactly the mapping, filtering, reducing or grouping i
 
 The newest Spark API, Datasets, was introduced with a goal of combining the best from RDD and DataFrame approaches together. The query programming API is typed and works with JVM objects, just like RDD, but the internal representation is schema-based, like in DataFrames. In order for this to work, Spark uses a mechanism of encoders that can transform the JVM representation to the internal one and vice-versa. It also analyzes the content of the typed lambdas and uses the same optimization as with the DataFrames API.
 
-\subsection{RDD query selection}
+\subsection{ScalaAdaptive tests}
+
+To perform the test of adaptation with Apache Spark, two environments were used:
+
+\begin{itemize}
+	\item Spark local mode with 8 workers\footnote{Using \inlinecode{master("local[8]")} setup.} on a laptop with quad-core Intel i5 processor and 8GB of RAM
+	\item Cluster of 12 Spark workers deployed in Docker containers on 3 machines. 	%TODO: Machine specifications
+\end{itemize}
+
+Generated data were used for the test, no distributed storage was involved.
+
+\subsubsection{RDD versus Datasets}
+
+As explained in section \ref{subsec:spark_apis}, Spark has various APIs that allow the user to perform the query. Theoretically, the Dataset API should offer the same expressiveness and better performance. A lot of current production Spark code is, however, written in RDDs, as it was the first (and the only for some time) presented API. This poses a question whether the code should be kept and maintained in RDDs, or whether it would be better to replace it with Datasets and what the eventual performance gain would be.
+
+The ScalaAdaptive can be used in this case to limit the eventual negative impact of this change. The Dataset-based queries can be implemented into the system and wrapped along with the old RDD queries into a single combined query. If there was a place where the Dataset query would, for some reason, have worse performance, the ScalaAdaptive framework should discover it and keep using the old RDD query. In the longer term, the results of ScalaAdaptive selections can be evaluated and used to discover problematic queries and to decide about the next steps.
+
+
+
+\subsubsection{Spark SQL adaptive execution}
+
+Spark queries are divided into stages, where each stage can be perform on a single node without the need to exchange any data. Typically, multiple maps or filters chained can be performed within one stage, because every record can be mapped without the necessity of any other data. On the other hand, join, groupBy and reduce have to be done at the beginning of a new stage, because they potentially need data from other nodes. Before every stage, a shuffle i performed - the data is exchanged between the nodes. 
+
+The data is additionally divided into partitions, where each nodes is processing a subset of partitions, and upon shuffle, some partitions get exchanged. Originally, the partitioning of the data upon each shuffle is fixed and based on the original partitioning - it does not reflect the actual results of previous stages, which could lead, in some extreme cases, to some nodes having a lot less work than the others if there were partitions with majority of data filtered out in previous stage. To solve this issue, an experimental feature called \textit{adaptive execution} was introduced into Spark SQL, which causes that the result sizes from previous stages are collected and a new partitioning is created before performing the shuffle.
+
+The \textit{adaptive execution} feature is turned off by default. We can use ScalaAdaptive to experiment with the performance impact when enabling it. In addition, there are two configurable attributes of the feature:
+\begin{itemize}
+	\item \inlinecode{spark.sql.adaptive.shuffle.targetPostShuffleInputSize} - target size of an optimal partition
+	\item \inlinecode{spark.sql.adaptive.minNumPostShufflePartitions} - minimal number of partitions which will be strictly kept
+\end{itemize}
+We can try a custom value for these attributes in one of the ScalaAdaptive combinations.
+
+The usage of ScalaAdaptive in this case will, however, be a little more complicated. Some attributes of the Spark SQL configuration can be changed at any point in the execution, but doing so is not reliable, especially in large cluster - changes do not seem to be reflected immediately. A safer approach is to create the SparkSession already with the target configuration. If we create new session for each query, we can incorporate the session creation into the query function. If we, on the other hand, use one session for multiple queries, the only solution is the delayed measurement model, as described in section \ref{sec:delayed_measuring}. 
+
+The test was performed on a Dataset of records which was filtered, grouped by an attribute, the groups reduced to a single element and the result filtered again and counted. We tried to combine the following setups:
+
+\begin{enumerate}
+	\item \textit{Adaptive execution} disabled (currently the default configuration)
+	\item \textit{Adaptive execution} enabled with default attributes
+	\item \textit{Adaptive execution} enabled, 
+	targetPostShuffleInputSize = 512MB, 
+	minNumPostShufflePartitions = -1 (unlimited)
+	\item \textit{Adaptive execution} enabled, targetPostShuffleInputSize = 2MB, minNumPostShufflePartitions = 200
+\end{enumerate}
+
+The table \ref{tab:spark_adaptive_config_test} shows the average execution times fetched from the combined function analytics data. As we can see, the performances of the options vary a lot depending on the input size and on the execution environment. The default configuration (with \textit{adaptive execution} disabled) in the local execution on small data is by far the worst, in large cluster is among the better ones. Configuration number 2 is the best in all cases, but we can see that the results tend to change a lot, and using ScalaAdaptive can help discover eventual better configurations.
+
+The only disadvantage of using ScalaAdaptive in this case is that selection from quite a lot alternatives is required, and when using the t-test selection strategy with Bonferroni correction (which lowers the significance level of elementary tests) increases the chances of the test not being able to decide about the best configuration. In case of the results discussed, the test wasn't able to decide in the case of Local[8], 10000 entries. The test not being able to decide between the two best options leads to rotating all the options, including the worse ones.
+
+\begin{table}[h!]
+	\centering
+	\captionsetup{justification=centering,margin=0.5cm}
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{tabular}{|l|r|r|r|r|}
+		\hline
+		& \multicolumn{1}{c|}{\textbf{1. (disabled)}} & \multicolumn{1}{c|}{\textbf{2.}} & \multicolumn{1}{c|}{\textbf{3.}} & \multicolumn{1}{c|}{\textbf{4.}} \\ \hline
+		Local{[}8{]}, 1000 entries  & 4322.24                                     & 1472.51                          & 1916.87                          & 3528.62                          \\ \hline
+		Local{[}8{]}, 10000 entries & 6911.03                                     & 4499.11                          & 4933.53                          & 6320.43                          \\ \hline
+		Cluster, 20000 entries      & 1234.36                                     & 725.79                           & 3892.56                          & 1172.69                          \\ \hline
+		Cluster, 200000 entries     & 2879.25                                     & 2538.94                          & 5639.02                          & 2853.10                          \\ \hline
+	\end{tabular}
+\egroup
+\caption{Run times (in ms) of Spark queries with different configurations in various environments.}
+\label{tab:spark_adaptive_config_test}
+\end{table}
+
+\subsubsection{RDD query selection}
 \subsection{RDD or Datasets selection}
 \subsection{Usage}
 \subsection{Environment}
