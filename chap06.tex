@@ -219,19 +219,81 @@ The newest Spark API, Datasets, was introduced with a goal of combining the best
 To perform the test of adaptation with Apache Spark, two environments were used:
 
 \begin{itemize}
-	\item Spark local mode with 8 workers\footnote{Using \inlinecode{master("local[8]")} setup.} on a laptop with quad-core Intel i5 processor and 8GB of RAM
+	\item Spark local mode with 1 worker\footnote{Using \inlinecode{master("local[1]")} setup.} on a a laptop with quad-core Intel i5 processor and 8GB of RAM
+	\item Spark local mode with 8 workers\footnote{Using \inlinecode{master("local[8]")} setup.} on the same machine
 	\item Cluster of 12 Spark workers deployed in Docker containers on 3 machines. 	%TODO: Machine specifications
 \end{itemize}
 
-Generated data were used for the test, no distributed storage was involved.
+Randomly generated data were used for the test, no distributed storage was involved. The tests were running with the \inlinecode{StorageLevel.MEMORY\_ONLY} data persistence configuration.
 
-\subsubsection{RDD versus Datasets}
+\subsubsection{Query selection}
+
+The most simple case that can be applied to any data processing or querying framework is the query selection. A data operation can usually be expressed using a variety of queries that differ in the order or character of the elementary steps. These queries can often have quite different performance, based on the optimizations that the executing engine can perform, especially in the distributed environment where the main concern is keeping the amount of data transfered to the minimum.
+
+An example of such a query performance variation can be the \textit{group} versus \textit{reduce} problem. Suppose have a set of key-value pairs and we want to group them by key and then reduce the groups (by aggregating their content somehow). The straightforward approach is to group the data and to map the aggregation function over the grouped values:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+data.groupByKey()
+      .map(i => (i._1, i._2.flatten.toArray))
+\end{lstlisting}
+
+Because the execution engine does not understand the mapping action (RDDs do not analyze the queries), this requires the grouping to be done across all the workers to physically create the groups, even though we are just going to immediately reduce them. That is why there is a special operation for directly reducing by key:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+data.reduceByKey((arr1, arr2) => arr1 ++ arr2)
+\end{lstlisting}
+
+Upon executing this, the groups can be first formed and reduced within the nodes and just the aggregated values will be passed and reduced again.
+
+ScalaAdaptive was used to decide between these two queries, and the analytics data show the following average run times on a 5000 key-value pair sequence in Local[8] mode:
+\begin{itemize}
+	\item \textbf{GroupByKey} - 3677.61ms
+	\item \textbf{ReduceByKey} - 684.52ms
+\end{itemize}
+
+A simple t-test selection strategy correctly chooses the more optimized version.
+
+\subsubsection{RDDs or Datasets}
 
 As explained in section \ref{subsec:spark_apis}, Spark has various APIs that allow the user to perform the query. Theoretically, the Dataset API should offer the same expressiveness and better performance. A lot of current production Spark code is, however, written in RDDs, as it was the first (and the only for some time) presented API. This poses a question whether the code should be kept and maintained in RDDs, or whether it would be better to replace it with Datasets and what the eventual performance gain would be.
 
 The ScalaAdaptive can be used in this case to limit the eventual negative impact of this change. The Dataset-based queries can be implemented into the system and wrapped along with the old RDD queries into a single combined query. If there was a place where the Dataset query would, for some reason, have worse performance, the ScalaAdaptive framework should discover it and keep using the old RDD query. In the longer term, the results of ScalaAdaptive selections can be evaluated and used to discover problematic queries and to decide about the next steps.
 
+For the test, we prepared two queries:
+\begin{itemize}
+	\item \textbf{Query 1} - generated n random key-value pairs, grouped by the key and counted the groups
+	\item \textbf{Query 2} - generated n records with multiple attributes, filtered by an attribute, grouped by a different attribute, reduced the groups into new records, filtered again and grouped
+\end{itemize}
 
+The results of multiple (50-100 times) execution in various environments can be seen in table \ref{tab:spark_adaptive_rdd_vs_ds_test}, which contains the average execution times of the RDD and the Dataset variants as computed from the analytics data of a combined function. The last column shows the ScalaAdaptive decision after gathering enough data - t-test selection strategy with $\alpha = 0.05$ was used.
+
+We can see that it is definitely not possible to assume that Datasets are faster than RDDs. The only situation where Dataset got better performance was the Query 1 test with the largest amount of data. It is possible to assume that at least for Query 1, the Datasets perform better for larger data sizes, both locally and in the cluster. For Query 2, it seems that Dataset performance is constantly around 7 times worse.
+
+These observations might be caused by Datasets having the operations optimized to different cases, or even by our wrong selection of Spark SQL alternatives of the RDD queries. But such a case might be a real scenario and the case where the ScalaAdaptive framework can be successfully employed.
+
+\begin{table}[h!]
+	\centering
+	\captionsetup{justification=centering,margin=0.5cm}
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{tabular}{|l|r|r|r|}
+		\hline
+		& \multicolumn{1}{c|}{\textbf{RDD}} & \multicolumn{1}{c|}{\textbf{Dataset}} & \multicolumn{1}{c|}{\textbf{ScalaAdaptive decision}} \\ \hline
+		Query 1: Cluster 500000       & 920.97                            & 1633.84                           & RDD                                                  \\ \hline
+		Query 1: Cluster 2000000      & 7105.58                           & 7068.34                           & Can't decide                                         \\ \hline
+		Query 1: Cluster 5000000      & 37140.28                          & 3587.97                           & Dataset                                                  \\ \hline
+		Query 1: Local{[}1{]} 200000  & 2426.95                           & 12554.66                          & RDD                                                  \\ \hline
+		Query 1: Local{[}8{]} 200000  & 1499.14                           & 7446.45                           & RDD                                                  \\ \hline
+		Query 1: Local{[}8{]} 1000000 & 12070.14                          & 12861.32                          & Can't decide                                         \\ \hline
+		Query 2: Cluster 100000 & 1152.19 &	6956.03 & RDD \\ \hline
+		Query 2: Cluster 1000000      & 2162.72                           & 14311.13                          & RDD                                                  \\ \hline
+	\end{tabular}
+\egroup
+\caption{Run times (in ms) of Spark queries on RDD and Datasets in various environments.}
+\label{tab:spark_adaptive_rdd_vs_ds_test}
+\end{table}
 
 \subsubsection{Spark SQL adaptive execution}
 
@@ -271,20 +333,15 @@ The only disadvantage of using ScalaAdaptive in this case is that selection from
 	\begin{tabular}{|l|r|r|r|r|}
 		\hline
 		& \multicolumn{1}{c|}{\textbf{1. (disabled)}} & \multicolumn{1}{c|}{\textbf{2.}} & \multicolumn{1}{c|}{\textbf{3.}} & \multicolumn{1}{c|}{\textbf{4.}} \\ \hline
-		Local{[}8{]}, 1000 entries  & 4322.24                                     & 1472.51                          & 1916.87                          & 3528.62                          \\ \hline
-		Local{[}8{]}, 10000 entries & 6911.03                                     & 4499.11                          & 4933.53                          & 6320.43                          \\ \hline
-		Cluster, 20000 entries      & 1234.36                                     & 725.79                           & 3892.56                          & 1172.69                          \\ \hline
-		Cluster, 200000 entries     & 2879.25                                     & 2538.94                          & 5639.02                          & 2853.10                          \\ \hline
+		Local{[}8{]} 1000  & 4322.24                                     & 1472.51                          & 1916.87                          & 3528.62                          \\ \hline
+		Local{[}8{]} 10000 & 6911.03                                     & 4499.11                          & 4933.53                          & 6320.43                          \\ \hline
+		Cluster 20000      & 1234.36                                     & 725.79                           & 3892.56                          & 1172.69                          \\ \hline
+		Cluster 200000     & 2879.25                                     & 2538.94                          & 5639.02                          & 2853.10                          \\ \hline
 	\end{tabular}
 \egroup
 \caption{Run times (in ms) of Spark queries with different configurations in various environments.}
 \label{tab:spark_adaptive_config_test}
 \end{table}
-
-\subsubsection{RDD query selection}
-\subsection{RDD or Datasets selection}
-\subsection{Usage}
-\subsection{Environment}
 
 \section{Problems with the practical use of the framework}
 
