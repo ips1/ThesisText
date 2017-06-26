@@ -165,10 +165,6 @@ The average response times in these scenarios are shown in the table \ref{tab:lo
 
 A disadvantage of ScalaAdaptive that complicates the usage in this area is the fact that it doesn't support measuring run times of asynchronous functions, i.e. functions that perform callbacks or complete promises upon finishing.
 
-\section{Artificial algorithm}
-\section{Sorting algorithm}
-\section{... General algorithm - predicting the big O notation ...}
-\section{SQL query selection}
 \section{Spark}
 
 Apache Spark is a framework for distributed computing that is focused on data processing in a similar way to the MapReduce distributed computation paradigm. It works with distributed data sets that can be mapped, filtered, grouped or reduced, but unlike common implementations in Hadoop or other systems, it is focused on in-memory data processing on the nodes. Currently, it is one of the most used systems in distributed big data processing, designed to work with a large variety of distributed storage systems (HDFS, Cassandra, OpenStack Swift).
@@ -357,12 +353,11 @@ One of the main problems that such a framework is facing in a real-life software
 
 Maintaining multiple implementations of the same functionality at once brings a lot of issues. The developers have to know exactly how all the implementations work and whenever it's necessary to modify the behavior, be able to perform changes in all of them to achieve the same result. Described process itself is very demanding and has a significant time impact on the development. 
 
-What's more, subtle differences in behavior of the implementations could be unintentionally introduced. These differences might not have visible effects immediately and may appear after several other modifications. At that moment, it will be extremely difficult to locate the problem, because the misbehavior caused by it won't be deterministic thanks to the nature of the selection algorithm.
+What is more, subtle differences in behavior of the implementations could be unintentionally introduced. These differences might not have visible effects immediately and may appear after several other modifications. At that moment, it will be extremely difficult to locate the problem, because the misbehavior caused by it won't be deterministic thanks to the nature of the selection algorithm.
 
-Using non-deterministic decision tools in general lowers the maintainability of the system.
+In cases where third-party libraries are used within the combined implementations, we introduce yet another factor of risk into the system - the libraries can change their behavior in newer versions, can have undocumented differences in their solutions of input corner cases, etc. Using non-deterministic decision tools in general lowers the maintainability of the system, and the ScalaAdaptive framework is such a tool.
+
 %TODO: finish THIS
-
-In cases where third-party libraries are used within the combined implementations, we introduce yet another factor of risk into the system - the libraries can change their behavior, can have undocumented differences in their solutions of input corner cases, etc.
 
 \subsection{Testing and verification}
 
@@ -396,10 +391,6 @@ In order to create a combined function from two different algorithms implemented
 
 Creating wrappers for the API that solve these issues is not trivial - data structures have to be converted, copied, etc., which will cause more unnecessary overhead. This overhead might get more significant with the complexity of data structures that we need to convert between the two APIs that we need to adapt.
 
-It requires 
-
-\section{Other tests...?}
-
 \section{Usage from Java}
 
 Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of the ScalaAdaptive library from Java is not supported. The reason is that the API of the library depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
@@ -420,6 +411,18 @@ As part of future work on the library, there could be a Java API added, enabling
 \section{Future work}
 
 \subsection{Extending the policy logic and connecting it to selectors}
+
+\subsection{Thread safety and concurrency}
+
+The framework in general currently is not thread safe. It is designed, however, to be possible to make it that way without the necessity for some major changes. For the possibility to safely use the framework from a multi-threaded environment, we would need to ensure three basic points:
+
+\begin{enumerate}
+	\item Thread-safe initialization and static runtime composition
+	\item Thread-safe access to the run history
+	\item Thread-safe access to the combined function state (run statistics and current policy)
+\end{enumerate}
+
+The first point should not cause any problems. Run histories are already prepared to be made thread-safe by having an API to support immutability (mutating operations return new instances) and an immutable implementation (with all the caches) as well. Because of that, only adding a simple lock on the history updating method should be enough. As to the third point, this is currently the biggest issue, because it has been optimized for performance and the statistics are mutable in general. They could, however, be made into an immutable structure, and replacing the policy and updating the statistics would be atomic operations without any overhead.
 
 \subsection{Optimizing run time of the whole system}
 
