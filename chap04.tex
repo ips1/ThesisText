@@ -97,50 +97,39 @@ The main problem is that the linear regression model applied to a case where the
 	\label{fig:selection_sort_linear_trendline}
 \end{figure}
 
-In order to ensure the accuracy of the model, we can perform statistical tests on it. We can test the true slope \(a\) of the hypothetical original linear function, against a constant value \(a_0\). Suppose we have a linear regression model \(h'(x) = a' x + b'\) constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). The hypotheses would be the following:
+In our application we do not care about the accuracy of the predicted value itself, we simply need to know if the prediction is significantly better than the prediction of the second model, taking into account the accuracy of both models. We would like to find a statistical method that could give us this answer.
+
+Suppose we have a linear regression model \(h'(x) = a' x + b'\) constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\epsilon_i = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation on the model.
+
+Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with n-2 degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests with $a$ and $b$. The default tests hypotheses have the following form:
 
 \[H_0: a = a_0\]
 \[H_1: a \neq a_0 \]
 
-The test statistics \(T\) for the test can be computed using the following formula:
+We basically test equality of $a$ (or $b$) and a fixed value $a_0$ (or $b_0$) - this test can be used to verify if the data have a linear relation of some kind. If we put $a_0 = 0$, we can find out if the data even have any relation, or if the observations $y_i$ are constant. None of these tests and statistics, however, allow us to test the certainty of the prediction - we need to take into account both the intercept and the slope estimation certainty, and, in addition, the location of the $x$ we want the prediction for from the mean $\bar{x}$, because if we commit an error in the slope $a'$, the error in predictions increases with the distance from $\bar{x}$. 
 
-\[T = \frac{a' - a_0}{se(a')}\]
+With these facts, a confidence interval on level $1 - \alpha$ for $y = h'(x)$ can be constructed (specifically for each point $x$). Width of the interval is the following:
 
-where
+\[
+w_{x, \alpha} = t_{n - 2}(1-\frac{\alpha}{2}) \sqrt{(\frac{1}{n - 2} MSE) (\frac{1}{n} + \frac{(x - \bar{x})^2}{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 })}
+\]
 
-\[se(a') = \sqrt{\frac{\sqrt{MSE}}{ \sqrt{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 }}} \]
+where \(\bar{x}\) is the mean of \(x_i\), $t_{n - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom, and $MSE$\footnote{Mean square error} can be computed as:
 
-and
+\[MSE =  \sum_{i = 1}^{n} \epsilon_i^2  =  \sum_{i = 1}^{n} (y_i - y_i')^2 \]
 
-\[MSE = { \sum_{i = 1}^{n} (y_i - y_i')^2 }\]
+for \(y_i' = h'(x_i)\).
 
-The \(\bar{x}\) is the average of \(x_i\) and \(y_i' = h'(x_i)\).
+It now holds that for any $x$, the corresponding $y \in [a'x + b' \pm w_{x, \alpha}]$ with probability $(1-\alpha)$.
 
-Now, the \(T\) follows a \textit{t-distribution} with \(n-2\) degrees of freedom, so \(H_0\) is rejected on the significance level $\alpha$ in favor of $H_1$ in the following case:
+Now in the situation where we have two regression models and we want to find the best prediction of $x$, we can construct these confidence intervals for both models and:
 
-\[\abs{T} > t_{n - 2}(1-\frac{\alpha}{2})\]
+\begin{itemize}
+	\item If the intervals do not overlap, the predictions have at least a $(1 - \alpha)$ probability of not being switched, i.e., the lower prediction actually being lower
+	\item If the intervals overlap, there is a non-trivial chance of the predictions being mixed up by error
+\end{itemize}
 
-The $t_{n - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom.
-
-In our case, we have no specific $a_0$ that we want to test against, we simply want to know, if the data measured have a linear relation. We can achieve this by putting $a_0 = 0$. If we reject $H_0$ on the significance level $\alpha$, there is a $1 - \alpha$ probability of the data having a linear relation, and in such a situation, we can use the $a'$ slope of the simple linear regression model without too many issues.
-
-\begin{figure}[h!]
-	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=90mm]{./img/linear_cantreject.png}}}
-	\caption{Linear regression of 100 run time samples from a function with linear complexity where $H_0$ could not be rejected.}
-	\label{fig:linear_cantreject}
-\end{figure}
-
-Unfortunately, the test tends to get affected by random fluctuations in function run times, which are quite common, especially for simple functions with short execution. The figure \ref{fig:linear_cantreject} shows a regression performed on a sample of 100 run times of a function with linear complexity. The slope of the linear approximation seems to match the measured data reasonably well, but the hypothesis $H_0$ of the statistical test could not be rejected on the significance level $\alpha = 0.05$. 
-
-On the other hand, figure \ref{fig:quadratic_rejected} shows a regression performed on a sample of 100 run times of a function with quadratic complexity, and in this case, the hypothesis $H_0$ of the was rejected in favor of $H_1$ on the same significance level $\alpha = 0.05$.
-
-\begin{figure}[h!]
-	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=90mm]{./img/quadratic_rejected.png}}}
-	\caption{Linear regression of 100 run time samples from a function with quadratic complexity where $H_0$ was rejected.}
-	\label{fig:quadratic_rejected}
-\end{figure}
+In the first case, we can decide that the first model gives significantly better prediction and select the first function. In the second case, we cannot decide with given certainty.
 
 \subsection{Window-bound linear regression}
 \label{subsec:window_bound_regression}
@@ -158,7 +147,7 @@ When selecting a function for a specific \textit{input descriptor} $d$, a window
 
 There are multiple ways how to decide on the window width $w$. Using a fixed number across all the functions and all the data samples would not be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want to split the set. This would not help us in a case where there are a few extreme values of \textit{input descriptors} in the data set and the rest of the values lie together. 
 
-The most complicated but also the most adaptive window selection method is based on analysis of the entire data set - we sort the samples using the \textit{input descriptor} and compute the distances of each pair of the neighboring ones, make an average of these distances and set the $w$ as $avg * m$, where m is the expected number of samples in one window. For the value of $m$, we can chose a number of about 50-100.
+The most complicated but also the most adaptive window selection method is based on analysis of the entire data set - we compute the average distance between two neighboring \textit{input descriptors} and set the $w$ as $avg * m$, where m is the expected number of samples in one window. For the value of $m$, we can chose a number of about 50-100.
 
 \subsection{Local regression}
 
@@ -203,9 +192,12 @@ Each of these strategies does make sense and might be useful in some cases, the 
 
 If we assume that the measured function run times come from a normal distribution, we can use the methods of statistical testing to determine whether one function is faster than the other with given significance. 
 
-Suppose we have two samples of run times for the two functions involved, $X_1, ..., X_n$ and $Y_1, ..., Y_m$. Next, suppose that these samples come from normal distributions with expectations $\mu_1$ and $\mu_2$, respectively. These expectations are unknown for us, just like the variances. The goal is to test the expectations of the two samples against each other. 
+Suppose we have two samples of run times for the two functions involved, $X_1, ..., X_n$ and $Y_1, ..., Y_m$. Next, suppose that these samples come from normal distributions with expectations $\mu_1$ and $\mu_2$, respectively. These expectations are unknown for us, just like the variances. In addition, we suppose that the two variances are different. The goal is to test the expectations of the two samples against each other.
 
-Based on these requirements, we will use a \textit{two-sample t-test}. The default hypotheses for the test are:
+Based on these requirements, we will use a \textit{two-sample t-test}. Standard Student's t-test works only under the assumption that the sample variances are equal, so it cannot be used in this case. We are going to use the Welch's t-test, which is not as strong, but can work with samples with different variances.
+
+%TODO: Reference to the Welch's and Student's test
+The default hypotheses for the test are:
 
 \[
 H_0: \mu_1 = \mu_2
@@ -217,13 +209,13 @@ H_1: \mu_1 \ne  \mu_2
 and the test statistics
 
 \[
-T = \sqrt{\frac{nm}{n + m}}\frac{\bar{X}_n + \bar{Y}_m}{S}
+T = \frac{\bar{X}_n + \bar{Y}_m}{S}
 \]
 
-where $\bar{X}_n$ and $\bar{Y}_m$ are the sample means and $S$ is the common variance estimate computed as a weighed average of the sample variances:
+where $\bar{X}_n$ and $\bar{Y}_m$ are the sample means and $S$ is the following:
 
 \[
-S^2 = \frac{1}{n + m -2} ((n-1)S_X^2 + (m-1)S_Y^2)
+S = \sqrt{\frac{S_X^2}{n} + \frac{S_Y^2}{m}}
 \]
 
 with $S_X^2$ and $S_Y^2$ being the sample variances:
@@ -235,11 +227,17 @@ S_X^2 = \frac{1}{n-1} \sum_{i=1}^{n}(X_i - \bar{X}_n)^2
 S_Y^2 = \frac{1}{m-1} \sum_{i=1}^{m}(Y_i - \bar{Y}_m)^2
 \]
 
+This test statistics can be estimated using Student's t-distribution with $df$ degrees of freedom for:
+
+\[
+df = \frac{(\frac{S_X^2}{n} + \frac{S_Y^2}{m})^2}{\frac{S_X^4}{n^2(n - 1)} + \frac{S_Y^4}{m^2(m - 1)}}
+\]
+
 The hypothesis $H_0$ will be rejected in favor of hypothesis $H_1$ with the significance level $\alpha$ if
 
-\[\abs{T} > t_{n + m - 2}(1-\frac{\alpha}{2})\]
+\[\abs{T} > t_{df}(1-\frac{\alpha}{2})\]
 
-The $t_{n + m - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n+m-2$ degrees of freedom.
+The $t_{df}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $df$ degrees of freedom.
 
 Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have significantly different expectations, i.e., one of the functions is expected to give better results than the other. In order to find out which of the functions is the favored one, we need to use a \textit{one-sided test}. To do so, we introduce additional hypotheses:
 
@@ -252,11 +250,11 @@ H_3: \mu_1 < \mu_2
 
 Now we can reject the hypothesis $H_0$ in favor of $H_2$ if
 
-\[T > t_{n + m - 2}(1-\alpha)\]
+\[T > t_{df}(1-\alpha)\]
 
 or reject the hypothesis $H_0$ in favor of $H_3$ if
 
-\[T < -t_{n + m - 2}(1-\alpha)\]
+\[T < -t_{df}(1-\alpha)\]
 
 By performing the \textit{one-sided tests} with $H_2$ and $H_3$ as alternatives, we can easily determine, which of the functions has lower expectation of run time and is a candidate to be selected to run with given certainty (the probability of $1-\alpha$).
 
