@@ -99,6 +99,9 @@ The main problem is that the linear regression model applied to a case where the
 
 In our application we do not care about the accuracy of the predicted value itself, we simply need to know if the prediction is significantly better than the prediction of the second model, taking into account the accuracy of both models. We would like to find a statistical method that could give us this answer.
 
+\subsubsection{Confidence interval based selection from two functions}
+\label{subsubsec:confidence_interval_selection}
+
 Suppose we have a linear regression model \(h'(x) = a' x + b'\) constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\epsilon_i = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation on the model.
 
 Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with n-2 degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests with $a$ and $b$. The default tests hypotheses have the following form:
@@ -130,6 +133,19 @@ Now in the situation where we have two regression models and we want to find the
 \end{itemize}
 
 In the first case, we can decide that the first model gives significantly better prediction and select the first function. In the second case, we cannot decide with given certainty.
+
+\subsubsection{Confidence interval based selection from multiple functions}
+
+The described methods allows us to decide between two functions with given certainty. Now, when choosing among $n$ functions with regressions $h'_1, ..., h'_n$ for given $x$, we are looking for the $k$ for which the following holds:
+
+\begin{itemize}
+	\item The confidence interval on level $1-\alpha$ for prediction $h'_k(x)$ does not overlap with any other of the confidence interval for prediction.
+	\item $\forall j \ne k: h'_k(x) < h'_j(x)$
+\end{itemize}
+
+We find it by preparing all the regressions and then $\forall i$ perform the comparison described in \ref{subsubsec:confidence_interval_selection} of $h_i$ with $h_j, \forall j \ne i$. If $h_i$ is better than all of the $h_j$, we can choose the corresponding function.
+
+The strength of this decision is influenced by the fact that we perform multiple confidence interval constructions - the errors an error in any of them can influence the result of the selection, se the significance gets lower in general. If we wanted the results to be precise, we would have to perform the correction of the significance level $\alpha$. In our case, however, we need the method to behave well in real cases, so we should probably decide on the $\alpha$ experimentally and by the system behavior observation.
 
 \subsection{Window-bound linear regression}
 \label{subsec:window_bound_regression}
