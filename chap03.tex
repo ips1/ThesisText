@@ -1,4 +1,4 @@
-\chapter{Adaptation API design and implementation}
+\chapter{API design and usage}
 \label{chapter:api}
 
 API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action.In our case, the API will be used to access functionality of our library from library user's own code. 
@@ -708,6 +708,7 @@ As a consequence, at the time of syntax analysis, the types aren't inferred yet 
 The method overloads have to share the same identifier, but in most typical cases, this isn't a problem. Otherwise, it can be solved by using custom identifiers.
 	
 \section{Delayed measuring}
+\label{sec:delayed_measuring}
 
 In some specific cases it might be useful to delay the measurement, or, in general, to measure invocation of a different function than the one that has multiple implementation. The implementations can affect something else than their own runtime. Some example use cases might be:
 
@@ -741,3 +742,7 @@ This approach has one main disadvantage compared to the rest of the API - it isn
 %TODO: Use cases - configuration generation, expression tree building, query building...
 
 %TODO: Problems - matching decision with measurement
+
+\section{Macros in API}
+
+%TODO: implicit conversions as macros, other problems arising
