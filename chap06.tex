@@ -444,6 +444,12 @@ As mentioned in section \ref{sec:predictive_strategies}, algorithm complexities 
 
 The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation of input factor changes and run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the factors.
 
+\subsection{Significance level analysis}
+
+The two main selection strategies used, linear regression and t-tests, have a significance level parameter for their decisions. The significance gets affected by performing multiple tests or confidence interval constructions during selection between more than two functions. The theory, as described in sections \ref{subsec:simple_linear_regression} and \ref{subsec:t_test_multiple}, would allow us to perform estimations of the impact of multiple function testing on the significance level, which would be quite complicated. 
+
+More interesting future work, however, might be based on experimentally determining the most appropriate values for various number of functions, based on real cases and real function behavior.
+
 \subsection{Implementation in other languages}
 
 The library is implemented in Scala and can be used by any JVM-based languages, even though often without the comfort that provides Scala with its implicits and eta-expansion.
