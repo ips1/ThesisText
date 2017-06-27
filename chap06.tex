@@ -304,7 +304,7 @@ The \textit{adaptive execution} feature is turned off by default. We can use Sca
 \end{itemize}
 We can try a custom value for these attributes in one of the ScalaAdaptive combinations.
 
-The usage of ScalaAdaptive in this case will, however, be a little more complicated. Some attributes of the Spark SQL configuration can be changed at any point in the execution, but doing so is not reliable, especially in large cluster - changes do not seem to be reflected immediately. A safer approach is to create the SparkSession already with the target configuration. If we create new session for each query, we can incorporate the session creation into the query function. If we, on the other hand, use one session for multiple queries, the only solution is the delayed measurement model, as described in section \ref{sec:delayed_measuring}. 
+The usage of ScalaAdaptive in this case will, however, be a little more complicated. Some attributes of the Spark SQL configuration can be changed at any point in the execution, but doing so is not reliable, especially in large cluster - changes do not seem to be reflected immediately. A safer approach is to create the SparkSession already with the target configuration. If we create new session for each query, we can incorporate the session creation into the query function. If we, on the other hand, use one session for multiple queries, the only solution is the delayed measurement model, as described in section \ref{subsec:delayed_measuring}. 
 
 The test was performed on a Dataset of records which was filtered, grouped by an attribute, the groups reduced to a single element and the result filtered again and counted. We tried to combine the following setups:
 

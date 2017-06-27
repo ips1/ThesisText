@@ -1,4 +1,5 @@
 \chapter{Scala programming language}
+\label{chap:scala}
 
 The adaptive library introduced in this work is created in Scala, an advanced programming language that is based on the JVM runtime. In this chapter, a brief overview of some of the language aspects that are important for the API design.
 
@@ -111,6 +112,20 @@ In this example, the conversion is implicitly applied to an argument of a method
 	\item There is an implicit typecast required from the expanded type to the parameter type.
 \end{enumerate}
 
+Unfortunately, the same kind of automatic expansion is not performed on the target of a method call. The following example will not compile:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val composed = method1 andThen method2
+\end{lstlisting}
+
+The explicit eta-expansion operator is needed for it in order to work.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val composed = method1 _ andThen method2
+\end{lstlisting}
+
 %TODO: Generic methods vs. functions
 
 %TODO: methods vs. functions in scala, eta expanstion
@@ -169,6 +184,7 @@ This approach allows us to use the infix syntax with existing methods and with m
 Scala does not directly support declaring extension methods on types (unlike C\#, Kotlin and other languages) and so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
 
 \section{Implicit typecasts}
+\label{sec:implicits}
 
 Scala allows defining a custom set of implicit typecasts that can be used to automatically convert between types. The typecast from type \inlinecode{T} to type \inlinecode{U} is a method or a function with one argument of type \inlinecode{T} and a return value of type \inlinecode{U} declared with the \inlinecode{implicit} attribute:
 

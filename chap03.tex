@@ -1,15 +1,20 @@
-\chapter{API design and usage}
+\chapter{API and the basic design}
 \label{chapter:api}
 
-API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action.In our case, the API will be used to access functionality of our library from library user's own code. 
+API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action. In our case, the API will be used to access functionality of our library from the user's own code.
 
-\section{Basic API requirements}
+One of the key tasks of this thesis is to research the potential possibilities of API for the adaptation framework, to design it to be as fluent and expressive as possible using the Scala programming language features described in chapter \ref{chap:scala} and to analyze the problems and limitations that it has. 
+Some key design decisions about the functionality of the entire framework that are tightly connected to the API design have to be discussed as well.
+
+\section{Design of the API}
+
+\subsection{Basic API requirements}
 
 The library itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations. The typical use-case of our API could be described in the following way:
 
 \textit{User has a class with two methods, \inlinecode{method1()} and \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.}
 
-The important point is that we want the result of combining the methods to be transparent, a part of the API. The caller shouldn't know and shouldn't have to know that he is calling a method that is somehow special. This allows us to locate the adaptation framework interaction to one place and gives us the possibility to quickly replace it or remove it completely.
+The important point is that we want the result of combining the methods to behave exactly like a normal function or method. The caller shouldn't know and shouldn't have to know that he is calling an object that is somehow special. This allows us to limit the adaptation framework interaction in our system to one place which could be hidden inside a separate module behind an interface, and gives us the possibility to quickly replace it or remove it completely.
 
 We can make a list of the \textbf{basic requirements}:
 \begin{enumerate}
@@ -18,32 +23,66 @@ We can make a list of the \textbf{basic requirements}:
 	\item Make some more complex configuration changes for the whole library
 \end{enumerate}
 
-\section{Goals of the API design}
+\subsection{Possible API drafts}
 
-For a library that will be used repeatedly by a variety of other developers, the API design is crucial and has two principal goals:
+The core part of the whole API and the mechanism that will define the usability of the framework is the method combination definition. JVM classes in general have the limitation that once they are loaded by a \textit{classloader}, they cannot be modified, and neither do their methods. Generating new methods at runtime is therefore extremely difficult. An alternative to that would be to create functions instead, which behave like normal Java objects\footnote{the difference between methods and functions in explained in section \ref{sec:metandfun}}. From the point of view of the potential caller, a function can be used almost identically as a method. 
+
+This leaves us with two basic approaches to the API.
+
+\subsubsection{API based on methods}
+
+This variant would have to be at least partially based on compile-time actions and would have to work with annotations (in case that we do not want to create custom language extensions).
+
+The combination definition could work roughly in the following way:
+\lstset{style=Scala}
+\begin{lstlisting}
+@ClassWithCombinations
+class Functions {
+  @CombineInto("combinedMethod")
+  def method1(arg: Int) = ???
+  
+  @CombineInto("combinedMethod")
+  def method2(arg: Int) = ???
+}
+\end{lstlisting}
+
+There are multiple ways of implementing such an API, we are going to discuss the following two:
 
 \begin{enumerate}
-	\item Keeping the API calls simple in basic use cases
-	\item Giving the caller freedom to customize more in more complicated use cases
+	\item Using Scala compile-time macros
+	\item Using aspect weaving
 \end{enumerate}
 
-% TODO: Macros
+Scala macros would be able to modify the AST of the \inlinecode{Functions} class to contain three methods (\inlinecode{method1}, \inlinecode{method2} and \inlinecode{combinedMethod}) with the same signature. The typecheck would be done during compile time in the macro execution. Notice a few problems and limitation that this solution has:
 
-\section{Possible API drafts}
+\begin{itemize}
+	\item The \inlinecode{@ClassWithCombinations} annotation would be necessary for each class that would contain the combined function, because the AST modification of the class can be done only when processing an annotation of the entire class
+	\item Consequentially, it would be possible to combine only methods within one class
+	\item The IDEs do not process the macros upon code inspections and code highlighting, and would mark the combined methods as non existing, which would be extremely inconvenient (this could potentially be fixed by adding a dummy implementation of the combined method, which would impose more work on the user)
+	\item The string-based name of the combined method is error prone - methods could be excluded from the combination due to typos in the name, or an existing method could be overwritten by mistake
+\end{itemize}
 
-\subsection{Method annotations}
+The second option of using an aspect weaver would lead to a very similar API with different limitations. The weaver does not allow us to modify the class and to generate a method, but can intercept calls of annotated methods using an annotation pointcut. We could either intercept all calls on the methods combined into the same group and use the selection mechanism every time (which would not allow the user to invoke any of the combined methods without the selection process), or have a dummy method with empty implementation, just like in the previous case, and intercept its calls. Looking for other methods with annotation from the pointcut would require us to use reflection.
 
-\subsection{Untyped reflection interface}
+\subsubsection{API based on functions}
 
-\subsection{Direct interaction}
+This option would work with functions as first-class values (and the runtime objects representing them). It might look the following way:
 
-\subsection{Function composition}
+\lstset{style=Scala}
+\begin{lstlisting}
+val function1 = ???
+val function2 = ???
+val combinedFunction = /* Expression to combine function1 and function2 */
+val result = combinedFunction(data)
+\end{lstlisting}
 
-Scala is a programming language that has absorbed a lot of concepts from the functional programming language world. Above all the key concept that functions are \textit{first-class values} and can be passed around the same way as code. A little complication is that functions and methods are a different concept in Scala (as explained in section \ref{sec:metandfun}). So let's first consider the case where we work solely with functions.
+The \inlinecode{combinedFunction} would be an object that would confirm to the \inlinecode{Function1} trait (see \ref{subsec:functiontypes}) and thus could be used as a normal function.
 
-The goal of our API is to allow the programmer to link together two or more functions and receive one universal function that will decide which one to call. This could be solved using a \textit{higher-order function}\footnote{A function whose arguments and return type are other functions.}, which is a common approach in functional languages, well known from list manipulating patterns like \textit{map}, \textit{filter}, or \textit{fold}.
+The main inconvenience of the design is that it works only with functions. Existing methods can be treated as functions using \textit{eta-expansion}(see section \ref{subsec:etaexpansion}), so methods can be combined as well almost with no effort. The other way around, creating a new method, is a little bit more complicated. Both will be discussed later.
 
-Scala supports this approach both in language features and in its standard libraries - as mentioned in \ref{sec:metandfun}, functions are first class values and can be arguments of other methods or functions. A simple example could be function composition, which is implemented as a method on the function type traits (see \ref{subsec:functiontypes}):
+Apart from these complications, this approach a lot of advantages. It can be used at runtime in any method to create a temporary function, the type checking and IDE tools work on it, it can be fluent and flexible. The combinations can be created anywhere in the code. And, in general, this approach fits the functional concept of Scala.
+
+The function combination expression technically has to be a higher-order function (or method) . We would like it to conform to the functional Scala design patterns. As an inspiration, lets have a look at a different case where we generate one function from two different ones - function composition. This can be done in Scala using a \inlinecode{andThen} method defined on the function type traits (see \ref{subsec:functiontypes}):
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -66,77 +105,145 @@ Chaining of the methods / operators is possible as well:
 val manyOperations = timesTwo andThen plusOne andThen plusOne andThen timesTwo
 \end{lstlisting}
 
-Inspired by this readable and very simple syntax to compose functions which relies on only the basic syntactic features of Scala, we can try to design the API of the selection mechanism in the exactly same way:
+Inspired by this readable and very simple syntax to compose functions which relies on only the basic syntactic features of Scala, we can try to design the combination expression exactly in the same way:
 
 \lstset{style=Scala}
 \begin{lstlisting}
-def or(fun: (T) => R): (T) => R = ???
-...
-val funAorB = funA or funB
+val combinedFunction = function1 or function2
 \end{lstlisting}
-
-\subsubsection{Advantages}
-\subsubsection{Disadvantages}
-\subsubsection{Consequences}
-
-\section{Scala API implementation}
 
 \subsection{Consequences of the choice}
 
-The \lstinline|or()| method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case, a function. More specifically, any of the function types mentioned in \ref{subsec:functiontypes}. Because Scala doesn't support extension methods, we need to introduce a new type for functions containing this behavior, and an implicit conversion from the normal function type.
+The \inlinecode{or} method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case a function. More specifically, all of the function types mentioned in \ref{subsec:functiontypes}. Because Scala doesn't support extension methods, we need to introduce a new type for functions containing this behavior, and an implicit conversion from the normal function type. We will use the same type as the type of a combined function - a \inlinecode{MultiFunctionN} type\footnote{Actually a set of types, one for each $N$, in this thesis only from $0$ to $5$}. The following is required:
 
-Theoretically, we need to cover all of the 23 original function type traits with custom type extensions, which will be mostly duplicated code - this reduces the maintainability and flexibility of the code. The trait files can be generated, but any change has to be reflected in the generating script first, before re-generating the code.
+\begin{itemize}
+	\item \inlinecode{FunctionN} is implicitly convertible into \inlinecode{MultiFunctionN}, creating a default with just one function
+	\item \inlinecode{MultiFunctionN} has an operator \inlinecode{or} that will combine it with a different \inlinecode{MultiFunctionN}, creating a new object with concatenation of the functions combined
+	\item \inlinecode{MultiFunctionN} will initiate the selection process upon calling \inlinecode{apply()}
+\end{itemize}
 
-\subsection{Using the API with methods}
-\label{subsec:apimethods}
+\subsection{Implementation}
 
-Another thing to consider is that in most cases, the selection mechanism will be used with methods, not functions. As mentioned in \ref{subsec:etaexpansion}, Scala allows a simple conversion from methods to functions, which can be implicit in some cases. It would be preferable to omit the explicit conversions wherever it's possible.
+The type \inlinecode{MultiFunctionN}, which will be the main part of the interface for the user, will be just a trait hiding a concrete implementation. The user should never come in contact with the actual implementation, as we do not want him to create instances of it manually. The implementation itself should wrap a list of functions from which to chose, along with some basic configuration, which will be discussed later.
 
-We can try combining methods with Scala function composition:
-\lstset{style=Scala}
-\begin{lstlisting}
-val composed = method1 andThen method2
+There are two ways for the user how to get a new \inlinecode{MultiFunctionN} instance:
+
+\begin{itemize}
+	\item By using the implicit conversion function
+	\lstset{style=Scala}
+	\begin{lstlisting}
+implicit def toMultiFunction1[T1, R](fun: (T1) => R): MultiFunction1[T1, R]
 \end{lstlisting}
+	\item By calling the \inlinecode{or} method
+		\lstset{style=Scala}
+	\begin{lstlisting}
+def or(fun: (T1) => R): MultiFunction1[T1, R]
+	\end{lstlisting}
+\end{itemize}
 
-This code won't compile with a suggestion to add the \lstinline|_| operator to \lstinline|method1| in order to treat it as a partially applied function (and to be able to call \lstinline|andThen()| method). Scala unfortunately doesn't perform implicit eta-expansion on the target of a method call. So after fixing the example, we get a fully working result:
+The implicit conversions have to be defined for all the function types separately as publicly accessible methods on an object\footnote{A Scala concept for singleton.}. For this purpose, a special object \inlinecode{Implicits} was introduced - it can be imported into any other Scala source file and the implicit conversions become active in this file (for more details see \ref{sec:implicits}).
 
-\lstset{style=Scala}
-\begin{lstlisting}
-val composed = method1 _ andThen method2
-\end{lstlisting}
+The conversion of \inlinecode{FunctionN} to \inlinecode{MultiFunctionN} should always check whether the \inlinecode{FunctionN} instance is not already a \inlinecode{MultiFunctionN} instance as well, and if so, just cast it instead of creating a new wrapper. The same should be done by the \inlinecode{or} function, which can just manually call the conversion on its argument.
 
-On \lstinline|method2|, the eta-expansion is performed implicitly, because it's an argument of a method without overloads.
-
-Now, in order to keep the same pattern working, we need to declare our \lstinline|or()| method in the following way:
-\lstset{style=Scala}
-\begin{lstlisting}
-trait FunctionAdaptor[T, R] extends (T) => R {
-  def or(fun: (T) => R): (T) => R = ???
-}
-\end{lstlisting}
-
-If there is a suitable implicit conversion from \lstinline|(T) => R| to \lstinline|FunctionAdaptor[T,R]|, it is possible to use it in the same way as the \lstinline|andThen()| method:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val fun = method1 _ or method2 or method3
-\end{lstlisting}
-
-Chaining in this case will not cause any problem, because the return value of the \lstinline|or()| method has the type of \lstinline|(T) => R| and can be combined again. It is, however, necessary to identify the case in the implementation and to handle it, otherwise, we would be building a tree of function pairs to choose from instead of choosing from all N values at once.
-
-Note that changing or overloading the \lstinline|or()| method to accept directly \lstinline|FunctionAdaptor[T,R]| to handle the chaining case would break the syntax, as there would be implicit typecast (or even a function overload) blocking the implicit eta-expansion (see \ref{subsec:etaexpansion}). The following example demonstrates the result:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-def or(fun: FunctionAdaptor[T,R]): (T) => R = ???
-...
-val fun = method1 _ or method2 _  or method3
-\end{lstlisting}
+Note that declaring the \inlinecode{or} method with \inlinecode{MultiFunctionN} argument directly instead of using the \inlinecode{FunctioN} argument (or its alias) and then manually converting it would cause some issues with implicit \textit{eta-expansion} that will be described later.
 
 %TODO: Def macros?
 %TODO: Move to a different section
 
-\section{The API problems and their solution}
+\section{Usage of the API}
+
+\subsection{Basic use cases}
+
+\subsubsection{Combining two functions}
+
+The most simple and straightforward use-case is to combine two functions previously stored in variables. We use the implicit type conversion and the \inlinecode{or} method.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+import scalaadaptive.api.Implicits._
+val combinedFunc = function1 or function2
+\end{lstlisting}
+
+The \inlinecode{function1} and \inlinecode{function2} have to have exactly the same type of \inlinecode{FunctionN}. The \inlinecode{combinedFunc} variable will have a type of \inlinecode{MultiFunctionN}. When exposing the resulting function in a public API, it might be better to enforce the \inlinecode{FunctionN} type for the variable or attribute:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val combinedFunc: Function1[Int, Int] = function1 or function2
+\end{lstlisting}
+
+This will ensure that the \inlinecode{MultiFunctioN} specific API will remain hidden unless having the \inlinecode{Implicits} explicitly imported again.
+
+\subsubsection{Combining multiple functions}
+
+The \inlinecode{or} calls can be chained and used to combine more than two functions in one expression.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+import scalaadaptive.api.Implicits._
+val combinedFunc = function1 or function2 or function3 or function4
+\end{lstlisting}
+
+\subsubsection{Combining function twice}
+
+A combined function can be combined again, no matter whether treated as \inlinecode{FunctionN} or \inlinecode{MultiFunctionN} in the meantime. The resulting combination will be the same as if the combination was done in one expression\footnote{Actually, the \inlinecode{or} call chain is exactly the same case, the \inlinecode{MultiFunctionN} instances are created one by one}.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+import scalaadaptive.api.Implicits._
+val combinedFunc1 = function1 or function2
+...
+combinedFunct1(...)
+...
+val combinedFunc2 = combinedFunc1 or function3 or function4
+\end{lstlisting}
+
+\subsubsection{Combining lambda expressions}
+
+Just like named function variables, lambda expressions can be combined directly.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+import scalaadaptive.api.Implicits._
+val combinedFunc = { () => obj1.call(...) } or { () => obj2.call(...) }
+\end{lstlisting}
+
+\subsubsection{Combining methods}
+\label{subsubsec:apimethods}
+
+This is expected to be the most common use-case - we have multiple methods and we want to combine them into a single combined function. As mentioned in \ref{subsec:etaexpansion}, the methods can be easily converted in functions, but unfortunately, in case of the implicit typecast and then a method call, the expansion is not done automatically on the first method. The second method, which is an argument, gets expanded.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val combinedFunc = obj.method1 _ or obj.method2
+\end{lstlisting}
+
+Note that if the \inlinecode{or} method accepted the \inlinecode{FunctionN} argument and rely on the implicit conversion of the argument as well (just like the call target does), its implicit \textit{eta-expansion} would get blocked and an operator \inlinecode{\_} would be needed as well:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val combinedFunc = obj.method1 _ or obj.method2 _
+\end{lstlisting}
+
+\subsubsection{Creating a method from combined function}
+
+Even though functions are so common in Scala, there might be situations where we would need to create a method from our combined function. Thanks to the simplified syntax that allows us to define the method body using a one-line expression, quite idiomatic way to create this combined method exists:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def combinedMethod(arg: T) = (function1 or function2)(arg)
+\end{lstlisting}
+
+The method body consists of creating the combined function object and then immediately applying it. Although this does look elegant, it has a major problem - the \inlinecode{MultiFunctionN} instance is created upon every invocation, which leads to an unnecessary overhead and to loss of all the data locally stored in the instance. In addition, there is no way to access the \inlinecode{MultiFunctionN} internal API (which will be described later).
+
+The preferred, a little less convenient way is to create a private field containing the combined function initialized in constructor and to delegate the method calls to it\footnote{It can be thought of as an analogy to the concept of \textit{property} and its \textit{backing field}}.
+ 
+ \lstset{style=Scala}
+ \begin{lstlisting}
+ private val combinedInner = function1 or function2
+ def combinedMethod(arg: T) = combinedInner(arg)
+ \end{lstlisting}
+ 
+ \subsection{Problematic cases}
 
 \subsection{Covariance and contravariance}
 %TODO: Object-oriented polymorphism
@@ -358,7 +465,7 @@ Unfortunately, a lot of the traits we need to provide implementations for are al
 \begin{lstlisting}
 private val adaptedFunction = impl1 _ or impl2
 override def testMethod(arg: List[Int]): List[String] = 
-  adaptedFunction(arg)
+adaptedFunction(arg)
 \end{lstlisting}
 
 %TODO: Add reference
@@ -375,340 +482,16 @@ override def testMethod(arg: List[Int]): List[String] =
 
 %TODO: Thread safety
 
-\section{Run history storage location}
-\label{sec:storing}
-
-The main concern of the selection mechanism design that is invisible to the user is all the data that will be gathered at runtime and used to select the appropriate variant. Assuming we have a function combined from two different implementations and it gets invoked at various points throughout the execution of the process, we have multiple options where to store the measurements.
-
-All of the options were actually implemented and the API allows the user to chose storage location for every usage of the combiner.
-
-\subsection{Local}
-
-The first and most straightforward approach is to store all the measured runtime data inside the function object itself - we have a custom type \inlinecode{FunctionAdaptor} that is hidden to the user and that carries the references to function implementation, so it could hold the measurements for them as well.
-
-The measurement data are specific for every instance of the adaptor and limited to it. This could have some use cases, for example classes that hold immutable data and provide some functionality that is based on the contained data, which is expected to be invoked repeatedly. The run history will then be specific for the data held by the instance and thus perfectly reflect performance in this one case.
-
-There is a limitation connected to this use case - user of the API himself has to make sure that the adaptor instance will survive and be used in every call. Let's consider the following example:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-def processData(data: List[Int]): Int = 
-  (impl1 _ or impl2 withStorage Storage.Local)(data)
-\end{lstlisting}
-
-In this case, during every invocation of the method \inlinecode{processData}, there will be new local instance of the \inlinecode{FunctionAdaptor} created by the \inlinecode{or} call. This instance will be used for the single call and then thrown away with the measured data. In order for this example to work properly, the adaptor has to be stored away:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val impl = impl1 _ or impl2 withStorage Storage.Local
-def processData(data: List[Int]): Int = impl(data)
-\end{lstlisting}
-
-\subsection{Global}
-
-Another option is to store all the measured data globally, in a static area of the memory accessible from all contexts. A unique identifier has to be used to identify every one of the functions and methods combined.
-
-The main advantage of this approach is that the run data are collected and stored from all invocation in the entire process, so there is more data to base the decision process on. This is usually the preferred approach for some business logic or utility methods in long-running services.
-
-\subsection{Persistent}
-
-The globally accessible runtime data can be 
-
-This would be most useful (and probably the only means of using the ScalaAdaptive) for short-running tools with more variants of implementing the main logic. If the logic is invoked only once (or only a couple of times) during one invocation, there will never be enough data collected in a single run and it is necessary to persist the run history, saving data from multiple runs.
-
-As the selection algorithms are delivering better results with growing data size, persisting the run history improves the selection mechanism in all the programs.
-
-What can be a little problematic is deciding on when to persist the data. The logical solution to minimize the time spent on writing data is to store the entire run history once at the end of execution of the program. The runtime support, however, doesn't have any method of detecting when the program is about to end - JVM doesn't guarantee finalizers being called and relying on notifications from the user would complicate the API and generally be problematic.
-
-The other approach is to update the persisted history with every run. Its downside is that the I/O operation might have negative impact on the performance if the function is called often and its run is fast. This impact can be limited by buffering the I/O - using the default Java I/O buffering mechanism would require leaving the file open for the entire application run, so custom buffer would be preferred. The buffer could be flushed upon every n-th write.
-
-There are more problems connected with this solution, namely:
-\begin{enumerate}
-\item Running multiple instances of the application at once (collisions on the persisted data file) - especially if the file is left open
-\item Changes in the application code (outdated run data, changed identifiers, etc.)
-\item ...
-\end{enumerate}
-%TODO: More
-
-\section{Run history storage identifiers}
-
-In the globally accessible run history data storage, the data have to be assigned to a specific function. A unique identifier that would be derivable from the function objects passed into the \inlinecode{FunctionAdaptor} is required, so that whenever an adapted function is being executed, the runtime can access its history. 
-
-In this case, references can't be used, because the \inlinecode{FunctionAdaptor} objects and the function objects wrapped inside can exist in multiple instances, can be deallocated and reallocated.
-
-\subsection{Type name}
-
-Functions in Scala are instances implementing the \inlinecode{FunctionN} trait. The default implementations are anonymous closure classes that are compiled from lambda expressions. Two different functions originated in two different lambda expressions and thus have two different type names, the ones that were generated and assigned by the compiler. The fully qualified type name can be used as the identifier of a function
-
-Using the type names as unique identifiers is safe and straightforward. A small disadvantage is that they aren't very readable, the compiler uses the name of the type that contained the lambda expression followed by sequential number. 
-
-There is also a subtle danger connected - in case of persisting the run history, the closure classes might get renamed automatically upon recompiling. The compiler usually assigns the closure names sequentially, so this could happen by just inserting another lambda expression into the enclosing class code before the current one. Run history data might even get mixed up as the newly added lambda expression could have the former name of the original closure (by taking its position in the sequence).
-
-If the \inlinecode{FunctionN} trait has a different than default implementation, the type name identification might fail - the trait can be implemented by a single class wrapping other values. In this case, all functions implemented by that class would share the run history.
-
-\subsection{Method name}
-\label{subsec:methodnameident}
-
-The most common usage pattern is the one where the functions used with the \inlinecode{or} method are eta-expanded methods (see \ref{subsec:apimethods}). The eta-expansion internally replaces the method name with a lambda expression wrapping the method call into a function. Consider the following example:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-def method(x: Int): Int = ???
-def printName[T, R](fun: (T) => R) =
-  println(fun.getClass.getTypeName)
-...
-printName(method)
-\end{lstlisting}
-
-Line 5 will print out \textit{Test\$\$anonfun\$main\$1}, a name of a closure class generated to encapsulate lambda expression. The closure itself gets compiled and so at runtime, there is no way of finding out, which method was called inside (i.e. which method it was expanded from).
-
-If we, in case of eta-expanded methods, use the type name identifier, we run into a little problem - if a method is used in multiple \inlinecode{or} expressions, a different closure class is generated for each expression where it's eta-expanded. So in the following example, run history data of \inlinecode{method1} wouldn't be shared for runs originating from \inlinecode{combined1} and \inlinecode{combined2}:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val combined1 = method1 _ or method2
-val combined2 = method1 _ or method3
-\end{lstlisting}
-
-More convenient would be to use directly the names of the methods that are being eta-expanded. The names have to be extracted at compile time, using the def macros (see \ref{sec:defmacros}). At the moment of implicit conversion from \inlinecode{FunctionN} to \inlinecode{FunctionAdapterN}, the AST\footnote{Abstract syntax tree.} of the \inlinecode{FunctionN} expression can be examined - if it's a lambda expression containing one method call, the method name can be extracted.
-
-Using method name identifier has some disadvantages as well. Firstly, all method overloads share the same identifier. Additionally, generic type arguments are not included in the identifier either.
-
-\subsection{Custom identifier}
-
-In order to handle the specific cases where type name and method name identifiers don't distinguish correctly between different functions, there is also a possibility of choosing a custom, arbitrary identifier. This has to be triggered specifically by the user in the API and should be used in the cases where:
-
-\begin{enumerate}
-	\item User knows that the automatically assigned identifiers won't be sufficient
-	\item User wants to replace default type identifier with custom identifier because of readability
-\end{enumerate}
-
 %TODO: Evaluation, advantages, disadvantages, generation
 
-\section{Extracting method name from eta-expansion AST}
+\section{Additional API features}
 
-In order to retrieve the method name to be used as an identifier (as explained in \ref{subsec:methodnameident}), we need to do the following:
+\subsection{Combined function configuration}
 
-\begin{enumerate}
-	\item Replace the implicit conversion method from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN} by a def macro (see \ref{sec:defmacros})
-	\item Inside the macro, analyze the AST, detect eta-expansion method call
-	\item If there is a method call:
-	\begin{enumerate}
-		\item Generate the identifier expression as a \inlinecode{getTypeName} call on the target of the method call, followed by the method name
-		\item Generate the conversion code with explicitly specified reference expression
-	\end{enumerate}
-	\item Otherwise generate the conversion code with implicit reference	
-\end{enumerate}
+\subsection{Analytics and control access}
 
-The conversion is done using the \inlinecode{toAdapter()} method with two overloads:
-\begin{itemize}
-	\item Accepting only the function - implicit reference is used (type name of the closure)
-	\item Accepting the function and a custom reference - the reference provided is used
-\end{itemize}
-
-\subsection{Eta-expansion AST format}
-
-First step in the macro implementation has to be parsing the input AST and detecting patterns that are generated from eta-expansions by the compiler. Using the \inlinecode{printAst()} macro mentioned in \ref{subsec:buildingast}, the following facts were discovered:
-
-\begin{itemize}
-	\item The eta-expansion is already replaced by the equivalent code in AST, so it can't be detected directly.
-	\item The result of eta-expansion is a lambda expression (function literal).
-\lstset{style=Dump}
-\begin{lstlisting}
-Function(...)
-\end{lstlisting}
-	\item The lambda expression is always wrapped in a block, being its return value.
-	
-\lstset{style=Dump}
-\begin{lstlisting}
-Block(
-  List(...), 
-  Function(...))
-\end{lstlisting}	
-	
-	\item If the target of the invocation is either a constant or \textit{this}, it is captured in the lambda expression closure (i.e., the constant or \textit{this} is referenced directly from the function body).
-	
-	\item If the target of the invocation is a variable or a result of a more complicated expression, it is extracted to the enclosing block, its result is stored in a variable local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function, and to avoid the target being changed throughout the lifetime of the function.
-	
-\lstset{style=Dump}
-\begin{lstlisting}
-Block(
-  List(
-    ValDef(
-      Modifiers(SYNTHETIC), 
-      TermName("eta$0$1"), 
-      TypeTree(), 
-      Apply(
-        Select(
-          This(
-            TypeName("ClassName")), 
-          TermName("getClassInstance")), 
-        List()))), 
-  Function(...))
-\end{lstlisting}
-
-	\item The function node contains argument definition and the expression itself, which is a single function application.
-
-\lstset{style=Dump}
-\begin{lstlisting}
-Function(
-  List(
-    ValDef(
-      Modifiers(PARAM | SYNTHETIC), 
-      TermName("arg"), 
-      TypeTree(), 
-      EmptyTree)), 
-  Apply(...))
-\end{lstlisting}
-
-	
-%	\item The lambda expression (function literal) generated for the eta-expansion contains only the method invocation and the type applications (if the method is generic) - all the other expressions that are part of the eta-expansion are extracted to an outer, enclosing block, their results are stored in variables local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function.
-\end{itemize}
-
-This has a few consequences for our case. We need to generate our conversion and method retrieval code into the block return value, because we need to be able to access the invocation targets that can be defined in the block itself. The target and the method name will always be in the single Apply node representing the function body.
-
-If the method doesn't accept any type arguments, the tree is quite simple:
-
-\lstset{style=Dump}
-\begin{lstlisting}
-Apply(
-  Select(
-    ...invocation target expression..., 
-    TermName("methodName")), 
-  List(...function arguments...))
-\end{lstlisting}
-
-Where the \textit{invocation target expression} can have multiple forms based on the original expression, and can depend on the enclosing block variables. It isn't, however, important for us, as we can work with the expression as whole. The function arguments are not needed either.
-
-If the method is generic, the type arguments need to be applied in order to convert it to a function (which can't be generic). In this case, the tree gets a little more complicated:
-
-\lstset{style=Dump}
-\begin{lstlisting}
-Apply(
-  TypeApply(
-    Select(
-      ...invocation target expression..., 
-      TermName("genericMethod")), 
-    List(...type arguments...))), 
-  List(...function arguments...))
-\end{lstlisting}
-
-The method call is wrapped in a TypeApply node before being invoked using the Apply node. The TypeApply node can in our case be ignored.
-
-And the most complicated case we can encounter is when the method has some implicit arguments as well:
-
-\lstset{style=Dump}
-\begin{lstlisting}
-Apply(
-  Apply(
-    TypeApply(
-      Select(
-        ...invocation target expression...,
-        TermName("genericMethodImplicit")), 
-      List(...type arguments...)), 
-    List(...function arguments...)), 
-  List(...implicit arguments...))
-\end{lstlisting}
-
-One more Apply node is added to the topmost level - the implicit arguments are applied after applying the actual function arguments. Their definition contains another nested block and lambda expression, but again, it is not necessary for our case. We just need to extract the invocation target and the method name.
-
-\subsection{Generating the conversion}
-
-Supposing we have the invocation target expression and the method name, we need to create the identifier string expression that will be used in the manual \inlinecode{toAdapter} invocation.
-
-In order to extract the fully qualified name of the method call target, we need to generate the following expression:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-invocationTarget.getClass.getTypeName + ".methodName"
-\end{lstlisting}
-
-The AST representing this expression has to be wrapped in the \inlinecode{MethodNameReference} construction application (it is a case class with automatically generated \inlinecode{apply()} method) to get the resulting reference.
-
-In all the cases, the \inlinecode{toAdapter} method has to be generated to replace the macro function. The function literal from the original AST has to be passed in as the first argument, and optionally, the second argument can be provided if the extraction of the method name was successful.
-
-The original simplified tree looks like this:
-
-\begin{forest}
-	[Block
-	  [Statements
-	    [ValDef]
-	  ]
-	  [Function]
-	]
-\end{forest}
-
-We need to transform the block, keeping the definition in the statement part, but wrapping the \inlinecode{Function} into the \inlinecode{toAdapter} call.
-	
-\begin{forest}
-	[Block
-	[Statements
-	[ValDef]
-	]
-	[Apply
-	  [toAdaptor]
-	  [ArgumentList
-	    [Function]
-	    [ExtractedReferenceExpression]
-	  ]
-	]
-	]
-\end{forest}
-
-\subsection{Extracting method overloads}
-
-The approach that was described so far has one small issue - it doesn't recognize function overloads, so all the overloads share the same identifier.
-
- It wouldn't be difficult to extract the actual number of arguments that the method is being invoked with and include it in the reference. When attempting to extract the argument types of the lambda expression, we encounter a major problem - the function literal is generated without argument type specification, the TypeTree is empty:
-
-\lstset{style=Dump}
-\begin{lstlisting}
-ValDef(
-  Modifiers(PARAM | SYNTHETIC), 
-  TermName("i"), 
-  TypeTree(), 
-  EmptyTree)
-\end{lstlisting}
-
-This can be done and is quite similar to the following piece of code:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val function: (Int) => Int = { i => math.abs(i) + 1 }
-\end{lstlisting}
-
-In this case, the lambda expression doesn't have the type of its arguments specified either, because the compiler will infer it from the context in which the expression is used, in this case, from the type specifier of the variable.
-
-The compiler is able to infer the data type from the usage of the argument as well:
-\lstset{style=Scala}
-\begin{lstlisting}
-def method(i: Int): Int = ???
-val function = { i => method(i) }
-\end{lstlisting}
-
-The previous piece of code is correctly compiled by the Scala compiler, although some IDEs (namely IntelliJ IDEA 2016.3.4) aren't able to infer the type and mark the code as incorrect.
-
-Note that the eta-expansion is guided by the same rules, so whenever expanding a method without overloads, the compiler infers the types by itself:
-\lstset{style=Scala}
-\begin{lstlisting}
-def method(i: Int): Int = ???
-val function = method _
-\end{lstlisting}
-
-Upon expansion of a method with overloads, the resulting function type has to be provided and the inference flow goes in the other direction:
-\lstset{style=Scala}
-\begin{lstlisting}
-def method(i: Int): Int = ???
-def method(s: String): Int = ???
-val function: (String) => Int = method _
-\end{lstlisting}
-
-As a consequence, at the time of syntax analysis, the types aren't inferred yet and there is no way for us to find out which method overload is being called.
-
-The method overloads have to share the same identifier, but in most typical cases, this isn't a problem. Otherwise, it can be solved by using custom identifiers.
-	
-\section{Delayed measuring}
-\label{sec:delayed_measuring}
+\subsection{Delayed measuring}
+\label{subsec:delayed_measuring}
 
 In some specific cases it might be useful to delay the measurement, or, in general, to measure invocation of a different function than the one that has multiple implementation. The implementations can affect something else than their own runtime. Some example use cases might be:
 
@@ -721,7 +504,7 @@ In some specific cases it might be useful to delay the measurement, or, in gener
 
 It is obvious that our API, which was designed to remain as simple as possible, doesn't support this case. We need to slightly extend it.
 
-\subsection{Decision context}
+\subsubsection{Decision context}
 
 Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the library has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
 
@@ -742,7 +525,3 @@ This approach has one main disadvantage compared to the rest of the API - it isn
 %TODO: Use cases - configuration generation, expression tree building, query building...
 
 %TODO: Problems - matching decision with measurement
-
-\section{Macros in API}
-
-%TODO: implicit conversions as macros, other problems arising
