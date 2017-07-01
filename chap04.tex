@@ -1,4 +1,5 @@
 \chapter{Deciding between function}
+\label{chap:deciding}
 
 The key purpose of the ScalaAdaptive library is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, etc. All these factors can be valuable and be the goal of the system run optimization.
 
@@ -350,7 +351,7 @@ If we reduce the window size to a constant 0, we will get a method in which only
 
 \section{Strategy comparison}
 
-The predictive strategies do not handle well more historical results for the same \textit{input descriptor}.
+In general, the predictive strategies do not handle well more historical results for the same \textit{input descriptor}, and are impossible to use when there is none specified. The following rules should be used to decide between predictive and non-predictive strategies:
 
 \begin{itemize}
 	\item \textbf{Dependency on the input} \\
@@ -358,6 +359,67 @@ The predictive strategies do not handle well more historical results for the sam
 	\item \textbf{Expected input values} \\
 	If the function is expected to be invoked with a discrete and very limited set of inputs, non-predictive strategy is preferred. On the other hand, if the function will be called repeatedly with randomly distributed inputs, the predictive strategies are a better choice.
 \end{itemize}
+
+As we introduced only one non-predictive strategy independent on the input, there is not much of a choice. In the field of predictive strategies, on the other hand, is a choice of at least three.
+
+\subsection{Predictive strategy success rate}
+
+To compare the efficiency of the selection strategies, we used an artificial scenario with two functions. One with linear complexity that computes a sum of $n$ random numbers for an input $n$. The other computes a sum of $n * k$ random numbers for an input $n$, where $k$ is an \textit{error factor} determining how much slower the function is. We would expect the selection strategy to always pick the first function, so we will track the number of wrong decisions (i.e. number of times the strategy selects the second function) for the three predictive strategies and for various \textit{error factor} values.
+
+We will use the values 4, 2, 1.5, 1.2 and 1.1 for $k$ and for each of them generate 5 sequences of 200 inputs. Then, we will use each of the selection strategies on all the sequences, flushing the run history in between. There is a minimum of 30 records in the function history before the decision process starts, so the actual decision will take place only on 140 inputs in each sequence.
+
+The results for the described text after adding up the wrong decision numbers for all 5 sequences can be found in table \ref{tab:strategy_comparison}. The numbers shown are the numbers of times the slower function was selected out of 700 in total, along with the percentage. The strategies used are the linear regression (LR) with $\alpha = 0.05$, window-bound linear regression with $\alpha = 0.05$ and the local regression (LOESS).
+
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centering
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{tabular}{|r|r|r|r|}
+		\hline
+		\multicolumn{1}{|l|}{} & \multicolumn{1}{c|}{\textbf{LR}} & \multicolumn{1}{c|}{\textbf{Window-bound LR}} & \multicolumn{1}{c|}{\textbf{LOESS}} \\ \hline
+		\textbf{4x}            & 107 (15.3\%)                     & 35 (5.0\%)                                    & 156 (22.3\%)                        \\ \hline
+		\textbf{2x}            & 207 (29.6\%)                     & 97 (13.9\%)                                   & 20 (2.9\%)                          \\ \hline
+		\textbf{1.5x}          & 254 (36.3\%)                     & 127 (18.1\%)                                  & 24 (3.4\%)                          \\ \hline
+		\textbf{1.2x}          & 256 (36.6\%)                     & 251 (35.9\%)                                  & 77 (11.0\%)                         \\ \hline
+		\textbf{1.1x}          & 321 (45.9\%)                     & 351 (50.1\%)                                  & 160 (22.9\%)                        \\ \hline
+	\end{tabular}
+	\egroup
+	\caption{Number of times each selection strategy selected the slower function (out of 700 counted selections).}
+	\label{tab:strategy_comparison}
+\end{table}
+
+As we can see, even though the function complexity is linear, the linear regression has a 15\% error rate on a 4 times slower function. The window-bound linear regression has a lot better results on a significantly slower function (the $k=2$ and $k=4$ cases). Both the linear regression and the window-bound linear regression fail on the function with smallest difference, most likely because of the significance level interval testing. Adjusting $\alpha$ might increase the success rate in these cases. The local regression is the clear winner in all the cases except for the first one, where the model on one of the 5 sequences made 139 wrong decisions out of 140 calls in total. This demonstrates a complete failure of the model and a problem caused by not having any tests for certainty in the strategy.
+
+In conclusion, the overall best results are provided by the local regression strategy, although it is a little error-prone. The window-bound linear regression is worse, but still usable, especially in case of more significant differences between the functions.
+
+\subsection{Strategy performance}
+
+When deciding for one of the strategies, there is another concern that we should keep in mind. The strategies tend to be quite complex and their execution time might become non-trivial. As they need to process the entire run history of each of the functions, their selection times increase over time, as more historical measurements are collected.
+
+For some of the strategies, it is possible to compute and cache some of the statistical data in advance, at the moment of storing newly measured data, allowing them to avoid processing all the records again during the selection. From our strategy list, this is possible to be done for the linear regression and the t-tests. Unfortunately, neither the window-bound strategies, nor the local regression support this approach.
+
+To compare the practical overheads, we ran the selection using each of the strategies 20000 times in a row (while evaluating the runs and adding new data in the process). The resulting average selection strategy run times from samples collected every 50 runs are in table \ref{tab:strategy_execution_comparison}.
+
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centering
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{tabular}{|l|r|r|}
+		\hline
+		& \multicolumn{1}{l|}{\textbf{Not cached}} & \multicolumn{1}{l|}{\textbf{Cached}} \\ \hline
+		\textbf{Linear regression} & 3.31                                   & 0.35                                 \\ \hline
+		\textbf{Window-bound LR}   & 1.29                                   & N/A                                  \\ \hline
+		\textbf{LOESS}             & 136.43                                 & N/A                                  \\ \hline
+		\textbf{T-test}            & 2.25                                   & 0.21                                 \\ \hline
+	\end{tabular}
+\egroup
+\caption{Average strategy selection time (in ms) in a sequence of 20000 consecutive selections.}
+\label{tab:strategy_execution_comparison}
+\end{table}
+
+The results are showing that local regression has extremely high run times that can grow above 100ms with larger numbers of run history records. An overhead of around 100ms on every selection would be too high for most common usages, so the local regression strategy, even though it had the best success rate, should be used with extreme caution and only in cases where it is clear that overheads this high cannot damage the system performance. As for the remaining strategies, it seems that caching speeds up the selection about 10 times. The window-bound linear regression cannot be improved by the caching (as the regression done for each input is potentially different), but has the lowest execution time of all the not cached strategies, and therefore is quite usable.
 
 \section{Invocation policies}
 
@@ -395,7 +457,7 @@ The only input that the \textit{policy} receives when making decision is a stati
 	\label{fig:run_schema}
 \end{figure}
 
-On the other hand, the \textit{policies} are a handy tool to limit the damage of the selection process on the system. For this, it is necessary to observe and to store various times connected with the selection and execution. Figure \ref{fig:run_schema} shows the whole process with policy being evaluated with the SelectNew result, split into individual parts. Upon every invocation, the following is tracked:
+On the other hand, the \textit{policies} are a suitable tool to limit the potential damage of the selection process on the system. For this, it is necessary to observe and to store various times connected with the selection and execution. Figure \ref{fig:run_schema} shows the whole process with policy being evaluated with the SelectNew result, split into individual parts. Upon every invocation, the following is tracked:
 
 \begin{itemize}
 	\item Selection and run history storage time (2 and 4)
