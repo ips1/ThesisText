@@ -412,6 +412,10 @@ As part of future work on the library, there could be a Java API added, enabling
 
 \subsection{Extending the policy logic and connecting it to selectors}
 
+\subsection{Improving the persistent storage}
+
+The run data in the persistent storage are currently stored in CSV file format, which is not very fast to serialize and deserialize. In addition, the serialization buffering is done in a very basic way, leading to a loss of run data when the application ends with a non-empty buffer. In addition, this solution still has a non-trivial overhead. A potential improvement task might be to select a new format and a method how to flush the buffer upon closing the application, i.e. using JVM shutdown hooks.
+
 \subsection{Thread safety and concurrency}
 
 The framework in general currently is not thread safe. It is designed, however, to be possible to make it that way without the necessity for some major changes. For the possibility to safely use the framework from a multi-threaded environment, we would need to ensure three basic points:
