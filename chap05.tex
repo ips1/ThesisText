@@ -7,6 +7,7 @@ The main concerns upon implementing the library were the following:
 
 \begin{itemize}
 	\item To separate the API from the selection logic
+	\item To keep the library strongly typed and use static type checking even in the internals
 	\item To make the library as extensible as possible
 	\item To keep the library overhead as low as possible
 	\item To use the Scala language features to make the code simpler and easier to maintain
@@ -28,75 +29,118 @@ The library is designed so that the number of exceptions handled in the code was
 
 This approach is known from the functional programming and takes advantage of monadic operations over the \textit{Option monad}\footnote{In Haskell and other languages known as Maybe monad.}. The return values can be mapped over using the \textit{bind} operator, which allows smooth function chaining and the error propagation through the chain.
 
-\section{Main architecture}
-\subsection{API implementation}
-\subsubsection{MultiFunctions and FunctionAdaptors}
-\subsubsection{FunctionConfig}
-\subsection{History storage}
+\section{Architecture overview}
 
-\subsection{Run history storage location}
+This section will provide brief overview of the entire framework architecture and related decisions. More detailed description at the level of individual classes can be found in the documentation.
+%TODO: Documentation reference
+
+\subsection{API architecture}
+
+As briefly described in section \ref{subsec:api_implementation}, the public API of the framework is represented by a set of traits \inlinecode{MultiFunction0}, ..., \inlinecode{MultiFunction5}, which expose all the user accessible methods. Because only some of the methods depend on the number of input arguments, the part of the API that can be generalized was extracted into a common trait \inlinecode{MultiFunctionCommon}, which is parametrized by the function type that extends it. 
+
+The \inlinecode{MultiFunctionN} traits are implemented by a set of classes called \inlinecode{FunctionAdaptorN}. This is the default implementation directly inaccessible to the user. This separation allows us to modify or extend the internal API of the \inlinecode{FunctionAdaptorN} classes without changing the public API. The methods that can be implemented independently on the number of input arguments are implemented in an abstract class \inlinecode{FunctionAdaptorBase} that the other classes inherit from.
+
+It would be quite impractical to manipulate with N different classes that represent the combined functions inside the internal parts of the framework. Therefore, the actual class holding the functions, \inlinecode{CombinedFunction}, is wrapped inside each one of the \inlinecode{FunctionAdaptorN} and is parametrized by the tuple type consisting of all the N arguments of the original function, and by the return type. All the functions are converted into functions of type \inlinecode{(TArgType) => TRetType} in the following way:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val tupleFunction = (tupleArg) => function(tupleArg._1, ..., tupleArg._n)
+\end{lstlisting}
+	
+The whole inner part of our framework works only with these \inlinecode{CombinedFunction} types and therefore with functions of type \inlinecode{(TArgType) => TRetType}. Individual function adaptor classes perform the composition of the arguments into the tuple version before propagating the call further whenever a method depending on the argument number is invoked.
+
+The figure \ref{fig:inheritance_function_adaptors} shows this inheritance scheme.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{\mbox{\includegraphics[width=140mm]{./img/inheritance_function_adaptors.png}}}
+	\caption{Diagram showing the inheritance chain of MultifFunctionN and related classes.}
+	\label{fig:inheritance_function_adaptors}
+\end{figure}
+
+\subsection{Internal architecture}
+\label{subsec:internal_architecture}
+
+The simplified internal architecture can be seen in the figure \ref{fig:internal_architecture}. It shows the core chain that is executed when a combined function, represented as a \inlinecode{MultiFunctionN} to the user, but internally stored as a \inlinecode{CombinedFunction} instance, is called.
+
+As we can see, there are two principal logic units participating in the process:
+
+\begin{enumerate}
+	\item \textbf{\inlinecode{CombinedFunctionInvoker}} \\
+	Supposed to make a quick decision based on the policy of the combined function. It should either directly invoke one of the functions, or delegate the call to the \inlinecode{AdaptiveSelector}, and update the statistics of the combined function afterwards. It works only with the data directly stored in the \inlinecode{CombinedFunction} instance, it does not have any state or shared storage.
+	\item \textbf{\inlinecode{AdaptiveSelector}} \\
+	The key component of the framework, it receives a set of functions and an input, and it should decide which one of them to run and to execute it, evaluate the function run and return the result. The default implementation works with an abstract history storage (\inlinecode{HistoryStorage}) a pair of selection strategies (\inlinecode{SelectionStrategy}) and an evaluator (\inlinecode{EvaluationProvider}).
+\end{enumerate}
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{\mbox{\includegraphics[width=140mm]{./img/internal_architecture.png}}}
+	\caption{Diagram showing the internal architecture of the ScalaAdaptive framework.}
+	\label{fig:internal_architecture}
+\end{figure}
+
+\section{Implementation options}
+
+\subsection{HistoryStorage location}
 \label{subsec:storing}
 
-The main concern of the selection mechanism design that is invisible to the user is all the data that will be gathered at runtime and used to select the appropriate variant. Assuming we have a function combined from two different implementations and it gets invoked at various points throughout the execution of the process, we have multiple options where to store the measurements.
-
-All of the options were actually implemented and the API allows the user to chose storage location for every usage of the combiner.
+\inlinecode{HistoryStorage} is supposed to gather and store history data for all functions that are invoked using a combined function. The question is, where to save the data and how accessible to make it.
 
 \subsubsection{Local}
 
-The first and most straightforward approach is to store all the measured runtime data inside the function object itself - we have a custom type \inlinecode{FunctionAdaptor} that is hidden to the user and that carries the references to function implementation, so it could hold the measurements for them as well.
+First option is to make the storage part of the \inlinecode{CombinedFunction} itself. In this case, the history data would, just like the statistics, be unique for every instance of the class, i.e. for every \inlinecode{MultiFunctionN} created by the user of the library. This has two consequences:
 
-The measurement data are specific for every instance of the adaptor and limited to it. This could have some use cases, for example classes that hold immutable data and provide some functionality that is based on the contained data, which is expected to be invoked repeatedly. The run history will then be specific for the data held by the instance and thus perfectly reflect performance in this one case.
+\begin{itemize}
+	\item A function will have separate histories for every use in a combined function
+	\item Every new instance of a combined function will have an entirely new history for all the functions
+\end{itemize}
 
-There is a limitation connected to this use case - user of the API himself has to make sure that the adaptor instance will survive and be used in every call. Let's consider the following example:
+The second consequence might lead to some unexpected behavior - for example, if we create a combined function inside of a method call as described in section \ref{subsubsec:method_from_combined_func} and call it just once, it will have a clear history every time and will be useless:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 def processData(data: List[Int]): Int = 
-(impl1 _ or impl2 withStorage Storage.Local)(data)
+  (impl1 _ or impl2 withStorage Storage.Local)(data)
 \end{lstlisting}
 
-In this case, during every invocation of the method \inlinecode{processData}, there will be new local instance of the \inlinecode{FunctionAdaptor} created by the \inlinecode{or} call. This instance will be used for the single call and then thrown away with the measured data. In order for this example to work properly, the adaptor has to be stored away:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val impl = impl1 _ or impl2 withStorage Storage.Local
-def processData(data: List[Int]): Int = impl(data)
-\end{lstlisting}
+Some use cases for this configuration exist, e.g. if we have a class that holds some immutable data and we keep executing some computations on the data, then a combined function defined as a field on this class with local storage will adapt specifically to the data of the class and does not need predictive strategies.
 
 \subsubsection{Global}
 
-Another option is to store all the measured data globally, in a static area of the memory accessible from all contexts. A unique identifier has to be used to identify every one of the functions and methods combined.
-
-The main advantage of this approach is that the run data are collected and stored from all invocation in the entire process, so there is more data to base the decision process on. This is usually the preferred approach for some business logic or utility methods in long-running services.
+Another option is to store all the measured data globally, in a static area of the memory accessible from all contexts. This will allow to collect run data for functions faster and share them across all the combined functions, which usually leads to more informed and more precise decisions. This is usually the preferred approach for some business logic or utility methods in long-running services. A unique identifier has to be used to match the function history record with the actual function in the \inlinecode{CombinedFunction} class. The selection of the identifier will be discussed later.
 
 \subsubsection{Persistent}
 
-The globally accessible runtime data can be 
+The biggest problem of the discussed storage location is that the run history data are available only during a single run of the application. Whenever the application restarts, it will have to collect the data again. This might not be a problem for some long running services or daemons, but it is not very convenient for some tools or client applications with shorter lifecycle.
 
-This would be most useful (and probably the only means of using the ScalaAdaptive) for short-running tools with more variants of implementing the main logic. If the logic is invoked only once (or only a couple of times) during one invocation, there will never be enough data collected in a single run and it is necessary to persist the run history, saving data from multiple runs.
+A solution to the problem is storing the data in a persistent storage, most likely on the HDD. We can do it in three different ways:
 
-As the selection algorithms are delivering better results with growing data size, persisting the run history improves the selection mechanism in all the programs.
-
-What can be a little problematic is deciding on when to persist the data. The logical solution to minimize the time spent on writing data is to store the entire run history once at the end of execution of the program. The runtime support, however, doesn't have any method of detecting when the program is about to end - JVM doesn't guarantee finalizers being called and relying on notifications from the user would complicate the API and generally be problematic.
-
-The other approach is to update the persisted history with every run. Its downside is that the I/O operation might have negative impact on the performance if the function is called often and its run is fast. This impact can be limited by buffering the I/O - using the default Java I/O buffering mechanism would require leaving the file open for the entire application run, so custom buffer would be preferred. The buffer could be flushed upon every n-th write.
-
-There are more problems connected with this solution, namely:
 \begin{enumerate}
-	\item Running multiple instances of the application at once (collisions on the persisted data file) - especially if the file is left open
-	\item Changes in the application code (outdated run data, changed identifiers, etc.)
-	\item ...
+	\item Immediately persist each run history record
+	\item Persist all of the records when the application terminates
+	\item Buffer the history records and persist them in batches
 \end{enumerate}
-%TODO: More
 
+The first option seems like the best one, but it would lead to a series of I/O operations upon every invocation of a combined function. The added overhead of this solution would be dramatic. The second option, on the other hand, has no runtime overhead at all, but it requires a possibility to detect an application termination from our framework. JVM does not guarantee finalizers being called and relying on notifications from the user would complicate the API and generally be problematic. There is a mechanism in JVM called \textit{shutdown hooks} that allow the user to perform a custom action on shutdown, but it will not be called when the application crashes. Additionally, it might be unexpected from a library to perform actions on shutdown and the delay that caused by persisting a lot of run data on a slow HDD (or even a network drive) could lead to the application being terminated immediately in some automatized environments.
+Therefore, the third option was selected, as it leads to the runs being regularly saved and the I/O overhead is lower.
 
-\subsection{Run history storage identifiers}
+This solution relies on the unique function identifier as well. There are additional problems connected to persisting the run history, namely:
+\begin{itemize}
+	\item Running multiple instances of the application at once (collisions on the persisted data file)
+	\item Changes in the application code (outdated run data, changed identifiers, etc.)
+	\item Having to deal with larger amounts of history data
+\end{itemize}
 
-In the globally accessible run history data storage, the data have to be assigned to a specific function. A unique identifier that would be derivable from the function objects passed into the \inlinecode{FunctionAdaptor} is required, so that whenever an adapted function is being executed, the runtime can access its history. 
+\subsection{History storage function identifiers}
+\label{subsec:function_identifiers}
 
-In this case, references can't be used, because the \inlinecode{FunctionAdaptor} objects and the function objects wrapped inside can exist in multiple instances, can be deallocated and reallocated.
+As described in section \ref{subsec:storing}, we need some sort of identifier of the function to be able to store the run history data in a global or persistent storage. It does not make sense to use the references to the function objects, as new closures are created every time a lambda expression (or an eta-expanded method) is assigned.
 
-\subsection{Type name}
+%TODO: Reference an example?
+
+This leaves us with three basic identifier options.
+
+\subsubsection{Type name}
 
 Functions in Scala are instances implementing the \inlinecode{FunctionN} trait. The default implementations are anonymous closure classes that are compiled from lambda expressions. Two different functions originated in two different lambda expressions and thus have two different type names, the ones that were generated and assigned by the compiler. The fully qualified type name can be used as the identifier of a function
 
@@ -106,49 +150,36 @@ There is also a subtle danger connected - in case of persisting the run history,
 
 If the \inlinecode{FunctionN} trait has a different than default implementation, the type name identification might fail - the trait can be implemented by a single class wrapping other values. In this case, all functions implemented by that class would share the run history.
 
-\subsection{Method name}
+Last but not least, every time a method gets eta-expanded, a new lambda expression with new type name is generated, so in the following case, the \inlinecode{method1} would not have the same identifier in the two combined functions:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val fun1 = method1 _ or method2
+val fun2 = method1 _ or method3
+\end{lstlisting}
+
+\subsubsection{Method name}
 \label{subsec:methodnameident}
 
-The most common usage pattern is the one where the functions used with the \inlinecode{or} method are eta-expanded methods (see \ref{subsubsec:apimethods}). The eta-expansion internally replaces the method name with a lambda expression wrapping the method call into a function. Consider the following example:
+The most common usage pattern is the one where the functions used with the \inlinecode{or} method are \textit{eta-expanded} methods (see \ref{subsubsec:apimethods}). It would be handy to use the method name as an identifier in such a case, which would lead to a better readability and allow the same method used in different combined functions to have just one run history.
 
-\lstset{style=Scala}
-\begin{lstlisting}
-def method(x: Int): Int = ???
-def printName[T, R](fun: (T) => R) =
-println(fun.getClass.getTypeName)
-...
-printName(method)
-\end{lstlisting}
+The problem is that at runtime, the implicit type conversion method or the \inlinecode{or} method will always get the already \textit{eta-expanded} function object with a compiled \inlinecode{apply} method. The names have to be extracted at compile time, using the def macros (see \ref{sec:defmacros}). At the moment of implicit conversion from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN}, the AST\footnote{Abstract syntax tree.} of the \inlinecode{FunctionN} expression can be examined - if it's a lambda expression containing one method call, the method name can be extracted.
 
-Line 5 will print out \textit{Test\$\$anonfun\$main\$1}, a name of a closure class generated to encapsulate lambda expression. The closure itself gets compiled and so at runtime, there is no way of finding out, which method was called inside (i.e. which method it was expanded from).
+\subsubsection{Custom identifier}
 
-If we, in case of eta-expanded methods, use the type name identifier, we run into a little problem - if a method is used in multiple \inlinecode{or} expressions, a different closure class is generated for each expression where it's eta-expanded. So in the following example, run history data of \inlinecode{method1} wouldn't be shared for runs originating from \inlinecode{combined1} and \inlinecode{combined2}:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val combined1 = method1 _ or method2
-val combined2 = method1 _ or method3
-\end{lstlisting}
-
-More convenient would be to use directly the names of the methods that are being eta-expanded. The names have to be extracted at compile time, using the def macros (see \ref{sec:defmacros}). At the moment of implicit conversion from \inlinecode{FunctionN} to \inlinecode{FunctionAdapterN}, the AST\footnote{Abstract syntax tree.} of the \inlinecode{FunctionN} expression can be examined - if it's a lambda expression containing one method call, the method name can be extracted.
-
-Using method name identifier has some disadvantages as well. Firstly, all method overloads share the same identifier. Additionally, generic type arguments are not included in the identifier either.
-
-\subsection{Custom identifier}
-
-In order to handle the specific cases where type name and method name identifiers don't distinguish correctly between different functions, there is also a possibility of choosing a custom, arbitrary identifier. This has to be triggered specifically by the user in the API and should be used in the cases where:
+In order to handle the specific cases where type name and method name identifiers do not distinguish correctly between different functions, there is also a possibility of choosing a custom, arbitrary identifier. This has to be triggered specifically by the user in the API and should be used in the cases where:
 
 \begin{enumerate}
-	\item User knows that the automatically assigned identifiers won't be sufficient
+	\item User knows that the automatically assigned identifiers will not be sufficient
 	\item User wants to replace default type identifier with custom identifier because of readability
 \end{enumerate}
 
 \section{Extracting method name from eta-expansion AST}
 
-In order to retrieve the method name to be used as an identifier (as explained in \ref{subsec:methodnameident}), we need to do the following:
+We would like to extract the method name in the process of conversion from \inlinecode{FunctionN} to the \inlinecode{MultiFunctionN}. To achieve that, we are going to have to modify the conversion process in the following way:
 
 \begin{enumerate}
-	\item Replace the implicit conversion method from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN} by a def macro (see \ref{sec:defmacros})
+	\item Replace the implicit conversion method from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN} by a def macro (see \ref{sec:defmacros}) and extract the conversion logic into a different, non-implicit method (in our case, the Conversions singleton object methods \inlinecode{toAdaptor()})
 	\item Inside the macro, analyze the AST, detect eta-expansion method call
 	\item If there is a method call:
 	\begin{enumerate}
@@ -158,7 +189,7 @@ In order to retrieve the method name to be used as an identifier (as explained i
 	\item Otherwise generate the conversion code with implicit reference	
 \end{enumerate}
 
-The conversion is done using the \inlinecode{toAdapter()} method with two overloads:
+The conversion is done using the \inlinecode{toAdaptor()} method with two overloads:
 \begin{itemize}
 	\item Accepting only the function - implicit reference is used (type name of the closure)
 	\item Accepting the function and a custom reference - the reference provided is used
@@ -186,7 +217,7 @@ Block(
 	
 	\item If the target of the invocation is either a constant or \textit{this}, it is captured in the lambda expression closure (i.e., the constant or \textit{this} is referenced directly from the function body).
 	
-	\item If the target of the invocation is a variable or a result of a more complicated expression, it is extracted to the enclosing block, its result is stored in a variable local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function, and to avoid the target being changed throughout the lifetime of the function.
+	\item If the target of the invocation is a variable or a result of a more complicated expression, it is extracted to the enclosing block, its result is stored in a variable local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function, and to avoid the target being changed throughout the lifetime of the function. The following example shows the target being a result of an expression \inlinecode{this.getInstance()} on a \inlinecode{Class} class.
 	
 \lstset{style=Dump}
 \begin{lstlisting}
@@ -199,8 +230,8 @@ Block(
       Apply(
         Select(
           This(
-            TypeName("ClassName")), 
-          TermName("getClassInstance")), 
+            TypeName("Class")), 
+          TermName("getInstance")), 
         List()))), 
   Function(...))
 \end{lstlisting}
@@ -218,9 +249,6 @@ Function(
       EmptyTree)), 
   Apply(...))
 \end{lstlisting}
-
-	
-%	\item The lambda expression (function literal) generated for the eta-expansion contains only the method invocation and the type applications (if the method is generic) - all the other expressions that are part of the eta-expansion are extracted to an outer, enclosing block, their results are stored in variables local to the block and then captured in the lambda expression closure. The reason is probably to avoid multiple evaluation of expressions with possible side-efects upon every invocation of the resulting function.
 \end{itemize}
 
 This has a few consequences for our case. We need to generate our conversion and method retrieval code into the block return value, because we need to be able to access the invocation targets that can be defined in the block itself. The target and the method name will always be in the single Apply node representing the function body.
@@ -271,6 +299,7 @@ Apply(
 One more Apply node is added to the topmost level - the implicit arguments are applied after applying the actual function arguments. Their definition contains another nested block and lambda expression, but again, it is not necessary for our case. We just need to extract the invocation target and the method name.
 
 \subsection{Generating the conversion}
+\label{subsec:generate_conversion}
 
 Supposing we have the invocation target expression and the method name, we need to create the identifier string expression that will be used in the manual \inlinecode{toAdapter} invocation.
 
@@ -364,16 +393,208 @@ val function: (String) => Int = method _
 As a consequence, at the time of syntax analysis, the types aren't inferred yet and there is no way for us to find out which method overload is being called.
 
 The method overloads have to share the same identifier, but in most typical cases, this isn't a problem. Otherwise, it can be solved by using custom identifiers.
-	
-\section{Macros in API}
 
-%TODO: implicit conversions as macros, other problems arising
+\subsection{The conversion demonstration}
 
-\subsubsection{Serialization}
-\subsection{Run selectors}
-\subsubsection{Discrete}
-\subsubsection{Continuous}
-\subsection{Policies}
-\subsection{Configuration}
+As a practical demonstration of the process described in this section, we are going to show the compile-time conversions that are done on a method identifier that is being \textit{eta-expanded} and converted into a \inlinecode{MultiFunctionN}. Let's consider the following code:
 
-\section{Extending the functionality}
+\lstset{style=Scala}
+\begin{lstlisting}
+val combined1 = target.method _ or function2
+\end{lstlisting}
+
+We will follow the conversions that the compiler and our macro perform on the \inlinecode{target.method \_} expression\footnote{The actual changes are performed on the AST level, we will show them in corresponding Scala code for simplicity.}:
+
+\begin{enumerate}
+	\item The explicit \textit{eta-expansion} is done:
+	\lstset{style=Scala}
+	\begin{lstlisting}
+{ () => target.method() }
+	\end{lstlisting}
+	\item The implicit conversion is applied:
+		\lstset{style=Scala}
+	\begin{lstlisting}
+Implicits.toMultiFunction0({ () => target.method() })
+		\end{lstlisting}
+		\item The macro \inlinecode{toMultiFunction0} is executed and expanded:
+		\lstset{style=Scala}
+		\begin{lstlisting}
+Conversions.toAdaptor({ () => target.method() }, MethodNameReference(this.getClass.getName + ".method"))
+		\end{lstlisting}
+\end{enumerate}
+
+The final state shows the code that will be present in our compiled program and will be executed.
+
+\subsection{Macros in the combining method}
+
+In the section \ref{subsubsec:apimethods}, we explained why the \inlinecode{or} method has to accept an argument of \inlinecode{FunctionN} type instead of \inlinecode{MultiFunctionN}. This does not seem to cause any trouble as we can manually convert \inlinecode{FunctionN} into the \inlinecode{FunctionAdaptorN}. With the macro expansion, however, we run into problems. Image we do it the following way:
+\lstset{style=Scala}
+\begin{lstlisting}
+def or(fun: (T1) => R) = orMultiFunction(Implicits.toMultiFunction1(fun))
+\end{lstlisting}
+
+The  \inlinecode{toMultiFunction1} method is a macro - it gets executed at compile time, and it receives the argument AST as an argument. In this case, an AST that consists of the \inlinecode{fun} identifier. We have no way how to find out, where this function will be called from and with which arguments, so in order to extract the method name, we need to convert the entire \inlinecode{or} function to a macro which will generate the conversion code just like described in section \ref{subsec:generate_conversion}, and then wrap it in the internal \inlinecode{orMultiFunction} code.
+
+This does not require any extra AST manipulations, only one method call generations. It does, however, mean a complication - the macros cannot be called virtually. Therefore, the macro definition has to be part of the \inlinecode{MultiFunctionN} API trait, breaking somehow the encapsulation of the implementation. Fortunately, it does not perform any actions by itself, only replaces the \inlinecode{or} call with a conversion and an \inlinecode{orMultiFunction} call, which is, again, a virtual method defined on the trait without implementation and therefore encapsulated.
+
+
+\section{Module implementation}
+\label{sec:module_impl}
+
+All the modules mentioned in \ref{subsec:internal_architecture} are abstract traits with replaceable implementations, that are put together using composition. The API classes have to be able to access the composed and active implementations at the moment of invocation. For this reason, a singleton Scala object \inlinecode{AdaptiveInternal} was introduced and provides a holder for the following composed modules:
+
+\begin{itemize}
+	\item AdaptiveSelector with global storage
+	\item AdaptiveSelector with persistent storage
+	\item CombinedFunctionInvoker
+\end{itemize}
+
+We will briefly introduce the implementations of the modules that are included in the framework.
+
+\subsubsection{CombinedFunction}
+
+The \inlinecode{CombinedFunction} is the main data class representing a function with multiple implementations in ScalaAdaptive. It is basically a data holder class, the important functionality was separated in order to be possible to replace. It gets created and modified when a user of the library manipulates with the \inlinecode{MultiFunctionN} API type. Part of its attributes are immutable, representing the configuration and default setup of the function, and part of its attributes are mutable, holding its state in the invocation process.
+
+It contains the following immutable data:
+
+\begin{itemize}
+	\item Set of functions that it is combined from (wrapped into the tuple form)
+	\begin{itemize}
+		\item	Each function holds up to two references - one based on the closure type name, the other being either a method name or a custom name, depending on the creation process (see \ref{subsec:function_identifiers})
+	\end{itemize}
+	\item \textit{Descriptor function} (wrapped into the tuple form), see \ref{sec:predictive_strategies}
+	\item \textit{Group selector} function (wrapped into the tuple form), see \ref{subsec:group_selection}
+	\item A \inlinecode{FunctionConfiguration} a setup independent on the argument and return value types, consisting of the following:
+	\begin{itemize}
+		\item Selection strategy - Predictive or NonPredictive
+		\item Storage - Local, Global or Persistent
+		\item Duration - optional maximal time period for the history records
+		\item ClosureReferences - if the closure type references should be preferred over the method name or the custom name
+		\item Initial policy
+	\end{itemize}
+\end{itemize}
+
+And the following state representing data:
+
+\begin{itemize}
+	\item Function statistics (separately for each group)
+	\item Current policy (separately for each group)
+	\item Analytics data - full history of all the selections and their results
+\end{itemize}
+
+In case of local storage setup, the instance also contains its own \inlinecode{AdaptiveSelector} that holds the local \inlinecode{HistoryStorage}.
+
+\subsubsection{CombinedFunctionInvoker}
+
+It has access to the state of the \inlinecode{CombinedFunction} and its basic implementation does the following:
+
+\begin{itemize}
+	\item Evaluate the current policy on the statistics of the combined function
+	\item According to the result either invoke directly the function which is directly accessible through the statistics (the last one and the most selected one), or pass the decision onto the \inlinecode{AdaptiveSelector}
+	\item Update the function statistics
+\end{itemize}
+
+The \inlinecode{AdaptiveSelector} is accessed either through the \inlinecode{CombinedFunction} itself in case of local storage setup, or using the singleton object \inlinecode{AdaptiveInternal} in case of global or persistent setup.
+
+\subsubsection{AdaptiveSelector}
+
+A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used.
+
+The implementation \inlinecode{HistoryBasedAdaptiveSelector} uses a \inlinecode{HistoryStorage} to store and retrieve the run data of individual functions. In addition, it holds two \inlinecode{SelectionStrategy} instances, one for the predictive selection, the other for the non-predictive selection. One of these two instances is used to select the function to run, which is then executed using an \inlinecode{EvaluationProvider}. The measurement retrieved is added to the history and the result is returned, along with a performance benchmark including execution and overhead times (independent on the actual measurement, always based on wall-clock times) for the function statistics update. Figure \ref{fig:history_based_selector} shows the entire process.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{\mbox{\includegraphics[width=100mm]{./img/history_based_selector.png}}}
+	\caption{Diagram showing the HistoryBasedAdaptiveSelector execution path.}
+	\label{fig:history_based_selector}
+\end{figure}
+
+\subsubsection{HistoryStorage}
+
+A type with a map-like interface - it is supposed to hold \inlinecode{RunHistory} instances for each combination of function and group. A key composed of the function reference and the group identifier is used to access the histories.
+
+There are two implementations in the framework:
+
+\begin{itemize}
+	\item \inlinecode{MapHistoryStorage} - stores the histories in memory
+	\item \inlinecode{PersistentHistoryStorage} - a wrapping storage that delegates the calls to an internal \inlinecode{HistoryStorage}, and, in addition, it serializes every new run to a \inlinecode{HistorySerializer} and if asked for a history that is not present in the underlying storage, it tries to deserialize it using the same class
+\end{itemize}
+
+The \inlinecode{HistorySerializer} has two basic implementations, one for direct serialization, and one for buffered serialization. The data are stored into a file, one per function, and the format, root directory and file name pattern are fully customizable. There is no list of these history containing files anywhere - when trying to deserialize a function, a file with corresponding name is checked for existence. This means that the individual function histories are deserialized one by one, at the moment of the first invocation of a combined function that contains them, which might cause a delay in the first execution.
+
+\subsubsection{RunHistory}
+
+\inlinecode{RunHistory} represents the sequence of measurement results and other details about a function run. The interface is designed to support immutable solution - the appending methods always return an instance of the same type, which might or might not be the same object depending on the implementation. The interface provides some basic operations on the history, allows iteration over the data and appending new data (always at the end). Apart from that, it also has some methods to support precomputed or cached data for some of the selection strategies, namely statistical data and grouped averages for each input descriptor. These supporting methods can always be computed using the data available, and if the implementation of \inlinecode{RunHistory} does not support the caching or precomputation, there are \textit{mixin} traits with default implementations available.
+
+The provided implementations of \inlinecode{RunHistory} can be chained using the \textit{Decorator} pattern to modify the behavior. The basic implementations are the following:
+\begin{itemize}
+	\item \inlinecode{FullRunHistory} - stores all runs in an \inlinecode{ArrayBuffer}, is mutable
+	\item \inlinecode{ImmutableFullRunHistory} - stores all runs in an immutable \inlinecode{List}, is a little slower in general
+\end{itemize}
+
+These instances can be wrapped in the following decorator classes:
+\begin{itemize}
+	\item \inlinecode{LimitedRunHistory} - limits the maximum number of stored items, whenever it reaches maximum, it throws the older half of all the records away
+	\item \inlinecode{CachedStatisticsRunHistory} - stores the statistical data about the run items, speeds up some selection strategies
+	\item \inlinecode{CachedGroupedRunHistory} - stores average evaluation data for each \textit{run selector}, speeds up some selection strategies
+\end{itemize}
+
+\subsubsection{SelectionStrategy}
+
+Very simple trait that represents the selection strategies described in detail in sections \ref{sec:predictive_strategies} and \ref{sec:non_predictive_strategies}. The implementations should be stateless and should work only with the \inlinecode{RunHistory} records that it receives (in order not to mix together decisions about two separate history storage locations). The strategy implementations often have a customizable fallback strategy that is used in cases where the current strategy is not able to make a decision.
+
+The strategies are parametrized by the \inlinecode{TMeasurement} type of the function run evaluation. All of the implemented strategies work with function run time represented by \inlinecode{Long}.
+
+Implemented strategies are:
+\begin{itemize}
+	\item \inlinecode{LowRunAwareSelectionStrategy} - if any of the functions has less than a specified number of history records, uses one strategy, otherwise, uses a different strategy
+	\item \inlinecode{LeastDataSelectionStrategy} - uses the function with least historical runs
+	\item \inlinecode{TTestSelectionStrategy} - implements the t-test strategy described in section \ref{subsec:t_test_multiple}, uses the \inlinecode{org.apache.commons.math3} library
+	\item \inlinecode{LimitedRegressionSelectionStrategy} - implements the window-bound linear regression strategy (the window being optional) as described in section \ref{subsec:window_bound_regression}, uses the \inlinecode{org.apache.commons.math3} library
+	\item \inlinecode{LoessInterpolationSelectionStrategy} - implements the local regression strategy from section \ref{subsec:local_regression}, uses the \inlinecode{org.apache.commons.math3} library
+\end{itemize}
+
+The common composition pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost one, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual predictive or non-predictive strategies in the middle.
+
+\subsubsection{EvaluationProvider}
+
+With a goal of potentially supporting larger variety of possible function evaluation criteria, the selected function is always executed using an implementation of \inlinecode{EvaluationProvider}, which is supposed to run the function and to evaluate it, and return both the result of the function and the evaluation data in the form of \inlinecode{TMeasurement}. The default implementation simply measures the wall-clock time of the function run.
+
+\section{Configuration and customization}
+
+The basic behavior of the combined functions can be changed in two ways:
+\begin{itemize}
+	\item Each combined function can have the most basic features configured
+	\item The whole framework can be re-configured and customized
+\end{itemize}
+
+\subsection{Composed function configuration}
+
+There is a fluent and simple way to configure the most basic behavior as part of the function composition API (see section \ref{subsec:api_function_configuration}). It is based mostly on selecting which one of multiple implementation options should be used with given function. In the \inlinecode{AdaptiveInternal} singleton, we hold two implementations of \inlinecode{AdaptiveSelector}, one with persistent history storage, the other without. Each of these two implementations then includes two instances of  \inlinecode{SelectionStrategy}, one for predictive and one for non-predictive selection.
+
+The function configuration methods and possible values are the following:
+
+\begin{itemize}
+	\item \inlinecode{storeUsing} - represents the history storage options as described in section \ref{subsec:storing}
+	\begin{itemize}
+		\item \inlinecode{Global} - uses the shared \inlinecode{AdaptiveSelector} without persistent storage
+		\item \inlinecode{Persistent} - uses the shared \inlinecode{AdaptiveSelector} with persistent storage
+		\item \inlinecode{Local} - creates a new instance of \inlinecode{AdaptiveSelector} locally in the function object
+	\end{itemize}
+\item \inlinecode{selectUsing}
+\begin{itemize}
+	\item \inlinecode{Predictive} - uses the predictive strategy from the \inlinecode{AdaptiveSelector}
+	\item \inlinecode{NonPredictive} - uses the non-predictive strategy from the \inlinecode{AdaptiveSelector}
+\end{itemize}
+\item \inlinecode{limitedTo} - allows to specify the maximum age of the history records to be used in the selection process
+\item \inlinecode{asClosures} - represents the history storage identifier choice as described in section \ref{subsec:function_identifiers}
+\begin{itemize}
+	\item \textit{true} - always uses closure type names as the function references
+	\item \textit{false} - uses either method names or custom names as the function references if available
+\end{itemize}
+\item \inlinecode{withPolicy} - allows to specify the starting policy for the function
+\end{itemize}
+
+\subsection{Framework configuration}
+
+In section \ref{sec:module_impl}, we mentioned a variety of building blocks that the main parts of the framework are composed of, and the possibility to use multiple implementation to change the behavior of the entire system. This is the more advanced part of
