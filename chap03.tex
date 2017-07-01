@@ -123,6 +123,7 @@ The \inlinecode{or} method, in order to be used as an infix operator, has to be 
 \end{itemize}
 
 \subsection{Implementation}
+\label{subsec:api_implementation}
 
 The type \inlinecode{MultiFunctionN}, which will be the main part of the interface for the user, will be just a trait hiding a concrete implementation. The user should never come in contact with the actual implementation, as we do not want him to create instances of it manually. The implementation itself should wrap a list of functions from which to chose, along with some basic configuration, which will be discussed later.
 
@@ -145,7 +146,7 @@ The implicit conversions have to be defined for all the function types separatel
 
 The conversion of \inlinecode{FunctionN} to \inlinecode{MultiFunctionN} should always check whether the \inlinecode{FunctionN} instance is not already a \inlinecode{MultiFunctionN} instance as well, and if so, just cast it instead of creating a new wrapper. The same should be done by the \inlinecode{or} function, which can just manually call the conversion on its argument.
 
-Note that declaring the \inlinecode{or} method with \inlinecode{MultiFunctionN} argument directly instead of using the \inlinecode{FunctioN} argument (or its alias) and then manually converting it would cause some issues with implicit \textit{eta-expansion} that will be described later.
+Note that declaring the \inlinecode{or} method with \inlinecode{MultiFunctionN} argument directly instead of using the \inlinecode{FunctioN} argument (or its alias) and then manually converting it would effectively block the implicit \textit{eta-expansion} of the argument.
 
 %TODO: Def macros?
 %TODO: Move to a different section
@@ -163,6 +164,8 @@ The most simple and straightforward use-case is to combine two functions previou
 import scalaadaptive.api.Implicits._
 val combinedFunc = function1 or function2
 \end{lstlisting}
+
+\textit{Note that the import of the \inlinecode{Implicits} object is necessary every time and will be omitted in the code examples from now on.}
 
 The \inlinecode{function1} and \inlinecode{function2} have to have exactly the same type of \inlinecode{FunctionN}. The \inlinecode{combinedFunc} variable will have a type of \inlinecode{MultiFunctionN}. When exposing the resulting function in a public API, it might be better to enforce the \inlinecode{FunctionN} type for the variable or attribute:
 
@@ -189,8 +192,7 @@ A combined function can be combined again, no matter whether treated as \inlinec
 
 \lstset{style=Scala}
 \begin{lstlisting}
-import scalaadaptive.api.Implicits._
-val combinedFunc1 = function1 or function2
+val combinedFunc1: (T) => R = function1 or function2
 ...
 combinedFunct1(...)
 ...
@@ -203,7 +205,6 @@ Just like named function variables, lambda expressions can be combined directly.
 
 \lstset{style=Scala}
 \begin{lstlisting}
-import scalaadaptive.api.Implicits._
 val combinedFunc = { () => obj1.call(...) } or { () => obj2.call(...) }
 \end{lstlisting}
 
@@ -225,6 +226,7 @@ val combinedFunc = obj.method1 _ or obj.method2 _
 \end{lstlisting}
 
 \subsubsection{Creating a method from combined function}
+\label{subsubsec:method_from_combined_func}
 
 Even though functions are so common in Scala, there might be situations where we would need to create a method from our combined function. Thanks to the simplified syntax that allows us to define the method body using a one-line expression, quite idiomatic way to create this combined method exists:
 
@@ -242,144 +244,116 @@ The preferred, a little less convenient way is to create a private field contain
  private val combinedInner = function1 or function2
  def combinedMethod(arg: T) = combinedInner(arg)
  \end{lstlisting}
- 
- \subsection{Problematic cases}
 
 \subsection{Covariance and contravariance}
-%TODO: Object-oriented polymorphism
-% http://milessabin.com/blog/2012/04/27/shapeless-polymorphic-function-values-1/
+\label{subsec:covariance_contravariance}
 
-So far, all mentioned usages of the \lstinline|or()| method were limited to functions with the same signatures. Quite common case, however, might be combining multiple functions with slightly different argument and return value types, typically one being a specialized version of the other. For example:
-
-%TODO: replace this example:
-
-The two functions can't be joined using the \lstinline|or()| method, because \lstinline|bubbleSort()| is defined on a more general type than \lstinline|radixSort()|. Let's examine simplified case with more combinations:
+So far, all mentioned usages of the \inlinecode{or} method were limited to functions with the same signatures. Quite common case, however, might be combining multiple functions with slightly different argument and return value types, typically one being a specialized version of the other. 
 
 \lstset{style=Scala}
 \begin{lstlisting}
-def fun1(arg: Any): String = ???
-def fun2(arg: String): Any = ???
-def fun3(arg: String): String = ???
-
-val fun4 = fun3 _ or fun2
-val fun5 = fun2 _ or fun3
-val fun6 = fun3 _ or fun1
-val fun7 = fun1 _ or fun3
+def processData1(data: Iterable[Int]): Int = ???
+def processData2(data: List[Int]): Int = ???
 \end{lstlisting}
 
-We receive compilation error on lines 5 and 8, in the definition of \lstinline|fun4| and \lstinline|fun7|. Lines 6 and 7 compile correctly. These are the cases where:
+Let's examine how this can be done on a simplified case with more combinations:
 
-\begin{enumerate}
+\lstset{style=Scala}
+\begin{lstlisting}
+val fun1: (Any) => String = ???
+val fun2: (String) => Any = ???
+val fun3: (String) => String = ???
+
+val fun4 = fun3 or fun2
+val fun5 = fun2 or fun3
+val fun6 = fun3 or fun1
+val fun7 = fun1 or fun3
+\end{lstlisting}
+
+We receive compilation error on lines 5 and 8, in the definition of \inlinecode{fun4} and \inlinecode{fun7}. Lines 6 and 7 compile correctly. These are the cases where either:
+
+\begin{itemize}
 	\item Return type of the function passed in as an argument is a subtype of the return type of the target function
 	\item Argument type of the function passed in as an argument is a supertype of the argument type of the target function
-\end{enumerate}
+\end{itemize}
 
-The function types (represented as traits) in Scala are defined in the following way:
+The function types in Scala are defined in the following way:
 \lstset{style=Scala}
 \begin{lstlisting}
 trait Function1[-T1, +R] extends AnyRef
 \end{lstlisting}
 
-The type arguments representing the function arguments are defined as contravariant and the type argument representing the return value of the function is defined as covariant. This leads to \lstinline|(String) => String| being a subtype of \lstinline|(String) => Any| and to \lstinline|(Any) => String| being a subtype of \lstinline|(String) => String|. So the \lstinline|or()| method is working flawlessly for the \lstinline|fun5| and \lstinline|fun6|.
+The type arguments representing the function arguments are defined as contravariant and the type argument representing the return value of the function is defined as covariant. This leads to \inlinecode{(String) => String} being a subtype of \inlinecode{(String) => Any} and to \inlinecode{(Any) => String} being a subtype of \inlinecode{(String) => String}. So the \inlinecode{or} method is working flawlessly for the \inlinecode{fun5} and \inlinecode{fun6}.
 
-Taking into account that \lstinline|or()| is behaving like a commutative infix operator, we would like it to work in the other two cases as well. The two functions combined will always be in a subtype - supertype relation The signature of the function returned has to match the more limiting signature, i.e. the signature,
-
-\begin{lstlisting}
-def funA(arg: A): A = ???
-def funB(arg: B): B = ???
-val funAB: (B with A) => Object = funA _ or funB
-\end{lstlisting}
-
-%TODO: Comment case & listing
-
-As we can see, these are the cases where:
-
-\begin{enumerate}
-	\item The output type of the function that is passed as an argument is more general (superclass) than the output type of the target function
-	\item The argument type of the function that is passed as an argument is more specific (subclass) than the argument type of the target function
-\end{enumerate}
-
-This is a case where covariance and contravariance of the type arguments of the functions that our \lstinline|or()| method accepts should be taken into account. Let's consider the following type of the first function:
+In general, the target of the \inlinecode{or} call (i.e. the \inlinecode{MultiFunctionN} instance created by the implicit conversion) determines the type of the resulting function, and only its subtypes can be passed in as arguments. This can solve majority of the cases where it would be enough to put the more general function on the left side of the \inlinecode{or} method. In the case where we wanted the combined function to have more general signature, we can perform the typecast on the first function passed in:
 
 \lstset{style=Scala}
 \begin{lstlisting}
-(A) => B
+def sort1(data: Iterable[Int]): Iterable[Int] = ???
+def sort2(data: List[Int]): List[Int] = ???
+val sortCombined = (sort2 _).asInstanceOf[(List[Int]) => Iterable[Int]] or sort1
 \end{lstlisting}
 
-This function should be combinable using \lstinline|or()| method with any 
+Potentially, this problem could be solved by having the \inlinecode{or} function generic:
+\lstset{style=Scala}
+\begin{lstlisting}
+def or[J1 <: T1, S >: R](fun: (J1) => S): MultiFunction1[J1, S]
+\end{lstlisting}
+This, however, lead to problems when being invoked as macro, so this solution was not used in the final version.
 
 \subsection{Generic methods}
+\label{subsec:generics}
 
 %TODO: Solution suggestion - OOP approach, genericity in classes
 
 %TODO: How to solve this issue?
 
-Functions have one major limitation in Scala - they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the eta-expansion on a generic method, we have to specify the type argument, otherwise, the type arguments will be fixed as Nothing and the function won't be callable:
+Functions have one major limitation in Scala - they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the \textit{eta-expansion} on a generic method, we have to specify the type argument, otherwise, the type arguments will be fixed as the most general achievable within the limits of the covariance and contravariance of the function type (see \ref{subsec:covariance_contravariance}).
 
+In some cases, this might make the function impossible to call:
 \lstset{style=Scala}
 \begin{lstlisting}
 def makeTuple[A, B](a: A, b: B): (A, B) = (a, b)
-val fun1 = makeTuple _
-// fun1: (Nothing, Nothing) => (Nothing, Nothing)
-val fun2 = makeTuple[Int, String] _
-// fun2: (Int, String) => (Int, String)
+val fun = makeTuple _
+// fun: (Nothing, Nothing) => (Nothing, Nothing)
 \end{lstlisting}
 
-As the \lstinline|or()| method performs combination of functions into another function, we automatically lose all the generic types involved in the original methods we are expanding and then combining. We can, however, take advantage of the fact that the type arguments being explicitly set in the process of eta-expansion can be generic types of an enclosing structure (generic class or generic method). With this approach, there are two possible patterns of achieving genericity in combined functions:
+In other cases, it might lead just to losing the compile-time type check:
+\lstset{style=Scala}
+\begin{lstlisting}
+def defaultCount[A](list: List[A], item: A) = list.count(_ == item)
+val fun = defaultCount _
+// fun: (List[Any], Any) => Int
+\end{lstlisting}
+
+As the \inlinecode{or} method performs combination of functions into another function, the \textit{eta-expansion} has to be done at the point of combination, and the arguments should be specified at that point too prevent the described effects. This effectively prevents us from achieving genericity of the combined function in the same way as with methods. 
+
+We can, however, take advantage of the fact that the type arguments being explicitly set in the process of eta-expansion can be generic type parameters of an enclosing structure (generic class or generic method). With this approach, there are two possible patterns for the workaround:
 
 \begin{enumerate}
+		\item Defining a generic method by creating the combination and then calling it immediately
+	\lstset{style=Scala}
+	\begin{lstlisting}
+def count[A](list: List[A], item: A) = (defaultCount[A] _ or customCount[A])(list, item)
+	\end{lstlisting}
+	This approach was already mentioned in \ref{subsubsec:method_from_combined_func} and is discouraged from as it leads to repeated creation of the \inlinecode{MultiFunctionN} implementation.
 	\item Defining a function field inside a generic class
 	\lstset{style=Scala}
 	\begin{lstlisting}
-	def defaultCount[A](list: List[A], item: A) = list.count(_ == item)
-	def customCount[A](list: List[A], item: A) = list.filter(_ == item).map((i) => 1).sum
-	
-	class ListTools[A] {
-	val count = defaultCount[A] _ or customCount[A]
-	}
-	\end{lstlisting}
-	\item Defining a generic method by creating the combination and then calling it immediately
-	\lstset{style=Scala}
-	\begin{lstlisting}
-	def count[A](list: List[A], item: A) = (defaultCount _ or customCount)(list, item)
+def defaultCount[A](list: List[A], item: A) = list.count(_ == item)
+def customCount[A](list: List[A], item: A) = list.filter(_ == item).map((i) => 1).sum
+
+class ListTools[A] {
+  val count = defaultCount[A] _ or customCount[A]
+}
 	\end{lstlisting}
 \end{enumerate}
 
-
-Generics solution:
-\lstset{style=Scala}
-\begin{lstlisting}
-def defaultMap[A, B](list: List[A], fun: (A) => B): List[B] = 
-list.map(fun)
-def iterativeMap[A, B](list: List[A], fun: (A) => B): List[B] =  {
-val result = new mutable.MutableList[B]()
-for (x <- list) {
-result += fun(x)
-}
-result.toList
-}
-
-def map[A, B](list: List[A], fun: (A) => B): List[B] = 
-(defaultMap[A, B] _ or iterativeMap[A, B])(list, fun)
-\end{lstlisting}
-
 \subsection{Implicit arguments}
 
-Implicit arguments are arguments that will be filled in automatically at invocation by an implicit method with matching signature that is available within the scope. This can be used for different reasons, but the most common is a combination with a type argument that has to have a conversion of some kind. In the Scala terminology, the type has to be \textit{viewable} as some other type. There used to be a specialized syntax called \textit{View bounds} in earlier versions of Scala to support this usage, but it has been deprecated.
+As with a lot of other features, the implicit arguments (described in detail in section \ref{subsec:implicit_args})are supported only by methods, not by functions. Therefore, all of them have to be resolved and fixed when performing \textit{eta-expansion}, along with all the type arguments. 
 
-%TODO: http://docs.scala-lang.org/tutorials/tour/implicit-parameters.html
-
-\lstset{style=Scala}
-\begin{lstlisting}
-def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
-def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
-\end{lstlisting}
-
-The most common usage of implicit arguments is simulating \textit{type classes} from other functional languages like Haskell. We create a generic trait with required methods (representing the type class and its functions) and whenever we want a new type to be member of the type class, we create implementation of the trait and an implicit method that provides the implementation. From now on, the newly added member can be used in any method requiring the implicit conversion just by importing our conversion function into the scope where the method is called.
-
-%TODO: Example of custom "type class" or member?
-
-As with a lot of other features, implicit arguments are supported only by methods, not by functions. Therefore, all of them have to be resolved and fixed when performing eta-expansion, along with all the type arguments. If we set the type arguments to a concrete type, we can provide the implementation in the same way as at the time of invocation, without any problem:
+Lets consider the case where the implicit arguments depend on the value of a type argument. The implicit arguments can be provided manually, or using an implicit variable from the scope where they are being expanded. If the type arguments are being fixed to concrete types, we usually have the implicit implementations at our disposal.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -389,106 +363,86 @@ def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
 val sort = radixSort _ or bubbleSort[Int]
 \end{lstlisting}
 
-%TODO: Reference
-There is, however, one more option mentioned in [REFERENCE] - the type argument can be set to a type argument of an enclosing scope, making the implicit argument generic again. In this case, the scope in which the type argument is declared has to provide the implicit function implementation. As a result, the implicit argument has to be repeated in the method or class constructor signature.
+The implicit argument might, however, often be used to set requirements about the type argument (in the sense of type classes from other languages), like in this example:
+\lstset{style=Scala}
+\begin{lstlisting}
+def sort1[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+def sort2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+\end{lstlisting}
+
+In this case, we would need to expand the type argument to a type argument of an enclosing scope (following the solutions from section \ref{subsec:generics}) in order to preserve the genericity. Consequentially, we need to receive the implicit arguments from the enclosing scope as well. Ideally, we would like to propagate the implicit argument all the way to the level where the type arguments are set, because that is the first point where an actual implementation can be provided. The most straightforward solution to this is just repeating the implicit argument of the type in each of the enclosing scopes where the type argument still exists. This can be done, again, at the level of methods:
 
 \lstset{style=Scala}
 \begin{lstlisting}
-def implicitFun1[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
-def implicitFun2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
-
-// Following line won't compile:
-// def implicitFun[A](list: List[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)
-def implicitFun[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = (implicitFun1[A] _ or implicitFun2[A])(list)
+def sort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = (sort1[A] _ or sort2[A])(list)
 \end{lstlisting}
+
+Or, preferably, at the level of classes:
 
 \lstset{style=Scala}
 \begin{lstlisting}
-def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+class Sorter[A](implicit ord: A => Ordered[A]) {
+  val sort = sort1[A] _ or sort2[A]
+}
 \end{lstlisting}
 
-\lstset{style=Scala}
-\begin{lstlisting}
-def implicitFun1[A <% Ordered[A]](list: List[A]): List[A] = ???
-def implicitFun2[A <% Ordered[A]](list: List[A]): List[A] = ???
-
-def fun = implicitFun1 _ or implicitFun2
-\end{lstlisting}
-
-Interesting thing is that the parser included in the IntelliJ IDEA IDE\footnote{Integrated Development Environment.} Scala plugin that performs background code inspection and immediately highlights compile-time errors doesn't recognize this problem. It was tested in version 2016.3.4 with Scala plugin version 2016.3.8.
-
-%TODO: IntelliJ parser has no problems, compilation shows error
-
-\lstset{style=Scala}
-\begin{lstlisting}
-def fun: (List[A]) => List[String] = implicitFun1 _ or implicitFun2
-\end{lstlisting}
-
-%TODO: Automatically generated type annotation is WRONG!!!
-
-\subsection{Overloading}
-Very similar issue is encountered when it comes to overloading - only methods can be overloaded.
-
-%TODO: implementing traits using combined methods
 \subsection{Implementing Traits}
-Traits in the role of interfaces represent key element of object-oriented programming approach. Providing custom implementations of traits is essential and using adapted functions in this role would be very useful. The key problem is the separation of functions and methods in Scala mentioned in [REF].
-%TODO: ADD REFERENCE HERE
+Traits in the role of interfaces represent key element of object-oriented programming approach. Having a combined function exposed through a trait to the rest of the system is expected to be one of the most common usage patterns, as it would allow replacing the combined function with a fixed implementation and vice versa.
 
-The methods defined in traits can be implemented or overridden only by a different method, which will be invoked using virtual method calls. The function defined in the trait using a val keyword is basically a getter which returns the function value, invokable by itself. In this case, the getter has to be overridden, either by a custom getter, or by a field with automatically generated getter. An adapted function generated using the \lstinline|or()| method can be assigned to such a field and thus implementing the trait function getter. An example follows:
+A trait in Scala can define both methods and properties. In case of properties, the implementations will override the getter and setter of the property (which can be automatically generated). This allows us to define functions as parts of traits as well, and the Scala syntax will make them almost unrecognizable from methods in the trait user's point of view.
 
 \lstset{style=Scala}
 \begin{lstlisting}
 trait TestTrait {
-def testMethod(arg: List[Int]): List[String]
-val testFunction: (List[Int]) => List[String]
+  def testMethod(arg: List[Int]): List[String]
+  val testFunction: (List[Int]) => List[String]
 }
+\end{lstlisting}
 
+If we design our own traits for the use in the application, we can intentionally expose the logic using only functions. In that case, implementing the trait using combined functions does not represent any problem. In case that we need to use an existing trait that contains methods, we need to implement them and delegate the call to the combined function using the techniques described in section \ref{subsubsec:method_from_combined_func}.
+
+\lstset{style=Scala}
+\begin{lstlisting}
 class TestImpl extends TestTrait {
-import functionadaptors.Implicits._
-
-def impl1(arg: List[Int]): List[String] = 
-arg.map("Num: " + _.toString)
-def impl2(arg: List[Int]): List[String] = 
-arg.map(i => s"Num: $i")
-
-override val testFunction: (List[Int]) => List[String] = 
-impl1 _ or impl2
-
-// Can't implement testMethod using the result of or()
-override def testMethod(arg: List[Int]): List[String] = ???
+  override val testFunction: (List[Int]) => List[String] = impl1 _ or impl2
+  override def testMethod(arg: List[Int]): List[String] = testFunction(arg)
 }
 \end{lstlisting}
-
-Unfortunately, a lot of the traits we need to provide implementations for are already existing and can use the method format. Manual workaround to implement the method is quite straightforward, but again, it generates unnecessary calls and duplicities in our code:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-private val adaptedFunction = impl1 _ or impl2
-override def testMethod(arg: List[Int]): List[String] = 
-adaptedFunction(arg)
-\end{lstlisting}
-
-%TODO: Add reference
-Or, using the solution that was previously mentioned in [PREVIOUS SECTION], we can even omit the private field declaration and use an expression syntax:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-override def testMethod(arg: List[Int]): List[String] = 
-(impl1 _ or impl2)(arg)
-\end{lstlisting}
-
 
 %TODO: summary of the API approach, definition of key terms and points in adaptive lifecycle - method definition, function / closure creation (eta expansion), function combination, 
-
-%TODO: Thread safety
 
 %TODO: Evaluation, advantages, disadvantages, generation
 
 \section{Additional API features}
 
+In this section, we will introduce the rest of the API of the \inlinecode{MultiFunction} type that the library user will be working with. This part of the API is not essential as it is possible to combine functions and use the library without it. It can, however, be used to control the selection functionality and behavior and to examine its results.
+
 \subsection{Combined function configuration}
+\label{subsec:api_function_configuration}
+
+When creating a \inlinecode{MultiFunctionN} instance using the implicit conversion and the \inlinecode{or} method, there is no way how to introduce some additional configuration. In compliance with the DSL-like fluent \inlinecode{or} chaining, the configuration was made possible via special methods on the \inlinecode{MultiFunctionN} type that allow chaining as well\footnote{In the \textit{builder}-style pattern, by returning the same type.} and are also meant to be used like operators. The combined function definition including the configuration can be very fluent and natural:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val sort = standardSort _ or selectionSort by (_.size) selectUsing Selection.Predictive storeUsing Storage.Global
+\end{lstlisting}
+
+The most important part of the configuration API is the \inlinecode{by} method. It allow the user to specify how to create an \textit{input descriptor}, integer that describes the input from the perspective of expected complexity, from the function arguments upon invocation. A function of type \textit{(T1, ..., TN) => Long} is used for that, where \inlinecode{T1, ..., TN} are the arguments of the \inlinecode{MultiFunctionN}.
+
+The rest of the configuration options will be described in later chapters and in the documentation to the framework.
 
 \subsection{Analytics and control access}
+
+There is also a need to monitor and control the \inlinecode{MultiFunctionN} in case the user is aware that he is dealing with a combined function. A simple set of methods on the type allow him to do the following:
+
+\begin{itemize}
+	\item Train the combined function on a given set of inputs (by executing all of the functions on each of the inputs and storing the results)
+	\item Flush entirely the run history of given function
+	\item Set and reset the policy used in the function (will be discussed later in more details)
+	\item Retrieve analytics data regarding the function history
+\end{itemize}
+
+Analytics data allow the user to observe and analyze the decisions of the combined function. It contains a complete set of records of previous runs, each one holding the identifier of the selected function, the \textit{input descriptor}, run time and the overhead time spent on the selection. The data can either be analyzed directly in the application by processing these records, or can be easily serialized into a CSV file.
 
 \subsection{Delayed measuring}
 \label{subsec:delayed_measuring}
@@ -499,7 +453,7 @@ In some specific cases it might be useful to delay the measurement, or, in gener
 	\item Configuration, or generation of configuration
 	\item Expression tree building
 	\item Query building
-	\item Method chain building
+	\item Method chain building with lazy evaluation
 \end{itemize}
 
 It is obvious that our API, which was designed to remain as simple as possible, doesn't support this case. We need to slightly extend it.
@@ -520,7 +474,7 @@ val (config, measure) = getConfig^()
 measure(() => run(config))
 \end{lstlisting}
 
-This approach has one main disadvantage compared to the rest of the API - it isn't transparent. The user has to know that he is working with the \inlinecode{MultiFunction}, not just normal function. His assistance is, however, required by the nature of the problem.
+This approach has one main disadvantage compared to the rest of the API - it breaks the transparency. The user has to know that he is working with the \inlinecode{MultiFunctionN}, not just normal function. His assistance is, however, required by the nature of the problem.
 
 %TODO: Use cases - configuration generation, expression tree building, query building...
 
