@@ -1,4 +1,4 @@
-\chapter{Function evaluation}
+\chapter{Deciding between function}
 
 The key purpose of the ScalaAdaptive library is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, etc. All these factors can be valuable and be the goal of the system run optimization.
 
@@ -67,7 +67,7 @@ and
 \(\forall in \quad h(in) \in \mathbb{N}\). In this case, the \textit{input descriptor} of input \(in\) would be the value of \(h(in)\).
 This assumption is not true in general - we would need at least a multi-dimensional \textit{input descriptor} to cover functions with complexities depending on more factors. In most cases, a sufficient function \(h\) can be found so that the results are precise enough. We call it the \textit{descriptor function}.
 
-The \textit{descriptor function} has to be provided by the user of the library. %TODO: reference to API?
+The \textit{descriptor function} has to be provided by the user of the library when creating the combined function. %TODO: reference to API?
 Such function could be:
 \begin{itemize}
 	\item Number of elements in a data structure argument
@@ -92,6 +92,7 @@ A big advantage of the model is its simplicity and thus minimal overhead when ge
 The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph marked with the green color. The red line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=90mm]{./img/selection_sort_linear_trendline.png}}}
 	\caption{Linear regression line (red) of a selection sort runtime samples.}
 	\label{fig:selection_sort_linear_trendline}
@@ -166,6 +167,7 @@ There are multiple ways how to decide on the window width $w$. Using a fixed num
 The most complicated but also the most adaptive window selection method is based on analysis of the entire data set - we compute the average distance between two neighboring \textit{input descriptors} and set the $w$ as $avg * m$, where m is the expected number of samples in one window. For the value of $m$, we can chose a number of about 50-100.
 
 \subsection{Local regression}
+\label{subsec:local_regression}
 
 The approach explained in \ref{subsec:window_bound_regression} can be extended further - the locally constructed linear regression models can be used to build up a model for the entire data set. This leads to a model that is non-linear, in other words, the function that approximates the original data relation is not a linear function.
 
@@ -327,12 +329,14 @@ The t-test methods as described in this section work with all the run data colle
 Even if we assumed that the inputs were distributed normally and that the relation was linear, the whole procedure could only decide about the better function overall, which might not be desirable in the cases where we want to select different function for different inputs based on their size or other factors (in the way the predictive strategies work).
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=90mm]{./img/quick_vs_selection.png}}}
 	\caption{Run times of quick sort algorithm (blue dots) and selection sort algorithm (red dots) by input size.}
 	\label{fig:quick_vs_selection}
 \end{figure}
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=110mm]{./img/window_t_test_examples.png}}}
 	\caption{Examples of subsets of the data from figure \ref{fig:quick_vs_selection}}
 	\label{fig:window_t_test_examples}
@@ -427,6 +431,7 @@ The transition diagrams and short descriptions of some \textit{policies} will fo
 \subsubsection{Building blocks}
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=110mm]{./img/helper_policies.png}}}
 	\caption{Transition diagram of the basic building-block policies.}
 	\label{fig:helper_policies}
@@ -435,6 +440,7 @@ The transition diagrams and short descriptions of some \textit{policies} will fo
 Figure \ref{fig:helper_policies} shows the main policies that serve as a building-blocks. The most important is the \textbf{Repeat until \textit{condition}} \textit{policy}, parametrized by a \textit{condition}, result \textit{R}, which it keeps producing until the \textit{condition} becomes true, and the policy \textit{P}, which it makes transition to at that moment. The \textbf{Always do} \textit{policy} represents an infinite loop producing the same result \textit{R} every time, and the \textbf{Do once} \textit{policy} produces the result \textit{R} once and immediately makes transition to the policy \textit{P}.
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=75mm]{./img/start_policy.png}}}
 	\caption{Transition diagram of the \textbf{Start policy}.}
 	\label{fig:start_policy}
@@ -445,6 +451,7 @@ Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accept
 \subsubsection{Stop selecting when decided}
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=75mm]{./img/stop_selecting_when_decided.png}}}
 	\caption{Transition diagram of the \textbf{Stop selecting  when decided} policy.}
 	\label{fig:stop_selecting_when_decided}
@@ -457,6 +464,7 @@ The advantage of falling back to the infinite \textbf{Always use last} policy is
 \subsubsection{Pause selection after streak}
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=85mm]{./img/pause_selection_after_streak.png}}}
 	\caption{Transition diagram of the \textbf{Pause selection after streak} policy.}
 	\label{fig:pause_selection_after_streak}
@@ -469,6 +477,7 @@ The described behavior is the preferred way of limiting the selection overhead. 
 \subsubsection{Limited overhead, gather time and selection time}
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=85mm]{./img/limited_overhead.png}}}
 	\caption{Transition diagram of the \textbf{Limited overhead} policy.}
 	\label{fig:limited_overhead}
@@ -477,6 +486,7 @@ The described behavior is the preferred way of limiting the selection overhead. 
 Policies can be used to limit the library involvement per a real-time period, so that the selection overhead, or overhead generated by gathering data or wrongly selecting the slower function doesn't damage the system more than a specified limit. The \textbf{Limited overhead} policy in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it cannot select anymore and keeps using the most selected function until the end of the period.
 
 \begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=85mm]{./img/limited_gather_time.png}}}
 	\caption{Transition diagram of the \textbf{Limited gather time} policy.}
 	\label{fig:limited_gather_time}
@@ -504,8 +514,9 @@ The problem with input dependency and with different expected decisions for vari
 It would mean that the \textit{combined function} would need to hold the policy and the statistical data for every group, and the function run time history would have to be separate for different groups as well. The main advantage would be the possibility to take faster decisions in some groups, using for example the \textit{Pause selection after streak} policy. When a function is significantly faster than the others for very large inputs for example, it would quickly collect the streak for the decisions within the group, and the selection for future inputs from such a group would be quick.
 
 \subsection{Group selection}
+\label{subsec:group_selection}
 
-The group selection function that assigns an input into a group has to be provided by the user. The grouping can be based on the \textit{input descriptor}, but can also use other factors of the input, e.g., if there are some boolean flags passed to the function that affect its functionality, it is usually a good idea to use it in the grouping.
+The group selection function that determines a group for a given input is called a \textit{group selector} and has to be provided by the user when creating the combined function. Groups are identified by a custom type that can be either an integer, or a special \inlinecode{NoGroup} value. The grouping can be based on the \textit{input descriptor}, but can also use other factors of the input, e.g., if there are some boolean flags passed to the function that affect its functionality, it is usually a good idea to use it in the grouping.
 
 %TODO Reference to the policy
 
