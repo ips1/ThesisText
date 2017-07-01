@@ -341,9 +341,27 @@ The only disadvantage of using ScalaAdaptive in this case is that selection from
 
 \section{Problems with the practical use of the framework}
 
-\subsection{Selection overhead}
+\subsection{Invocation overhead}
 
-The policy system and a few specific policies that limit the overhead were introduced because of that and the results are satisfying.
+The framework adds a non-trivial overhead to the function invocation process due to the selection and the evaluation data storing. In order to limit this, the policy-based invocation system was added to the framework to skip this phase in some situations. Therefore, two different types of overhead time per invocation can be measured:
+
+\begin{enumerate}
+	\item \textbf{Policy evaluation overhead}\\
+	Part of every invocation. It is expected to be small and it should be constant throughout the whole application lifetime. It cannot be measured from within the framework, but it can be computed by measuring the combined function run time and then by subtracting the run time and overhead time from the \inlinecode{AnalyticsData} collected by the function.
+	\item \textbf{Selection overhead}\\
+	Exists only when the SelectNew or GatherData result is given by the policy. It is determined by the actual selection strategy used and in general expected to be longer and to be related to the number of history data records for the functions involved. It is tracked by the framework and included in the \inlinecode{AnalyticsData} and the statistics that the policies are based on.
+\end{enumerate}
+
+The figure \ref{fig:overhead_sel_policy} shows these times tracked for a sequence of 20000 invocations (sampled every 50th run) using the window-bound linear regression strategy(see section \ref{subsec:window_bound_regression}) and a policy that emits SelectNew result every time. We can see that the selection overhead is significantly larger and really grown with the number of records. The policy evaluation overhead remains basically constant.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/overhead_sel_policy.png}}}
+	\caption{Selection overhead times (blue) and policy evaluation overhead times (orange), both in ns, for a sequence of 20000 invocations of the same combined function.}
+	\label{fig:overhead_sel_policy}
+\end{figure}
+
+The average selection overhead from the sample discussed is \textbf{1.29ms} per invocation, the average policy evaluation overhead from the same sample is \textbf{0.06ms} per invocation. We can see that the policy evaluation overhead is low enough even for very fast methods, so the key to limiting the overhead is using the correct policies and avoiding selection whenever possible.
 
 In all of the applications presented in this chapter, the overhead was counted in - the real performance of the combined function was compared with the performance of the original, non-combined ones. The overhead is significant and has to be counted with, but with correct selection strategy and an appropriate overhead-saving policy, the impact is not significant enough.
 
