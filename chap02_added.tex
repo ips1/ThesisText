@@ -96,6 +96,6 @@ Based on the extended goals presented in section \ref{sec:goals_revisited}, key 
 	\item \textbf{API and CombinedFunction} - a set of classes and methods that the user will be directly interacting with in order to create combined functions, and that will represent the combined functions and handle the invocation process
 	\item \textbf{Invocation policies} - a system of simple state machines to manage the invocation process with almost no overhead, handled directly in the CombinedFunction
 	\item \textbf{Selection strategies} - simple, stateless and isolated strategies that can decide about the most appropriate function to run given a historical measurements of all the functions
-	\item \textbf{Function selector and invoker} - module that will be responsible for selecting the method using a given strategy, invoking it, measuring the performance metrics and storing and retrieving the history data, which will be invoked by the CombinedFunction
+	\item \textbf{Function selector and invoker} - module that will be responsible for selecting the method using a given strategy, invoking it, measuring the performance metrics and storing and retrieving the history data; it will be called by the CombinedFunction
 	\item \textbf{Configuration} - a static description of the Function selector and invoker, can be changed by the user
 \end{itemize}
