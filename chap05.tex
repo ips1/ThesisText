@@ -595,6 +595,72 @@ The function configuration methods and possible values are the following:
 \item \inlinecode{withPolicy} - allows to specify the starting policy for the function
 \end{itemize}
 
-\subsection{Framework configuration}
+The user of the library is expected to specify this configuration with most of the combined functions. Especially the choice between the predictive and non-predictive strategy is very important.
 
-In section \ref{sec:module_impl}, we mentioned a variety of building blocks that the main parts of the framework are composed of, and the possibility to use multiple implementation to change the behavior of the entire system. This is the more advanced part of
+\subsection{Framework configuration}
+\label{subsec:framework_config}
+
+In section \ref{sec:module_impl}, we mentioned a variety of building blocks that the main parts of the framework are composed of, and the possibility to use multiple implementation to change the behavior of the entire system. This is the more advanced part of the configuration and it requires manipulation with the actual implementations.
+
+As explained earlier, all the shared and commonly accessible functionality is held inside the singleton object \inlinecode{AdaptiveInternal}. This object can be initialized using an \inlinecode{initialize()} method on a publicly accessible singleton \inlinecode{Adaptive}. The static description of the composition of the implementations that is followed in this process is provided by a \inlinecode{Configuration} trait. This can be though of as a composition root of the whole system - it has to provide factory functions for all the building blocks used. In addition, it has an abstract type member \inlinecode{TMeasurement} for the evaluation data. 
+
+%TODO: Add ref to http://docs.scala-lang.org/tutorials/tour/abstract-types.html
+
+The implementation of the \inlinecode{Configuration} trait has to specify the \inlinecode{TMeasurement} type and provide the factory methods which are already specific for the type. Note that the \inlinecode{AdaptiveSelector} trait and its methods do not depend on the \inlinecode{TMeasurement}, only its implementation does, so the type of the evaluation data does not leak outside of the composition root. As a result, the actual type can be changed at runtime by simply replacing the \inlinecode{AdaptiveSelector} implementation.
+
+The \inlinecode{Configuration} can be created by the user himself, using either a combination of provided implementation, or his own implementations, or, one of the predefined \inlinecode{Configuration} types can be used:
+
+\begin{itemize}
+	\item \inlinecode{BaseConfiguration} - provides basic configuration of the types that do not depend on the \inlinecode{TMeasurement}
+	\item \inlinecode{BaseLongConfiguration} - sets the \inlinecode{TMeasurement} type to \inlinecode{Long} and add basic configuration of the types that depend on it
+\end{itemize}
+
+These traits can be extended and customized by overriding some of the functions.
+
+\subsubsection{Configuration blocks}
+ To simplify the configuration process when working with existing implementations and to hide the initialization details from the user, a concept called \textit{configuration blocks} was introduced. 
+ 
+ \textit{Configuration blocks} are traits that provide implementation for just one (or a few) functions from the \inlinecode{Configuration} trait, setting up part of the framework in given way. The user of the framework can then create the configuration by creating an anonymous class extending the base configuration along with the \textit{configuration blocks} that specify the requirements. Thanks to the fluent and simple syntax of Scala, this concept is very expressive and easy to use
+ 
+ The whole configuration can look the following way:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val config = new BaseLongConfiguration
+  with RunTimeMeasurement
+  with TTestNonPredictiveStrategy
+  with LimitedRegressionPredictiveStrategy
+  with DefaultHistoryPath
+  with BufferedSerialization
+  with NoLogger
+
+Adaptive.initialize(config)
+\end{lstlisting}
+
+\subsection{Extending the framework}
+
+The framework can be simply extended without actually modifying it by creating custom implementations of some of the traits that are used by the invocation and selection process, and by supplying it to the \inlinecode{Adaptive} initialization using a custom configuration, as described in \ref{subsec:framework_config}.
+
+An overview of the areas that are the simplest and most useful to extend will follow.
+
+\subsubsection{Selection strategies}
+
+A new selection strategy can be created by implementing the \inlinecode{SelectionStrategy} trait and by providing the implementation as either predictive or non-predictive selection strategy. The trait itself is technically a single function which is given a sequence of function run histories and an input descriptor and is supposed to return the run history of the function with best expected performance:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def selectOption(records: Seq[RunHistory[TMeasurement]], 
+  inputDescriptor: Option[Long]): RunHistory[TMeasurement]
+\end{lstlisting}
+
+The strategy will most likely have to work with either a specific evaluation data type, or at least put a constraint on it (by using the \textit{viewability} mechanism, see section \ref{subsec:implicit_args}).
+
+\subsubsection{History storages}
+
+If we wanted to change the way in which the history data are stored, e.g. by filtering some of the results, performing some aggregations to save space, etc., we would need to implement one or both of the following traits - the \inlinecode{RunHistory} trait, that represents the sequence of results for one group and function, and the \inlinecode{HistoryStorage} trait, that manages the \inlinecode{RunHistory} instances for different groups and functions.
+
+The main advantage is that these implementations can work with unspecified evaluation data type, if they are supposed to work just like a storage, or to have a fixed evaluation data type in case when some data aggregations or precomputations are required.
+
+\subsubsection{Evaluation data}
+
+We can change the \inlinecode{TMeasurement} data type and make the framework perform the adaptations according to a different (or more complex) evaluation results. In such a case, we need to implement the \inlinecode{EvaluationProvider} trait, and then add our custom selection strategies that select based on the new evaluation type.
