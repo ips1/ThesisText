@@ -217,6 +217,54 @@ In other languages (C\#, Kotlin), the same goal is achieved using extension meth
 
 Implicit conversions are considered a potentially dangerous feature, for this reason, the implicit conversions have to be manually enabled either by a Scala compiler switch, or by importing \inlinecode{scala.language.implicitConversions}.
 
+\subsection{Implicit arguments}
+\label{subsec:implicit_args}
+
+Scala allows values and functions marked as implicit to be passed into methods as arguments. If an argument is marked as implicit, it does not have to be specified at invocation, it will be filled automatically by an identifier with matching type that is accessible at the point of the call and is marked implicit itself. The actual argument then, again, behaves as being marked implicit within the function. This can be used to propagate implicit values throughout the chain of calls.
+
+This can be used for different reasons, but the most common one is a combination with the implicit conversions - a method has a type argument and we want it to be convertible to some other type. In the Scala terminology, the type has to be \textit{viewable} as that type.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def bubbleSort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+\end{lstlisting}
+
+There used to be a specialized syntax called \textit{View bounds} in earlier versions of Scala to support this usage, but it has been deprecated.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = ???
+\end{lstlisting}
+
+The typical use case of the described scenario is simulating \textit{type classes} from functional languages like Haskell. A generic trait with required methods (representing the type class and its functions) is created:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+trait Incrementable[A] {
+  def increment: A
+}
+\end{lstlisting}
+
+ Adding a member to the type class is done by creating an implementation of the trait and an implicit method that provides the conversion from the original type:
+ 
+ \lstset{style=Scala}
+ \begin{lstlisting}
+implicit def intIsIncrementable(i: Int): Incrementable[Int] = new Incrementable[Int] {
+  override def increment: Int = i + 1
+}
+ \end{lstlisting}
+ 
+ Now, whenever this conversion method is accessible, \inlinecode{Int} can be used as \inlinecode{Incrementable[Int]} and in addition, can be passed to any generic function that requires the argument to be \textit{viewable} as \inlinecode{Incrementable}:
+ 
+  \lstset{style=Scala}
+ \begin{lstlisting}
+ def incrementValue[K, V](map: mutable.Map[K, V], key: K)
+                                (implicit inc: V => Incrementable[V]) =
+   data.update(key, data(key).increment)
+  \end{lstlisting}
+  
+Note that the value of an implicit argument can be specified manually at the time of the call, and it does not necessarily have to be implicit in the calling scope. In that situation, it will be treated as implicit only inside the method.
+
 \section{Def Macros}
 \label{sec:defmacros}
 
