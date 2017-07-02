@@ -314,33 +314,47 @@ The AST representing this expression has to be wrapped in the \inlinecode{Method
 
 In all the cases, the \inlinecode{toAdapter} method has to be generated to replace the macro function. The function literal from the original AST has to be passed in as the first argument, and optionally, the second argument can be provided if the extraction of the method name was successful.
 
-The original simplified tree looks like this:
+The original tree in a simplified form can be seen in figure \ref{fig:original_eta_ast}.
 
-\begin{forest}
-	[Block
-	  [Statements
-	    [ValDef]
-	  ]
-	  [Function]
-	]
-\end{forest}
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{
+		\begin{forest}
+			[Block
+			[Statements
+			[ValDef]
+			]
+			[Function]
+			]
+		\end{forest}
+	}
+	\caption{The original simplified eta-expansion AST.}
+	\label{fig:original_eta_ast}
+\end{figure}
 
-We need to transform the block, keeping the definition in the statement part, but wrapping the \inlinecode{Function} into the \inlinecode{toAdapter} call.
+We need to transform the block, keeping the definition in the statement part, but wrapping the \inlinecode{Function} into the \inlinecode{toAdapter} call, as shown in figure \ref{fig:transformed_eta_ast}.
 	
-\begin{forest}
-	[Block
-	[Statements
-	[ValDef]
-	]
-	[Apply
-	  [toAdaptor]
-	  [ArgumentList
-	    [Function]
-	    [ExtractedReferenceExpression]
-	  ]
-	]
-	]
-\end{forest}
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{
+		\begin{forest}
+			[Block
+			[Statements
+			[ValDef]
+			]
+			[Apply
+			[toAdaptor]
+			[ArgumentList
+			[Function]
+			[ExtractedReferenceExpression]
+			]
+			]
+			]
+		\end{forest}
+	}
+	\caption{The simplfied eta-expansion AST after manually adding toAdaptor call.}
+	\label{fig:transformed_eta_ast}
+\end{figure}
 
 \subsection{Extracting method overloads}
 
@@ -427,13 +441,13 @@ The final state shows the code that will be present in our compiled program and 
 
 \subsection{Macros in the combining method}
 
-In the section \ref{subsubsec:apimethods}, we explained why the \inlinecode{or} method has to accept an argument of \inlinecode{FunctionN} type instead of \inlinecode{MultiFunctionN}. This does not seem to cause any trouble as we can manually convert \inlinecode{FunctionN} into the \inlinecode{FunctionAdaptorN}. With the macro expansion, however, we run into problems. Image we do it the following way:
+In the section \ref{subsubsec:apimethods}, we explained why the \inlinecode{or} method has to accept an argument of \inlinecode{FunctionN} type instead of \inlinecode{MultiFunctionN}. This does not seem to cause any trouble as we can manually convert \inlinecode{FunctionN} into the \inlinecode{FunctionAdaptorN} inside the method body. With the macro expansion, however, we run into problems. Image we do it the following way:
 \lstset{style=Scala}
 \begin{lstlisting}
 def or(fun: (T1) => R) = orMultiFunction(Implicits.toMultiFunction1(fun))
 \end{lstlisting}
 
-The  \inlinecode{toMultiFunction1} method is a macro - it gets executed at compile time, and it receives the argument AST as an argument. In this case, an AST that consists of the \inlinecode{fun} identifier. We have no way how to find out, where this function will be called from and with which arguments, so in order to extract the method name, we need to convert the entire \inlinecode{or} function to a macro which will generate the conversion code just like described in section \ref{subsec:generate_conversion}, and then wrap it in the internal \inlinecode{orMultiFunction} code.
+The  \inlinecode{toMultiFunction1} method is a macro - it gets executed at compile time, and it receives the argument AST as its input. In this case, an AST that consists of the \inlinecode{fun} identifier. We have no way to find out, where this function will be called from and with which arguments, so in order to extract the method name, we need to convert the entire \inlinecode{or} function to a macro which will generate the conversion code just like described in section \ref{subsec:generate_conversion}, and then wrap it in the internal \inlinecode{orMultiFunction} code.
 
 This does not require any extra AST manipulations, only one method call generations. It does, however, mean a complication - the macros cannot be called virtually. Therefore, the macro definition has to be part of the \inlinecode{MultiFunctionN} API trait, breaking somehow the encapsulation of the implementation. Fortunately, it does not perform any actions by itself, only replaces the \inlinecode{or} call with a conversion and an \inlinecode{orMultiFunction} call, which is, again, a virtual method defined on the trait without implementation and therefore encapsulated.
 
