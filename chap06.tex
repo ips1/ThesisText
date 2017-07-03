@@ -1,10 +1,71 @@
 \chapter{Framework evaluation}
 
+In this chapter, we will evaluate the ScalaAdaptive framework implemented as a part of this work. We will do it practically, by using it in some test scenarios. We will also point out some of the problems that the framework has, and suggest some future improvements.
+
 \section{Real problem application}
 
 In this section, we will try to suggest a couple of problems where the ScalaAdaptive library could be used to improve the overall performance. The problems will be described and an example usage of the library will be provided, along with evaluation of its effects.
 
+\subsection{Sorting algorithms}
+
+The first test of the ScalaAdaptive will be motivated by a the example case of almost every lecture about algorithm complexity - sorting. We are going to try combining an implementation of a selection sort with theoretical complexity $O(N^2)$ with an implementation of quick sort, which belongs to a category of algorithms with complexity $O(N logN)$. From the theoretical point of view, the quick sort should be a better choice for every input. In practice, however, it is faster to use selection sort for shorter inputs, as the quick sort has an overhead connected to the recursive nature of the algorithm.
+
+For our two implementations, we found out experimentally that the selection sort tends to be faster for input of less than 1000 items.
+
+The test consists of randomly generating 500 sequences of 0-5000 random integers. Then, all the sequences are sorted by the quick sort, selection sort and a combined function with logarithmic grouping and PauseSelectionAfterStreakPolicy with each one of the predictive selection strategies. The sorting times of all the sequences were added up and the results can be seen in table \ref{tab:sorting_results}.
+
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{center}
+	\begin{tabular}{|l|r|}
+		\hline
+		& \multicolumn{1}{c|}{\textbf{Total time (ms)}} \\ \hline
+		\textbf{Quick sort}                  & 1203.93                                       \\ \hline
+		\textbf{Selection sort}              & 3493.43                                       \\ \hline
+		\textbf{Combined (LR)}               & 1763.58                                       \\ \hline
+		\textbf{Combined (Window-bound LR)}  & 1605.37                                       \\ \hline
+		\textbf{Combined (Local regression)} & 1675.65                                       \\ \hline
+	\end{tabular}
+\end{center}
+\egroup
+\caption{Total times of sorting 500 random sequences of 0-5000 integers.}
+\label{tab:sorting_results}
+\end{table}
+
+As we can see, using combined function was worse than using quick sort all the time in this scenario. It is most likely caused by the fact that all the cases with smaller inputs where selection sort is faster than quick sort are in general so fast that having better results there has almost no impact in comparison with larger inputs.
+
+In figure \ref{fig:sorting_graph}, we can see the execution times of quick sort, selection sort and combined function (using the window-bound linear regression strategy) for different input sizes from this test. The upper graph shows the whole range of input sizes and as we can see, the combined function times are mostly similar to the quick sort times. In the lower graph, we can see the interval 0-1200, where selection sort tends to be better. The combined function, however, has the worst performance, which is caused by the invocation overhead.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{
+		\mbox{
+			\includegraphics[width=110mm]{./img/sort_graph1.png}
+		}
+	}
+	\centerline{
+		\mbox{
+			\includegraphics[width=110mm]{./img/sort_graph2.png}
+		}
+	}
+	\caption{Sorting times of sequences of different sizes using quick sort (orange), selection sort (gray) and a combined algorithm (blue).}
+	\label{fig:sorting_graph}
+\end{figure}
+
+In conclusion, ScalaAdaptive is not suitable for performing optimization for very small inputs of various algorithms. The overhead time leads to worse performance overall, even though the selection is working fine and the better options are correctly selected.
+
+\subsection{Matrix multiplication}
+
+Another example of an algorithmic problem where ScalaAdaptive could be used is matrix multiplication. The basic multiplication algorithm has complexity of $O(N^3)$ and tends to get quite slow for larger matrices. A lot of more complex algorithms with slightly better complexities were invented and are still being improved. The best achieved complexity so far is $O(N^2.373)$ in \cite{williams_multiplying_2012}.
+
+The practical problem with most of these fast algorithms is that they have quite high constants and therefore are not suitable for smaller matrices. In this test, we will use the ScalaAdaptive with the Strassen algorithm (complexity $O(N^2.807)$, \cite{strassen_gaussian_1969}), and with the basic multiplication algorithm. We will use a simple implementation of both algorithms from \cite{noauthor_jlinalg_nodate}. The goal of this test is not to find the fastest way to multiply matrices, but to simply demonstrate that adaptation can improve the performance of this class of algorithms.
+
+
+
 \subsection{JSON parsing}
+\label{subsec:json_parsing}
 
 JSON\footnote{JavaScript Object Notation} is a data-exchange format that can hold serialized object trees and collections based on the notation for object (technically key-value dictionaries) literals in JavaScript. The format has recently become extremely popular due to its simplicity, data efficiency and readability, and as of today, is basically a standard for communication HTTP REST APIs. Most of the systems with distributed architecture that communicate over such an API (typically client-server applications) need to serialize and deserialize JSON upon sending a request or receiving a response, which might occur quite often.
 
@@ -352,7 +413,7 @@ The framework adds a non-trivial overhead to the function invocation process due
 	Exists only when the SelectNew or GatherData result is given by the policy. It is determined by the actual selection strategy used and in general expected to be longer and to be related to the number of history data records for the functions involved. It is tracked by the framework and included in the \inlinecode{AnalyticsData} and the statistics that the policies are based on.
 \end{enumerate}
 
-The figure \ref{fig:overhead_sel_policy} shows these times tracked for a sequence of 20000 invocations (sampled every 50th run) using the window-bound linear regression strategy(see section \ref{subsec:window_bound_regression}) and a policy that emits SelectNew result every time. We can see that the selection overhead is significantly larger and really grown with the number of records. The policy evaluation overhead remains basically constant.
+The figure \ref{fig:overhead_sel_policy} shows these times tracked for a sequence of 20000 invocations (sampled every 50th run) using the window-bound linear regression strategy (see section \ref{subsec:window_bound_regression}) and a policy that emits the SelectNew result every time. We can see that the selection overhead is significantly larger and really grown with the number of records. The policy evaluation overhead remains basically constant.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -361,9 +422,9 @@ The figure \ref{fig:overhead_sel_policy} shows these times tracked for a sequenc
 	\label{fig:overhead_sel_policy}
 \end{figure}
 
-The average selection overhead from the sample discussed is \textbf{1.29ms} per invocation, the average policy evaluation overhead from the same sample is \textbf{0.06ms} per invocation. We can see that the policy evaluation overhead is low enough even for very fast methods, so the key to limiting the overhead is using the correct policies and avoiding selection whenever possible.
+The average selection overhead from the sample discussed is \textbf{1.29ms} per invocation, the average policy evaluation overhead from the same sample is \textbf{0.06ms} per invocation. We can see that the policy evaluation overhead is significantly lower, so the key to limiting the overhead is using the correct policies and avoiding selection whenever possible. Analysis in section \ref{subsec:strategy_perf} also showed that there are important differences in overheads of the strategies, so the correct strategy selection is important as well.
 
-In all of the applications presented in this chapter, the overhead was counted in - the real performance of the combined function was compared with the performance of the original, non-combined ones. The overhead is significant and has to be counted with, but with correct selection strategy and an appropriate overhead-saving policy, the impact is not significant enough.
+The overhead always exists and has to be counted with, but its significance depends on the actual problem that we are solving. The overhead was counted in for all of the applications presented in this chapter - the real performance of the combined function was compared with the performance of the original, non-combined ones. As we can see from the results in these cases, its significance was minimal.
 
 \subsection{Maintainability}
 
@@ -381,11 +442,11 @@ In cases where third-party libraries are used within the combined implementation
 
 Upon maintenance of all the implementations used in our program, there will be inevitable changes made to every one of them. Before being released, the system has to go through the verification process. Common techniques of regression testing are insufficient in this case due to the non-deterministic nature of the adaptive selection in the system - some of the implementations might not be tested at all during the regression test, but might be selected in the production environment.
 
-The only way how to perform a regression test on the system is to change the \textit{ScalaAdaptive} library configuration in the test environment, specifically the \textit{default policy} and the \textit{run selector}. Recommended settings are following:
+The only way how to perform a regression test on the system is to change the \textit{ScalaAdaptive} library configuration in the test environment, specifically the \textit{default policy} and the \textit{selection strategy}. Recommended settings are following:
 
  \begin{itemize}
  	\item default policy: AlwaysSelectPolicy
- 	\item run selector: LeastDataSelector
+ 	\item selection strategy: LeastDataSelectionStrategy
  \end{itemize}
 
 Using this setup and ensuring that there are no history run data present, the system will go through all the options in round-robin style upon every run. The test task has to be performed enough times for all the options to reach their turn.
@@ -409,32 +470,26 @@ In order to create a combined function from two different algorithms implemented
 
 Creating wrappers for the API that solve these issues is not trivial - data structures have to be converted, copied, etc., which will cause more unnecessary overhead. This overhead might get more significant with the complexity of data structures that we need to convert between the two APIs that we need to adapt.
 
-\section{Usage from Java}
+\section{Usage from Java and other JVM based languages}
+\label{sec:usage_from_java}
 
-Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of the ScalaAdaptive library from Java is not supported. The reason is that the API of the library depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
+Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of the ScalaAdaptive framework from Java is not supported. The reason is that the API of the framework depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
 
-There is, however, a very simple way how to utilize the library in a Java project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class that internally holds the function created from the Java methods using the \inlinecode{or} operator. It will expose only one method with the same signature that would just delegate the call into the internal function.
-%TODO:  Add references to previous usage mentions
+There is, however, a very simple way how to utilize the framework in a Java or any JVM based language project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class that internally holds the function created from the Java methods using the \inlinecode{or} operator. It will should expose it using a method, like described in section \ref{subsubsec:method_from_combined_func}, as Java does not have the concept of functions and the invocation would have to be done using the \inlinecode{apply} method call.
 
-To demonstrate this, we provide a simple Scala library \textit{AdaptiveJson} that can be imported in a form of \textit{jar} package into any Java project. Within the library, there is a single class, \textit{AdaptiveJsonParser}, which can be used to deserialize JSON string into a specified Java class. Internally, it uses the ScalaAdaptive library to chose between multiple JSON parsers.
-
-The library is reusable and supposing that it is kept up to date and that all the major JSON parsing libraries are 
-
-%TODO: Reference the JSON parsing chapter
-
-As part of future work on the library, there could be a Java API added, enabling a direct usage from Java, although it would be very limited and not as expressive. More on the topic of API possibilities in other languages will be discussed later.
-
-
+As part of future work on the framework, there could be a Java API added, enabling a direct usage from Java, although it would be very limited and not as expressive. More on the topic of API possibilities in other languages will be discussed later.
 
 \section{Future work}
 
-\subsection{Extending the policy logic and connecting it to selectors}
+\subsubsection{Extending the policy logic and connecting it to selectors}
 
-\subsection{Improving the persistent storage}
+As already briefly mentioned in section \ref{subsec:policy_improvements}, the policies are currently relatively limited, both in the data they have to base their decision on, and in the results they can produce. It would be interesting to analyze possible extensions while keeping the evaluation overhead as minimal as possible. The policies could give hints to the selection strategies, limit the data that they are working with, etc.
+
+\subsubsection{Improving the persistent storage}
 
 The run data in the persistent storage are currently stored in CSV file format, which is not very fast to serialize and deserialize. In addition, the serialization buffering is done in a very basic way, leading to a loss of run data when the application ends with a non-empty buffer. In addition, this solution still has a non-trivial overhead. A potential improvement task might be to select a new format and a method how to flush the buffer upon closing the application, i.e. using JVM shutdown hooks.
 
-\subsection{Thread safety and concurrency}
+\subsubsection{Thread safety and concurrency}
 
 The framework in general currently is not thread safe. It is designed, however, to be possible to make it that way without the necessity for some major changes. For the possibility to safely use the framework from a multi-threaded environment, we would need to ensure three basic points:
 
@@ -446,7 +501,7 @@ The framework in general currently is not thread safe. It is designed, however, 
 
 The first point should not cause any problems. Run histories are already prepared to be made thread-safe by having an API to support immutability (mutating operations return new instances) and an immutable implementation (with all the caches) as well. Because of that, only adding a simple lock on the history updating method should be enough. As to the third point, this is currently the biggest issue, because it has been optimized for performance and the statistics are mutable in general. They could, however, be made into an immutable structure, and replacing the policy and updating the statistics would be atomic operations without any overhead.
 
-\subsection{Optimizing run time of the whole system}
+\subsubsection{Optimizing run time of the whole system}
 
 Instead of optimizing the run times of separate functions, we could aim for optimizing the whole system. We could, for example, have a set of different data structures that our algorithm will be working with. The data structures would have all the necessary operations implemented and presented using a trait or an abstract class. The framework would generate a factory method that would create one of the implementations, and then track the overall behavior of different methods on the implementations. 
 
@@ -458,48 +513,33 @@ data.getMax()
 data.add(i)
 \end{lstlisting}
 
-\subsection{Selection strategies supporting multidimensional input descriptors}
+\subsubsection{Selection strategies supporting multidimensional input descriptors}
 
 As mentioned in section \ref{sec:predictive_strategies}, algorithm complexities are quite commonly functions of multiple factors of the input. In order to create selection strategies that would be able to correctly decide in case of such algorithms, we would need to add support for \textit{input descriptors} with more factors. The predictive strategies would then have to construct multidimensional regression models and analyze the dependency on multiple factors.
 
-\subsection{Detecting the function dependency}
+\subsubsection{Detecting the function dependency}
 
 The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation of input factor changes and run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the factors.
 
-\subsection{Significance level analysis}
+\subsubsection{Significance level analysis}
 
 The two main selection strategies used, linear regression and t-tests, have a significance level parameter for their decisions. The significance gets affected by performing multiple tests or confidence interval constructions during selection between more than two functions. The theory, as described in sections \ref{subsec:simple_linear_regression} and \ref{subsec:t_test_multiple}, would allow us to perform estimations of the impact of multiple function testing on the significance level, which would be quite complicated. 
 
 More interesting future work, however, might be based on experimentally determining the most appropriate values for various number of functions, based on real cases and real function behavior.
 
-\subsection{Implementation in other languages}
+\subsubsection{Implementation in other languages}
 
-The library is implemented in Scala and can be used by any JVM-based languages, even though often without the comfort that provides Scala with its implicits and eta-expansion.
-
-The same functionality, however, could be used on other platform than JVM as well. The library itself isn't complicated to reproduce and its runtime back-end is transferable to basically any platform. There would be minor complications with immutability of the data structures and expressiveness of Scala in some cases, but nothing show stopping.
-
-The key part of the library that would cause problems upon reimplementation is the API, which relies heavily on Scala's DSL features (see \ref{sec:dsls}). It requires the following features from the language:
+The framework is implemented in Scala and can be used to combine functions for any JVM-based languages (see section \ref{sec:usage_from_java}). Transferring the whole framework to a different language and platform might be desirable in the future. In such a case, the main problem would be the API of the framework, which, in its current design, relies heavily on Scala's DSL features (see \ref{sec:dsls}). It requires the following features from the language:
 
 \begin{itemize}
 	\item Implicit type conversions
 	\item Functions as first-class values
+	\item Extensibility of the function types
 	\item Eta-expansion of methods
 	\item Infix operator syntax for methods
 	\item Macros to parse and modify the AST upon compilation
 \end{itemize}
 
-With a subset of the features in the language, a limited API can be designed. Let's have a look at some language examples and what they offer.
+With a subset of these features in the language, a limited version of the current API could be designed. 
 
-\subsubsection{Java}
-
-\subsubsection{C\#}
-
-The C\# language has relatively advanced features and offers function types (\inlinecode{Func<TArg, TRetVal>}) that allow treating the functions as first class values. There is also a feature called \textit{Method groups}, which, in certain situations, lead to an implicit conversion of a method on an object to the corresponding function type - basically the same as eta-expansion.
-
-%TODO: Add examples
-
-The API in C\# could be based on method chaining and be quite similar to the one in Scala, although the method name extraction and the infix fluent-language syntax wouldn't be present.
-
-A complication would be the async methods that are quite common in C\#. Measuring their runtime would require chaining continuations on the resulting tasks.
-
-\subsubsection{C / C++}
+The best approach for a different platform implementation would probably be to analyze the features that the target language offers and the common approach to designing APIs in that language, and to create a new, better suited API.
