@@ -11,83 +11,365 @@
 %
 %  ===========================================================================
 
-@BOOK{Andel07,
-  title = {Základy matematické statistiky},
-  publisher = {Matfyzpress},
-  year = {2007},
-  author = {Anděl, J.},
-  address = {Praha},
-  series = {Druhé opravené vydání},
-  isbn = {80-7378-001-1}
+
+@misc{center_for_history_and_new_media_zotero_nodate,
+	title = {Zotero {Quick} {Start} {Guide}},
+	url = {http://zotero.org/support/quick_start_guide},
+	author = {{Center for History and New Media}},
+	annote = {Welcome to Zotero!View the Quick Start Guide to learn how to begin collecting, managing, citing, and sharing your research sources.Thanks for installing Zotero.}
 }
 
-@BOOK{Andel98,
-  title = {Statistické metody},
-  publisher = {Matfyzpress},
-  year = {1998},
-  author = {Anděl, J.},
-  address = {Praha},
-  series = {Druhé přepracované vydání},
-  isbn = {80-85863-27-8}
+@inproceedings{huang_predicting_2010,
+	address = {USA},
+	series = {{NIPS}'10},
+	title = {Predicting {Execution} {Time} of {Computer} {Programs} {Using} {Sparse} {Polynomial} {Regression}},
+	url = {http://dl.acm.org/citation.cfm?id=2997189.2997288},
+	abstract = {Predicting the execution time of computer programs is an important but challenging problem in the community of computer systems. Existing methods require experts to perform detailed analysis of program code in order to construct predictors or select important features. We recently developed a new system to automatically extract a large number of features from program execution on sample inputs, on which prediction models can be constructed without expert knowledge. In this paper we study the construction of predictive models for this problem. We propose the SPORE (Sparse POlynomial REgression) methodology to build accurate prediction models of program performance using feature data collected from program execution on sample inputs. Our two SPORE algorithms are able to build relationships between responses (e.g., the execution time of a computer program) and features, and select a few from hundreds of the retrieved features to construct an explicitly sparse and non-linear model to predict the response variable. The compact and explicitly polynomial form of the estimated model could reveal important insights into the computer program (e.g., features and their non-linear combinations that dominate the execution time), enabling a better understanding of the program's behavior. Our evaluation on three widely used computer programs shows that SPORE methods can give accurate prediction with relative error less than 7\% by using a moderate number of training data samples. In addition, we compare SPORE algorithms to state-of-the-art sparse regression algorithms, and show that SPORE methods, motivated by real applications, outperform the other methods in terms of both interpretability and prediction accuracy.},
+	booktitle = {Proceedings of the 23rd {International} {Conference} on {Neural} {Information} {Processing} {Systems}},
+	publisher = {Curran Associates Inc.},
+	author = {Huang, Ling and Jia, Jinzhu and Yu, Bin and Chun, Byung-Gon and Maniatis, Petros and Naik, Mayur},
+	year = {2010},
+	pages = {883--891}
 }
 
-@ARTICLE{Cox72,
-  author = {Cox, D. R.},
-  title = {Regression models and life-tables (with {D}iscussion)},
-  journal = {Journal of the Royal Statistical Society, Series B},
-  year = {1972},
-  volume = {34},
-  pages = {187--220},
-  number = {2}
+@inproceedings{goldsmith_measuring_2007,
+	address = {New York, NY, USA},
+	series = {{ESEC}-{FSE} '07},
+	title = {Measuring {Empirical} {Computational} {Complexity}},
+	isbn = {978-1-59593-811-4},
+	url = {http://doi.acm.org/10.1145/1287624.1287681},
+	doi = {10.1145/1287624.1287681},
+	abstract = {The standard language for describing the asymptotic behavior of algorithms is theoretical computational complexity. We propose a method for describing the asymptotic behavior of programs in practice by measuring their empirical computational complexity. Our method involves running a program on workloads spanning several orders of magnitude in size, measuring their performance, and fitting these observations to a model that predicts performance as a function of workload size. Comparing these models to the programmer's expectations or to theoretical asymptotic bounds can reveal performance bugs or confirm that a program's performance scales as expected. Grouping and ranking program locations based on these models focuses attention on scalability-critical code. We describe our tool, the Trend Profiler (trend-prof), for constructing models of empirical computational complexity that predict how many times each basic block in a program runs as a linear (y = a + bx) or a powerlaw (y = axb) function of user-specified features of the program's workloads. We ran trend-prof on several large programs and report cases where a program scaled as expected, beat its worst-case theoretical complexity bound, or had a performance bug.},
+	booktitle = {Proceedings of the the 6th {Joint} {Meeting} of the {European} {Software} {Engineering} {Conference} and the {ACM} {SIGSOFT} {Symposium} on {The} {Foundations} of {Software} {Engineering}},
+	publisher = {ACM},
+	author = {Goldsmith, Simon F. and Aiken, Alex S. and Wilkerson, Daniel S.},
+	year = {2007},
+	keywords = {empirical computational complexity, trend-prof},
+	pages = {395--404},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/BK75G88S/Goldsmith et al. - 2007 - Measuring Empirical Computational Complexity.pdf:application/pdf}
 }
 
-@ARTICLE{DempsterLairdRubin77,
-  author = {Dempster, A. P. and Laird, N. M. and Rubin, D. B.},
-  title = {Maximum likelihood from incomplete data via the {EM} algorithm},
-  journal = {Journal of the Royal Statistical Society, Series B},
-  year = {1977},
-  volume = {39},
-  pages = {1--38},
-  number = {1}
+@inproceedings{gupta_pqr:_2008,
+	address = {Washington, DC, USA},
+	series = {{ICAC} '08},
+	title = {{PQR}: {Predicting} {Query} {Execution} {Times} for {Autonomous} {Workload} {Management}},
+	isbn = {978-0-7695-3175-5},
+	shorttitle = {{PQR}},
+	url = {http://dx.doi.org/10.1109/ICAC.2008.12},
+	doi = {10.1109/ICAC.2008.12},
+	abstract = {Modern enterprise data warehouses have complex workloads that are notoriously difficult to manage. One of the key pieces to managing workloads is an estimate of how long a query will take to execute. An accurate estimate of this query execution time is critical to self managing Enterprise Class Data Warehouses.In this paper we study the problem of predicting the execution time of a query on a loaded data warehouse with a dynamically changing workload. We use a machine learning approach that takes the query plan, combines it with the observed load vector of the system and uses the new vector to predict the execution time of the query. The predictions are made as time ranges. We validate our solution using real databases and real workloads. We show experimentally that our machine learning approach works well. This technology is slated for incorporation into a commercial, enterprise class DBMS.},
+	booktitle = {Proceedings of the 2008 {International} {Conference} on {Autonomic} {Computing}},
+	publisher = {IEEE Computer Society},
+	author = {Gupta, Chetan and Mehta, Abhay and Dayal, Umeshwar},
+	year = {2008},
+	keywords = {Autonomic, Manageability, Predictability},
+	pages = {13--22}
 }
 
-@ARTICLE{Genberget08,
-  author = {Genberg, B. L. and Kulich, M. and Kawichai, S. and Modiba, P. and
-	Chingono, A. and Kilonzo, G. P. and Richter, L. and Pettifor, A.
-	and Sweat, M. and Celentano, D. D.},
-  title = {{HIV} risk behaviors in Sub-{S}aharan {A}frica and {N}orthern {T}hailand:
-	{B}aseline behavioral data from project {A}ccept},
-  journal = {Journal of Acquired Immune Deficiency Syndrome},
-  year = {2008},
-  volume = {49},
-  pages = {309--319}
+@misc{noauthor_voteforamerica.net_nodate,
+	title = {{VoteForAmerica}.net :: {Electoral} {Projections} {Using} {LOESS}},
+	url = {http://voteforamerica.net/editorials/Comments.aspx?ArticleId=28&ArticleName=Electoral+Projections+Using+LOESS},
+	urldate = {2017-07-02},
+	file = {VoteForAmerica.net \:\: Electoral Projections Using LOESS:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/P5A8CZHQ/Comments.html:text/html}
 }
 
-@ARTICLE{KaplanMeier58,
-  author = {Kaplan, E. L. and Meier, P.},
-  title = {Nonparametric estimation from incomplete observations},
-  journal = {Journal of the American Statistical Association},
-  year = {1958},
-  volume = {53},
-  pages = {457--481},
-  number = {282}
+@article{cleveland_regression_1988,
+	title = {Regression by local fitting},
+	volume = {37},
+	issn = {0304-4076},
+	url = {http://www.sciencedirect.com/science/article/pii/0304407688900772},
+	doi = {10.1016/0304-4076(88)90077-2},
+	abstract = {Local regression is a procedure for estimating regression surfaces by the local fitting of linear or quadratic functions of the independent variables in a moving fashion that is analogous to how a moving average is computed for a time series. The advantage of the methodology over the global fitting of parametric functions of the independent variables by least squares, the current paradigm in regression studies, is that a much wider class of regression functions can be estimated without distortion. In this paper, we discuss the methods, their statistical properties, and computational algorithms.},
+	number = {1},
+	journal = {Journal of Econometrics},
+	author = {Cleveland, William S. and Devlin, Susan J. and Grosse, Eric},
+	month = jan,
+	year = {1988},
+	pages = {87--114},
+	file = {ScienceDirect Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/K6ETEJ33/Cleveland et al. - 1988 - Regression by local fitting.pdf:application/pdf;ScienceDirect Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/UUFJJNTP/0304407688900772.html:text/html}
 }
 
-@BOOK{LehmannCasella98,
-  title = {Theory of Point Estimation},
-  publisher = {Springer-Verlag},
-  year = {1998},
-  author = {Lehmann, E. L. and Casella, G.},
-  address = {New York},
-  series = {{S}econd {E}dition},
-  isbn = {0-387-98502-6}
+@article{cleveland_computational_1991,
+	title = {Computational methods for local regression},
+	volume = {1},
+	issn = {0960-3174, 1573-1375},
+	url = {https://link.springer.com/article/10.1007/BF01890836},
+	doi = {10.1007/BF01890836},
+	abstract = {Local regression is a nonparametric method in which the regression surface is estimated by fitting parametric functions locally in the space of the predictors using weighted least squares in a moving fashion similar to the way that a time series is smoothed by moving averages. Three computational methods for local regression are presented. First, fast surface fitting and evaluation is achieved by building ak-d tree in the space of the predictors, evaluating the surface at the corners of the tree, and then interpolating elsewhere by blending functions. Second, surfaces are made conditionally parametric in any proper subset of the predictors by a simple alteration of the weighting scheme. Third degree-of-freedom quantities that would be extremely expensive to compute exactly are approximated, not by numerical methods, but through a statistical model that predicts the quantities from the trace of the hat matrix, which can be computed easily.},
+	language = {en},
+	number = {1},
+	urldate = {2017-07-02},
+	journal = {Statistics and Computing},
+	author = {Cleveland, William S. and Grosse, E.},
+	month = sep,
+	year = {1991},
+	pages = {47--62},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/K6ITJBEU/BF01890836.html:text/html}
 }
 
-@ARTICLE{Student08,
-  author = {Student},
-  title = {On the probable error of the mean},
-  journal = {Biometrika},
-  year = {1908},
-  volume = {6},
-  pages = {1-25}
+@inproceedings{smith_predicting_1998,
+	address = {London, UK, UK},
+	series = {{IPPS}/{SPDP} '98},
+	title = {Predicting {Application} {Run} {Times} {Using} {Historical} {Information}},
+	isbn = {978-3-540-64825-3},
+	url = {http://dl.acm.org/citation.cfm?id=646379.689526},
+	booktitle = {Proceedings of the {Workshop} on {Job} {Scheduling} {Strategies} for {Parallel} {Processing}},
+	publisher = {Springer-Verlag},
+	author = {Smith, Warren and Foster, Ian T. and Taylor, Valerie E.},
+	year = {1998},
+	pages = {122--142},
+	annote = {Uses linear regression and confidence intervals!!!}
+}
+
+@misc{noauthor_wiley:_nodate,
+	title = {Wiley: {Applied} {Regression} {Analysis}, 3rd {Edition} - {Norman} {R}. {Draper}, {Harry} {Smith}},
+	shorttitle = {Wiley},
+	url = {http://www.wiley.com/WileyCDA/WileyTitle/productCd-0471170828.html},
+	urldate = {2017-07-02},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/KF8Z2BJR/productCd-0471170828.html:text/html}
+}
+
+@book{weiss_introductory_2010,
+	address = {Boston},
+	edition = {9 edition},
+	title = {Introductory {Statistics}},
+	isbn = {978-0-321-69122-4},
+	abstract = {Weiss’s Introductory Statistics, Ninth Edition is the ideal textbook for introductory statistics classes that emphasize statistical reasoning and critical thinking. The text is suitable for a one- or two-semester course. Comprehensive in its coverage, Weiss’s meticulous style offers careful, detailed explanations to ease the learning process. With more than 1,000 data sets and more than 2,600 exercises, most using real data, this text takes a data-driven approach that encourages students to apply their knowledge and develop statistical literacy.      Introductory Statistics, Ninth Edition, contains parallel presentation of critical-value and p-value approaches to hypothesis testing. This unique design allows both the flexibility to concentrate on one approach or the opportunity for greater depth in comparing the two.     This edition continues the book’s tradition of being on the cutting edge of statistical pedagogy, technology, and data analysis. It includes hundreds of new and updated exercises with real data from journals, magazines, newspapers, and websites.     Datasets and other resources (where applicable) for this book are available here.},
+	language = {English},
+	publisher = {Pearson},
+	author = {Weiss, Neil A.},
+	month = dec,
+	year = {2010},
+	annote = {Welch (nonpooled) t-test p. 452
+	},
+	file = {Introductory Statistics.pdf:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/IHFQ63HR/Introductory Statistics.pdf:application/pdf}
+}
+
+@misc{noauthor_performance_2013,
+	title = {Performance prediction},
+	copyright = {Creative Commons Attribution-ShareAlike License},
+	url = {https://en.wikipedia.org/w/index.php?title=Performance_prediction&oldid=583931147},
+	abstract = {In computer science, performance prediction means to estimate the execution time or other performance factors (such as cache misses) of a program on a given computer. It is being widely used for computer architects to evaluate new computer designs, for compiler writers to explore new optimizations, and also for advanced developers to tune their programs.
+	There are many approaches to predict program 's performance on computers. They can be roughly divided into three major categories:
+	simulation-based prediction
+	profile-based prediction
+	analytical modeling},
+	language = {en},
+	journal = {Wikipedia},
+	month = nov,
+	year = {2013},
+	note = {Page Version ID: 583931147},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/CAQP99FQ/index.html:text/html}
+}
+
+@article{jarvis_performance_2006,
+	title = {Performance {Prediction} and {Its} {Use} in {Parallel} and {Distributed} {Computing} {Systems}},
+	volume = {22},
+	issn = {0167-739X},
+	url = {http://dx.doi.org/10.1016/j.future.2006.02.008},
+	doi = {10.1016/j.future.2006.02.008},
+	abstract = {Performance prediction is set to play a significant role in supportive middleware that is designed to manage workload on parallel and distributed computing systems. This middleware underpins the discovery of available resources, the identification of a task's requirements and the matchmaking, scheduling and staging that follow.This paper documents two prediction-based middleware services that address the implications of executing a particular workload on a given set of resources. These services are based on an established performance prediction system that is employed at both the local (intra-domain) and global (multi-domain) levels to provide dynamic workload steering. These additional facilities bring about significant performance improvements, the details of which are presented with regard to system- and user-level qualities of service. The middleware has been designed for the management of resources and distributed workload across multiple administrative boundaries, a requirement that is of central importance to grid computing.},
+	number = {7},
+	journal = {Future Gener. Comput. Syst.},
+	author = {Jarvis, Stephen A. and Spooner, Daniel P. and Keung, Helene N. Lim Choi and Cao, Junwei and Saini, Subhash and Nudd, Graham R.},
+	month = aug,
+	year = {2006},
+	keywords = {grid computing, performance prediction, resource management},
+	pages = {745--754}
+}
+
+@inproceedings{hammond_warpp_2009,
+	address = {Rome, Italy},
+	title = {{WARPP} : a toolkit for simulating high performance parallel scientific codes},
+	shorttitle = {{WARPP}},
+	url = {http://dx.doi.org/10.4108/ICST.SIMUTOOLS2009.5753},
+	abstract = {There are a number of challenges facing the High Performance Computing (HPC) community, including increasing levels of concurrency (threads, cores, nodes), deeper and more complex memory hierarchies (register, cache, disk, network), mixed hardware sets (CPUs and GPUs) and increasing scale (tens or hundreds of thousands of processing elements). Assessing the performance of complex scientific applications on specialised high-performance computing architectures is difficult. In many cases, traditional computer benchmarking is insufficient as it typically requires access to physical machines of equivalent (or similar) specification and rarely relates to the potential capability of an application. A technique known as application performance modelling addresses many of these additional requirements. Modelling allows future architectures and/or applications to be explored in a mathematical or simulated setting, thus 
+	enabling hypothetical questions relating to the configuration of a potential future architecture to be assessed in terms of its impact on key scientific codes.
+	
+	This paper describes the Warwick Performance Prediction (WARPP) simulator, which is used to construct application performance models for complex industry-strength parallel scientific codes executing on thousands of processing cores. The capability and accuracy of the simulator is demonstrated through its application to a scientific benchmark developed by the United Kingdom Atomic Weapons Establishment (AWE). The results of the simulations are validated for two different HPC architectures, each case demonstrating a greater than 90\% accuracy for run-time prediction. Simulation results, collected from runs on a standard PC, are provided for up to 65,000 processor cores. It is also shown how the addition of operating system jitter to the simulator can improve the quality of the application performance model results.},
+	urldate = {2017-07-02},
+	booktitle = {{SIMUTools} '09 2nd {International} {Conference} on {Simulation} {Tools} and {Techniques}},
+	publisher = {ICST (Institute for Computer Sciences, Social-Informatics and Telecommunications Engineering)},
+	author = {Hammond, Simon D. and Mudalige, Gihan R. and Smith, J. A. and Jarvis, Stephen A. and Herdman, J. A. and Vadgama, A.},
+	month = mar,
+	year = {2009},
+	pages = {Article no. 19},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/DN9ST8FX/47519.html:text/html}
+}
+
+@article{alkindi_optimisation_2001,
+	series = {High {Performance} {Computing} and {Networking}},
+	title = {Optimisation of application execution on dynamic systems},
+	volume = {17},
+	issn = {0167-739X},
+	url = {http://www.sciencedirect.com/science/article/pii/S0167739X0100036X},
+	doi = {10.1016/S0167-739X(01)00036-X},
+	abstract = {In this paper, we demonstrate the impact of using a dynamic (on-the-fly) performance prediction tool-set, PACE, for optimising application execution on dynamic systems. The need for steering the application execution arises from the ever-growing use of distributed and GRID systems. The unquestionable aim to overcome bottleneck problems, allocation, and performance degradation due to shared CPU time has prompted many investigations into the best way in which the performance of an application can be enhanced. In this work, we present a novel approach to dynamically optimise the performance of an application. An example application, the FFTW (the fastest Fourier transform in the west), is used to illustrate the approach which itself is a novel method that optimises the execution of an FFT. It is shown that performance prediction can provide the same quality of information as a measurement process for application optimisation but in a fraction of the time and thus improving the overall application performance.},
+	number = {8},
+	journal = {Future Generation Computer Systems},
+	author = {Alkindi, A. M and Kerbyson, D. J and Papaefstathiou, E and Nudd, G. R},
+	month = jun,
+	year = {2001},
+	keywords = {Application steering, Dynamic performance prediction, FFTW, Performance modelling, Performance optimisation},
+	pages = {941--949},
+	file = {ScienceDirect Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/Z829VW7U/S0167739X0100036X.html:text/html}
+}
+
+@article{dinda_online_2002,
+	title = {Online {Prediction} of the {Running} {Time} of {Tasks}},
+	volume = {5},
+	issn = {1386-7857, 1573-7543},
+	url = {https://link.springer.com/article/10.1023/A:1015634802585},
+	doi = {10.1023/A:1015634802585},
+	abstract = {We describe and evaluate the Running Time Advisor (RTA), a system that can predict the running time of a compute-bound task on a typical shared, unreserved commodity host. The prediction is computed from linear time series predictions of host load and takes the form of a confidence interval that neatly expresses the error associated with the measurement and prediction processes – error that must be captured to make statistically valid decisions based on the predictions. Adaptive applications make such decisions in pursuit of consistent high performance, choosing, for example, the host where a task is most likely to meet its deadline. We begin by describing the system and summarizing the results of our previously published work on host load prediction. We then describe our algorithm for computing predictions of running time from host load predictions. We next evaluate the system using over 100,000 randomized testcases run on 39 different hosts, finding that is indeed capable of computing correct and useful confidence intervals. Finally, we report on our experience with using the RTA in application-oriented real-time scheduling in distributed systems.},
+	language = {en},
+	number = {3},
+	urldate = {2017-07-02},
+	journal = {Cluster Computing},
+	author = {Dinda, Peter A.},
+	month = jul,
+	year = {2002},
+	pages = {225--236},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/76HM2HHN/A1015634802585.html:text/html}
+}
+
+@article{nudd_pacetoolset_2000,
+	title = {Pace–{A} {Toolset} for the {Performance} {Prediction} of {Parallel} and {Distributed} {Systems}},
+	volume = {14},
+	issn = {1094-3420},
+	url = {http://dx.doi.org/10.1177/109434200001400306},
+	doi = {10.1177/109434200001400306},
+	abstract = {This paper describes a methodology that provides detailed predictive performance information throughout the software design and implementation cycles. It is structured around a hierarchy of performance models that describe the computing system in terms of its software, parallelization, and hardware components. The methodology is illustrated with an implementation, the performance analysis and characterization environment (PACE) system, which provides information concerning execution time, scalability, and resource use. A principal aim of the work is to provide a capability for rapid calculation of relevant performance numbers without sacrificing accuracy. The predictive nature of the approach provides both pre and post implementation analyses and allows implementation alternatives to be explored prior to the commitment of an application to a system. Because of the relatively fast analysis times, these techniques can be used at runtime to assist in application steering and scheduling with reference to dynamically changing systems and metacomputing.},
+	number = {3},
+	journal = {Int. J. High Perform. Comput. Appl.},
+	author = {Nudd, G. R. and Kerbyson, D. J. and Papaefstathiou, E. and Perry, S. C. and Harper, J. S. and Wilcox, D. V.},
+	month = aug,
+	year = {2000},
+	pages = {228--251}
+}
+
+@inproceedings{amaris_simple_2015,
+	title = {A {Simple} {BSP}-based {Model} to {Predict} {Execution} {Time} in {GPU} {Applications}},
+	doi = {10.1109/HiPC.2015.34},
+	abstract = {Models are useful to represent abstractions of software and hardware processes. The Bulk Synchronous Parallel (BSP) is a bridging model for parallel computation that allows algorithmic analysis of programs on parallel computers using performance modeling. The main idea of BSP model is the treatment of communication and computation as abstractions of a parallel system. Meanwhile, the use of GPU devices are becoming more widespread and they are currently capable of performing efficient parallel computation for applications that can be decomposed on thousands of simple threads. However, few models for predicting application execution time on GPUs have been proposed. In this work we present a simple and intuitive BSP-based model for predicting the CUDA application execution times on GPUs. The model is based on the number of computations and memory accesses of the GPU, with additional information on cache usage obtained from profiling. Scalability, divergence, effect of optimizations and differences of architectures are adjusted by a single parameter. We evaluated our model using two applications and six different boards. We showed by using profile information for a single board, that the model is general enough to predict the execution time of an application with different input sizes and on different boards with the same architecture. Our model predictions were within 0.8 to 1.2 times the measured execution times, which are reasonable for such a simple model. These results indicate that the model is good enough to generalize the predictions for different problem sizes and GPU configurations.},
+	booktitle = {2015 {IEEE} 22nd {International} {Conference} on {High} {Performance} {Computing} ({HiPC})},
+	author = {Amarís, M. and Cordeiro, D. and Goldman, A. and Camargo, R. Y. d},
+	month = dec,
+	year = {2015},
+	keywords = {application execution time prediction, bridging model, BSP model, bulk synchronous parallel, cache storage, cache usage, Computational modeling, Computer architecture, CUDA, CUDA application execution time, divergence, GPGPU, GPU application, GPU configuration, GPU devices, graphics processing units, hardware process, Instruction sets, Kepler Architecture, Kernel, memory access, parallel architectures, parallel computation, parallel computer, parallel programming, parallel system, performance modeling, performance prediction, Predictive models, profile information, program algorithmic analysis, program diagnostics, scalability, simple BSP-based model, software process},
+	pages = {285--294},
+	file = {IEEE Xplore Abstract Record:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/5QZ63F5R/7397643.html:text/html}
+}
+
+@article{wu_towards_2013,
+	title = {Towards {Predicting} {Query} {Execution} {Time} for {Concurrent} and {Dynamic} {Database} {Workloads}},
+	volume = {6},
+	issn = {2150-8097},
+	url = {http://dx.doi.org/10.14778/2536206.2536219},
+	doi = {10.14778/2536206.2536219},
+	abstract = {Predicting query execution time is crucial for many database management tasks including admission control, query scheduling, and progress monitoring. While a number of recent papers have explored this problem, the bulk of the existing work either considers prediction for a single query, or prediction for a static workload of concurrent queries, where by "static" we mean that the queries to be run are fixed and known. In this paper, we consider the more general problem of dynamic concurrent workloads. Unlike most previous work on query execution time prediction, our proposed framework is based on analytic modeling rather than machine learning. We first use the optimizer's cost model to estimate the I/O and CPU requirements for each pipeline of each query in isolation, and then use a combination queueing model and buffer pool model that merges the I/O and CPU requests from concurrent queries to predict running times. We compare the proposed approach with a machine-learning based approach that is a variant of previous work. Our experiments show that our analytic-model based approach can lead to competitive and often better prediction accuracy than its machine-learning based counterpart.},
+	number = {10},
+	journal = {Proc. VLDB Endow.},
+	author = {Wu, Wentao and Chi, Yun and Hacígümüş, Hakan and Naughton, Jeffrey F.},
+	month = aug,
+	year = {2013},
+	pages = {925--936},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/R9VTV96J/Wu et al. - 2013 - Towards Predicting Query Execution Time for Concur.pdf:application/pdf}
+}
+
+@article{aman_adaptive_1997,
+	title = {Adaptive {Algorithms} for {Managing} a {Distributed} {Data} {Processing} {Workload}},
+	volume = {36},
+	issn = {0018-8670},
+	url = {http://dx.doi.org/10.1147/sj.362.0242},
+	doi = {10.1147/sj.362.0242},
+	number = {2},
+	journal = {IBM Syst. J.},
+	author = {Aman, J. and Eilert, C. K. and Emmes, D. and Yocom, P. and Dillenberger, D.},
+	month = apr,
+	year = {1997},
+	pages = {242--283}
+}
+
+@misc{fogus_baysick:_2017,
+	title = {baysick: {An} embedded {Insane}-specific {Language} for {Scala} implementing the {BASIC} programming language},
+	copyright = {MIT},
+	shorttitle = {baysick},
+	url = {https://github.com/fogus/baysick},
+	author = {Fogus},
+	month = jun,
+	year = {2017},
+	note = {original-date: 2009-03-13T17:07:34Z},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/I8JNFTV5/master.html:text/html}
+}
+
+@misc{ansel_opentuner:_2017,
+	title = {opentuner: {An} extensible framework for program autotuning},
+	copyright = {MIT},
+	shorttitle = {opentuner},
+	url = {https://github.com/jansel/opentuner},
+	author = {Ansel, Jason},
+	month = jul,
+	year = {2017},
+	note = {original-date: 2012-11-27T21:22:13Z},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/DDK8935Q/opentuner.html:text/html}
+}
+
+@misc{tobolski_scala_nodate,
+	title = {Scala {DSL} tutorial - writing a web framework router},
+	url = {https://www.monterail.com/blog/2012/scala-dsl-tutorial-writing-web-framework-router},
+	abstract = {Recently released Play 2.0 framework brings new way of creating web services to Java community.},
+	urldate = {2017-07-02},
+	author = {Tobolski, Tymon},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/RGQG8F87/scala-dsl-tutorial-writing-web-framework-router.html:text/html}
+}
+
+@misc{noauthor_jlinalg_nodate,
+	title = {{JLinAlg} - {Open} {Source} {And} {Easy}-to-{Use} {Java}-library {For} {Linear} {Algebra}},
+	url = {http://jlinalg.sourceforge.net/},
+	urldate = {2017-07-03}
+}
+
+@misc{noauthor_scalatest:_2017,
+	title = {scalatest: {A} testing tool for {Scala} and {Java} developers},
+	copyright = {Apache-2.0},
+	shorttitle = {scalatest},
+	url = {http://www.scalatest.org/},
+	publisher = {ScalaTest},
+	month = jun,
+	year = {2017},
+	note = {original-date: 2013-04-07T21:55:49Z},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/MFWT26SV/scalatest.html:text/html}
+}
+
+
+@inproceedings{williams_multiplying_2012,
+	address = {New York, NY, USA},
+	series = {{STOC} '12},
+	title = {Multiplying {Matrices} {Faster} {Than} {Coppersmith}-winograd},
+	isbn = {978-1-4503-1245-5},
+	url = {http://doi.acm.org/10.1145/2213977.2214056},
+	doi = {10.1145/2213977.2214056},
+	abstract = {We develop an automated approach for designing matrix multiplication algorithms based on constructions similar to the Coppersmith-Winograd construction. Using this approach we obtain a new improved bound on the matrix multiplication exponent ω{\textless}2.3727.},
+	booktitle = {Proceedings of the {Forty}-fourth {Annual} {ACM} {Symposium} on {Theory} of {Computing}},
+	publisher = {ACM},
+	author = {Williams, Virginia Vassilevska},
+	year = {2012},
+	keywords = {matrix, multiplication},
+	pages = {887--898}
+}
+
+
+@article{strassen_gaussian_1969,
+	title = {Gaussian {Elimination} is {Not} {Optimal}},
+	volume = {13},
+	issn = {0029-599X},
+	url = {http://dx.doi.org/10.1007/BF02165411},
+	doi = {10.1007/BF02165411},
+	number = {4},
+	journal = {Numer. Math.},
+	author = {Strassen, Volker},
+	month = aug,
+	year = {1969},
+	pages = {354--356}
 }
