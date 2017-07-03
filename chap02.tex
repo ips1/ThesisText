@@ -143,15 +143,13 @@ In order to simplify the process of creating a new DSL, it is often implemented 
 
 These DSLs became recently very popular for defining configurations, build and deployment processes - an example could be the Gradle scripting language, which is actually a DSL in Groovy, or the Chef recipes, being just Ruby scripts.
 
-DSLs can be efficiently implemented only in languages with flexible-enough syntax not to limit the target language too much. Scala is one of these languages, along with for example Groovy. An example DSL, a ScalaTest framework [TODO: REFERENCE http://www.scalatest.org], can look the following way:
+DSLs can be efficiently implemented only in languages with flexible-enough syntax not to limit the target language too much. Scala is one of these languages, along with for example Groovy. An example DSL, a ScalaTest framework \cite{noauthor_scalatest:_2017}, can look the following way:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 an [Exception] should be thrownBy { s.charAt(-1) }
 greeting should equal ("hi") (after being lowerCased)
 \end{lstlisting}
-
-%TODO: What are DSLs
 
 %TODO: ref https://www.manning.com/books/dsls-in-action
 %TODO: http://www.scalatest.org/
