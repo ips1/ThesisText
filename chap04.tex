@@ -350,6 +350,7 @@ The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick
 If we reduce the window size to a constant 0, we will get a method in which only the results for inputs with the same descriptor are tested. This might be useful in cases where we know that the function will be called 
 
 \section{Strategy comparison}
+\label{sec:strategy_comparison}
 
 In general, the predictive strategies do not handle well more historical results for the same \textit{input descriptor}, and are impossible to use when there is none specified. The following rules should be used to decide between predictive and non-predictive strategies:
 
@@ -389,11 +390,14 @@ The results for the described text after adding up the wrong decision numbers fo
 	\label{tab:strategy_comparison}
 \end{table}
 
+The baseline solution for this test would be a round-robin strategy that would run the wrong function 350 out of 700 times, having a success rate of 50\%. 
+
 As we can see, even though the function complexity is linear, the linear regression has a 15\% error rate on a 4 times slower function. The window-bound linear regression has a lot better results on a significantly slower function (the $k=2$ and $k=4$ cases). Both the linear regression and the window-bound linear regression fail on the function with smallest difference, most likely because of the significance level interval testing. Adjusting $\alpha$ might increase the success rate in these cases. The local regression is the clear winner in all the cases except for the first one, where the model on one of the 5 sequences made 139 wrong decisions out of 140 calls in total. This demonstrates a complete failure of the model and a problem caused by not having any tests for certainty in the strategy.
 
 In conclusion, the overall best results are provided by the local regression strategy, although it is a little error-prone. The window-bound linear regression is worse, but still usable, especially in case of more significant differences between the functions.
 
 \subsection{Strategy performance}
+\label{subsec:strategy_perf}
 
 When deciding for one of the strategies, there is another concern that we should keep in mind. The strategies tend to be quite complex and their execution time might become non-trivial. As they need to process the entire run history of each of the functions, their selection times increase over time, as more historical measurements are collected.
 
@@ -423,7 +427,7 @@ The results are showing that local regression has extremely high run times that 
 
 \section{Invocation policies}
 
-The selection process and all the strategies described in sections \ref{sec:predictive_strategies} and \ref{sec:non_predictive_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data. In a common scenario where we expect the system to come to a decision about the best function (either overall, or for every group of \textit{input descriptors}), it would be handy if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
+The selection process and all the strategies described in sections \ref{sec:predictive_strategies} and \ref{sec:non_predictive_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data, as discussed in section \ref{subsec:strategy_perf}. In a common scenario where we expect the system to come to a decision about the best function (either overall, or for every group of \textit{input descriptors}), it would be handy if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
 
 Similarly, it might be desirable to control the overhead time spent on the selection, or, in general, on invoking the functions using selection (which might lead to a bad decision), either per a specific time period, or per a specific action of the system (user request, processing unit, etc.). All of these decisions are taken at a higher level than the run time history analysis performed by the selection strategies.  
 
@@ -556,11 +560,42 @@ Policies can be used to limit the library involvement per a real-time period, so
 
 In exactly the same way, the time spent on executing the function for the result GatherData and the whole process of selection and execution for the SelectNew result can be limited. The figure \ref{fig:limited_gather_time} demonstrates the \textbf{Limited gather time} policy, which keeps producing GatherData until total gather time reaches \textit{AGT} (allowed gather time), after that, it continues with the SelectNew result until total selection time reaches \textit{AST} (allowed selection time). A loop producing UseMost follows, for the rest of the real-time period specified by \textit{RP} (reset period).
 
-This policy gives us control over the time spent on selecting results in real-time. If we get a lot of requests at the same time, receive a large batch of data to process or for any reason need to momentarily increase the throughput of the system, the time or overhead limits get depleted very quickly and the UseMost fallback result means reasonably good performance with a minimum overhead.
+This \textit{policy} gives us control over the time spent on selecting results in real-time. If we get a lot of requests at the same time, receive a large batch of data to process or for any reason need to momentarily increase the throughput of the system, the time or overhead limits get depleted very quickly and the UseMost fallback result means reasonably good performance with a minimum overhead.
+
+\subsection{Policy builder}
+
+As we could see from the policy examples, most of them were built only using the \textbf{Repeat until} or \textbf{Do once} blocks in a simple cycle. This process of combining these generic blocks into sequences can be automatized and hidden behind a simple DSL (see \ref{sec:dsls}) that would allow the user to express his customized way to decide about the function run. The DSL was implemented and named \textit{policy builder}.
+
+Figure \ref{fig:policy_builder_chart} shows the syntax diagram of \textit{policy builder}.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{\mbox{\includegraphics[width=130mm]{./img/policy_builder_chart.png}}}
+	\caption{Syntax diagram of the \textit{policy builder} DSL.}
+	\label{fig:policy_builder_chart}
+\end{figure}
+
+The policy built with \textit{policy builder} has always one main loop. Its definition starts with the first result that it emits: \textit{selectNew}, \textit{gatherData}, \textit{useMost} or \textit{useLast}. A result is always followed by a duration specifier, and another result. When we specify the sequence of results and their durations, we can end it by either closing the loop (using \textit{andThenRepeat}), by transitioning to an external policy (using \textit{andThenGoTo}, leads to a non-looped policy), or by using \textit{forever} as a duration for the last policy, which limits the loop to it. In addition, it is possible to put a conditional transition to a third party policy anywhere in between two results (using \textit{andThenIf}).
+
+The conditions can be either simple functions accepting statistical data and returning a boolean value, or a \textit{growsBy} condition with a value extractor (a function that extracts a value of some type from the statistical data) and an amount. A simple condition is evaluated only once against current statistical data. In case of the \textit{growsBy} condition, the extractor is executed once at the beginning of the policy loop and its result is stored, and the condition evaluation consist in executing it and comparing current result to the stored one.
+
+An example of a simple policy described using the \textit{policy builder} follows. It produces GatherData 50 times, then SelectNew 50 times, and then either loops forever on UseLast, if the streak is larger than 20, or repeats the whole process otherwise.
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val useLastForever: Policy = useLast forever
+val conditional: Policy = (
+  gatherData until (totalRunCount growsBy 50)
+  andThen selectNew until (totalRunCount growsBy 100)
+  andThenIf ((stats: StatisticDataProvider) => stats.getStreakLength >= 20) goTo useLastForever
+  andThenRepeat
+)
+\end{lstlisting}
 
 \subsection{Possible improvements}
+\label{subsec:policy_improvements}
 
-Part of the statistical data could be a factor of combined certainty of all the selections of a specific function. This factor could be combined from the selection results of the strategies that would support it (in the statistical test based strategies, it could be a p-value, strength of the test, or similar) and would serve as a decision factor for more complex policies with a statistical approach as well.
+Part of the statistical data could be a factor of combined certainty of all the selections of a specific function. This factor could be aggregated from the selection results of the strategies that would support it (in the statistical test based strategies, it could be a p-value, strength of the test, or similar) and would serve as a decision factor for more complex policies with a statistical approach as well.
 
 The \textit{policies} were designed as a concept that is completely independent from the actual selection strategies and history analysis, to be faster and reusable. One of the improvements that would require closer tying would be to allow the \textit{policies} to choose the selection strategy, or to influence it somehow, by limiting it to a subset of data, etc. 
 
