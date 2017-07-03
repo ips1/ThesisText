@@ -1,5 +1,9 @@
-\chapter{ScalaAdaptive library implementation}
+\chapter{Framework implementation}
 \label{chap:implementation}
+
+The API, as described in chapter \ref{chapter:api}, and the decision making logic from chapter \ref{chap:deciding} was implemented into the ScalaAdaptive framework, a simple library that can be added to any Scala project and allows the programmer to utilize the adaptive decision making in his project.
+
+In this chapter, we will go through the implementation of the framework, its basic architecture and extensibility
 
 \section{Goals of implementation}
 
@@ -7,21 +11,15 @@ The main concerns upon implementing the library were the following:
 
 \begin{itemize}
 	\item To separate the API from the selection logic
-	\item To keep the library strongly typed and use static type checking even in the internals
+	\item To keep the library strongly typed and use static type checking even in the internal parts of the code
 	\item To make the library as extensible as possible
 	\item To keep the library overhead as low as possible
-	\item To use the Scala language features to make the code simpler and easier to maintain
+	\item To keep the code well-organized, to minimize code duplication
 \end{itemize}
 
-\subsection{Development approach}
+\subsubsection{Development approach}
 
-\begin{itemize}
-	\item Prefer immutable structures
-	\item Prefer composition before inheritance
-	\item Use functional approach
-	\item In composition, use only trait types
-	\item Prefer Optional passing (railway oriented programming) for error handling
-\end{itemize}
+The main development approach was to use the Scala language features to make the code simpler, easier to maintain and less error-prone. We tried to benefit from the functional approach whenever possible, while still keeping the high-level design object oriented. It leads to having the data and functionality separated in different classes. Inheritance is used only for implementing traits (except for some special cases, like the API function objects) and composition is preferred in general. All of the functionality-providing classes are used via corresponding traits, and thus communicating only through a simple and limited interface, which allows replacing them very easily.
 
 \subsubsection{Error handling}
 
@@ -622,7 +620,7 @@ As explained earlier, all the shared and commonly accessible functionality is he
 
 The implementation of the \inlinecode{Configuration} trait has to specify the \inlinecode{TMeasurement} type and provide the factory methods which are already specific for the type. Note that the \inlinecode{AdaptiveSelector} trait and its methods do not depend on the \inlinecode{TMeasurement}, only its implementation does, so the type of the evaluation data does not leak outside of the composition root. As a result, the actual type can be changed at runtime by simply replacing the \inlinecode{AdaptiveSelector} implementation.
 
-The \inlinecode{Configuration} can be created by the user himself, using either a combination of provided implementation, or his own implementations, or, one of the predefined \inlinecode{Configuration} types can be used:
+The \inlinecode{Configuration} can be created by the user himself, using either a combination of provided implementation or his own implementations. Alternatively, one of the predefined \inlinecode{Configuration} types can be utilized:
 
 \begin{itemize}
 	\item \inlinecode{BaseConfiguration} - provides basic configuration of the types that do not depend on the \inlinecode{TMeasurement}
@@ -646,9 +644,22 @@ val config = new BaseLongConfiguration
   with LimitedRegressionPredictiveStrategy
   with DefaultHistoryPath
   with BufferedSerialization
-  with NoLogger
+  with NoLogging
 
 Adaptive.initialize(config)
+\end{lstlisting}
+
+\subsubsection{Default configuration}
+
+A special class for the default configuration was created, which is used to initialize the ScalaAdaptive framework at the beginning of the application run and which provides the implementations that are used if the user does not provide his configuration.
+
+Based on the results observer in section \ref{sec:strategy_comparison}, we decided to include the t-test selection strategy with cached statistics as the non-predictive strategy, and the window-bound linear regression as the predictive strategy.
+
+The default configuration can be extended with any of the configuration blocks as well:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val config = new DefaultConfiguration with ConsoleLogging
 \end{lstlisting}
 
 \subsection{Extending the framework}
