@@ -327,6 +327,544 @@
 @misc{noauthor_jlinalg_nodate,
 	title = {{JLinAlg} - {Open} {Source} {And} {Easy}-to-{Use} {Java}-library {For} {Linear} {Algebra}},
 	url = {http://jlinalg.sourceforge.net/},
+	urldate = {2017-07-03},
+	file = {JLinAlg - Open Source And Easy-to-Use Java-library For Linear Algebra:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/R7KVKIXW/jlinalg.sourceforge.net.html:text/html}
+}
+
+@misc{noauthor_scalatest:_2017,
+	title = {scalatest: {A} testing tool for {Scala} and {Java} developers},
+	copyright = {Apache-2.0},
+	shorttitle = {scalatest},
+	url = {http://www.scalatest.org/},
+	publisher = {ScalaTest},
+	month = jun,
+	year = {2017},
+	note = {original-date: 2013-04-07T21:55:49Z},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/MFWT26SV/scalatest.html:text/html}
+}
+
+@inproceedings{williams_multiplying_2012,
+	address = {New York, NY, USA},
+	series = {{STOC} '12},
+	title = {Multiplying {Matrices} {Faster} {Than} {Coppersmith}-winograd},
+	isbn = {978-1-4503-1245-5},
+	url = {http://doi.acm.org/10.1145/2213977.2214056},
+	doi = {10.1145/2213977.2214056},
+	abstract = {We develop an automated approach for designing matrix multiplication algorithms based on constructions similar to the Coppersmith-Winograd construction. Using this approach we obtain a new improved bound on the matrix multiplication exponent ω{\textless}2.3727.},
+	booktitle = {Proceedings of the {Forty}-fourth {Annual} {ACM} {Symposium} on {Theory} of {Computing}},
+	publisher = {ACM},
+	author = {Williams, Virginia Vassilevska},
+	year = {2012},
+	keywords = {matrix, multiplication},
+	pages = {887--898}
+}
+
+@article{strassen_gaussian_1969,
+	title = {Gaussian {Elimination} is {Not} {Optimal}},
+	volume = {13},
+	issn = {0029-599X},
+	url = {http://dx.doi.org/10.1007/BF02165411},
+	doi = {10.1007/BF02165411},
+	number = {4},
+	journal = {Numer. Math.},
+	author = {Strassen, Volker},
+	month = aug,
+	year = {1969},
+	pages = {354--356}
+}
+
+@inproceedings{frigo_fftw:_1998,
+	title = {{FFTW}: an adaptive software architecture for the {FFT}},
+	volume = {3},
+	shorttitle = {{FFTW}},
+	doi = {10.1109/ICASSP.1998.681704},
+	abstract = {FFT literature has been mostly concerned with minimizing the number of floating-point operations performed by an algorithm. Unfortunately, on present-day microprocessors this measure is far less important than it used to be, and interactions with the processor pipeline and the memory hierarchy have a larger impact on performance. Consequently, one must know the details of a computer architecture in order to design a fast algorithm. In this paper, we propose an adaptive FFT program that tunes the computation automatically for any particular hardware. We compared our program, called FFTW, with over 40 implementations of the FFT on 7 machines. Our tests show that FFTW's self-optimizing approach usually yields significantly better performance than all other publicly available software. FFTW also compares favorably with machine-specific, vendor-optimized libraries},
+	booktitle = {Proceedings of the 1998 {IEEE} {International} {Conference} on {Acoustics}, {Speech} and {Signal} {Processing}, 1998},
+	author = {Frigo, M. and Johnson, S. G.},
+	month = may,
+	year = {1998},
+	keywords = {adaptive FFT program, adaptive software architecture, adaptive systems, Algorithm design and analysis, Automatic testing, Computer architecture, DFT, discrete Fourier transforms, fast algorithm, fast Fourier transforms, FFT, FFTW, floating-point operations, Hardware, mathematics computing, memory hierarchy, Microprocessors, performance, Pipelines, processor pipeline, self-optimizing approach, Software architecture, Software libraries, Software performance, Software testing},
+	pages = {1381--1384 vol.3},
+	file = {IEEE Xplore Abstract Record:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/43T5DBE2/681704.html:text/html}
+}
+
+@inproceedings{frigo_fast_1999,
+	address = {New York, NY, USA},
+	series = {{PLDI} '99},
+	title = {A {Fast} {Fourier} {Transform} {Compiler}},
+	isbn = {978-1-58113-094-2},
+	url = {http://doi.acm.org/10.1145/301618.301661},
+	doi = {10.1145/301618.301661},
+	abstract = {The FFTW library for computing the discrete Fourier transform (DFT) has gained a wide acceptance in both academia and industry, because it provides excellent performance on a variety of machines (even competitive with or faster than equivalent libraries supplied by vendors). In FFTW, most of the performance-critical code was generated automatically by a special-purpose compiler, called genfft, that outputs C code. Written in Objective Caml, genfft can produce DFT programs for any input length, and it can specialize the DFT program for the common case where the input data are real instead of complex. Unexpectedly, genfft "discovered" algorithms that were previously unknown, and it was able to reduce the arithmetic complexity of some other existing algorithms. This paper describes the internals of this special-purpose compiler in some detail, and it argues that a specialized compiler is a valuable tool.},
+	booktitle = {Proceedings of the {ACM} {SIGPLAN} 1999 {Conference} on {Programming} {Language} {Design} and {Implementation}},
+	publisher = {ACM},
+	author = {Frigo, Matteo},
+	year = {1999},
+	pages = {169--180},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/95BHBVMZ/Frigo - 1999 - A Fast Fourier Transform Compiler.pdf:application/pdf}
+}
+
+@inproceedings{bulej_capturing_2012,
+	address = {New York, NY, USA},
+	series = {{ICPE} '12},
+	title = {Capturing {Performance} {Assumptions} {Using} {Stochastic} {Performance} {Logic}},
+	isbn = {978-1-4503-1202-8},
+	url = {http://doi.acm.org/10.1145/2188286.2188345},
+	doi = {10.1145/2188286.2188345},
+	abstract = {Compared to functional unit testing, automated performance testing is difficult, partially because correctness criteria are more difficult to express for performance than for functionality. Where existing approaches rely on absolute bounds on the execution time, we aim to express assertions on code performance in relative, hardware-independent terms. To this end, we introduce Stochastic Performance Logic (SPL), which allows making statements about relative method performance. Since SPL interpretation is based on statistical tests applied to performance measurements, it allows (for a special class of formulas) calculating the minimum probability at which a particular SPL formula holds. We prove basic properties of the logic and present an algorithm for SAT-solver-guided evaluation of SPL formulas, which allows optimizing the number of performance measurements that need to be made. Finally, we propose integration of SPL formulas with Java code using higher-level performance annotations, for performance testing and documentation purposes.},
+	booktitle = {Proceedings of the 3rd {ACM}/{SPEC} {International} {Conference} on {Performance} {Engineering}},
+	publisher = {ACM},
+	author = {Bulej, Lubomír and Bureš, Tomáš and Keznikl, Jaroslav and Koubková, Alena and Podzimek, Andrej and Tůma, Petr},
+	year = {2012},
+	keywords = {performance testing, regression benchmarking},
+	pages = {311--322},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/HJBH8E5C/Bulej et al. - 2012 - Capturing Performance Assumptions Using Stochastic.pdf:application/pdf}
+}
+
+@inproceedings{horky_performance_2013,
+	series = {Lecture {Notes} in {Computer} {Science}},
+	title = {Performance {Regression} {Unit} {Testing}: {A} {Case} {Study}},
+	isbn = {978-3-642-40724-6 978-3-642-40725-3},
+	shorttitle = {Performance {Regression} {Unit} {Testing}},
+	url = {https://link.springer.com/chapter/10.1007/978-3-642-40725-3_12},
+	doi = {10.1007/978-3-642-40725-3_12},
+	abstract = {Including performance tests as a part of unit testing is technically more difficult than including functional tests – besides the usual challenges of performance measurement, specifying and testing the correctness conditions is also more complex. In earlier work, we have proposed a formalism for expressing these conditions, the Stochastic Performance Logic. In this paper, we evaluate our formalism in the context of performance unit testing of JDOM, an open source project for working with XML data. We focus on the ability to capture and test developer assumptions and on the practical behavior of the built in hypothesis testing when the formal assumptions of the tests are not met.},
+	language = {en},
+	urldate = {2017-07-04},
+	booktitle = {Computer {Performance} {Engineering}},
+	publisher = {Springer, Berlin, Heidelberg},
+	author = {Horký, Vojtěch and Haas, František and Kotrč, Jaroslav and Lacina, Martin and Tůma, Petr},
+	month = sep,
+	year = {2013},
+	pages = {149--163},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/X7VAK4X9/978-3-642-40725-3_12.html:text/html;Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/5SZWPE7H/10.html:text/html}
+}
+
+@inproceedings{marek_introduction_2013,
+	address = {New York, NY, USA},
+	series = {{ICPE} '13},
+	title = {Introduction to {Dynamic} {Program} {Analysis} with {DiSL}},
+	isbn = {978-1-4503-1636-1},
+	url = {http://doi.acm.org/10.1145/2479871.2479940},
+	doi = {10.1145/2479871.2479940},
+	abstract = {DiSL is a new domain-specific language for bytecode instrumentation with complete bytecode coverage. It reconciles expressiveness and efficiency of low-level bytecode manipulation libraries with a convenient, high-level programming model inspired by aspect-oriented programming. This paper summarizes the language features of DiSL and gives a brief overview of several dynamic program analysis tools that were ported to DiSL. DiSL is available as open-source under the Apache 2.0 license.},
+	booktitle = {Proceedings of the 4th {ACM}/{SPEC} {International} {Conference} on {Performance} {Engineering}},
+	publisher = {ACM},
+	author = {Marek, Lukáa and Zheng, Yudi and Ansaloni, Danilo and Bulej, Lubomír and Sarimbekov, Aibek and Binder, Walter and Qi, Zhengwei},
+	year = {2013},
+	keywords = {aspect-oriented programming, bytecode instrumentation, domain-specific languages, dynamic program analysis, java virtual machine},
+	pages = {429--430},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/94KZMZB8/Marek et al. - 2013 - Introduction to Dynamic Program Analysis with DiSL.pdf:application/pdf}
+}
+
+@inproceedings{marek_java_2012,
+	series = {Lecture {Notes} in {Computer} {Science}},
+	title = {Java {Bytecode} {Instrumentation} {Made} {Easy}: {The} {DiSL} {Framework} for {Dynamic} {Program} {Analysis}},
+	isbn = {978-3-642-35181-5 978-3-642-35182-2},
+	shorttitle = {Java {Bytecode} {Instrumentation} {Made} {Easy}},
+	url = {https://link.springer.com/chapter/10.1007/978-3-642-35182-2_18},
+	doi = {10.1007/978-3-642-35182-2_18},
+	abstract = {Many software development tools (e.g., profilers, debuggers, testing tools) and frameworks (e.g., aspect weavers) are based on bytecode instrumentation techniques. While there are many low-level bytecode manipulation libraries that support the development of such tools and frameworks, they typically provide only low-level abstractions and require detailed knowledge of the Java Virtual Machine. In addition, they often lack the necessary infrastructure for load-time instrumentation with complete bytecode coverage to ensure that each method with a bytecode representation gets instrumented. In this paper we give an introduction to DiSL, a domain-specific aspect language and framework for bytecode instrumentation that reconciles high expressiveness of the language, high level of abstraction, and efficiency of the generated code. We illustrate the strengths of DiSL with a concrete analysis as a case study. The DiSL framework is open-source and has been successfully used in several research projects.},
+	language = {en},
+	urldate = {2017-07-04},
+	booktitle = {Programming {Languages} and {Systems}},
+	publisher = {Springer, Berlin, Heidelberg},
+	author = {Marek, Lukáš and Zheng, Yudi and Ansaloni, Danilo and Sarimbekov, Aibek and Binder, Walter and Tůma, Petr and Qi, Zhengwei},
+	month = dec,
+	year = {2012},
+	pages = {256--263},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/D6C9B9RA/978-3-642-35182-2_18.html:text/html}
+}
+
+@misc{zhang_autotune:_2013,
+	title = {{AutoTune}: {Optimizing} {Execution} {Concurrency} and {Resource} {Usage} in {MapReduce} {Workflows}},
+	shorttitle = {{AutoTune}},
+	author = {Zhang, Zhuoyao and Cherkasova, Ludmila and Loo, Boon},
+	year = {2013},
+	file = {AutoTune\: Optimizing Execution Concurrency and Resource Usage in MapReduce Workflows | USENIX:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/PAHHWR7R/180163.html:text/html}
+}
+
+@inproceedings{bulej_performance_2012,
+	title = {Performance {Awareness} in {Component} {Systems}: {Vision} {Paper}},
+	shorttitle = {Performance {Awareness} in {Component} {Systems}},
+	doi = {10.1109/COMPSACW.2012.96},
+	abstract = {Resource awareness is a key requirement for dynamic adaptation in resource-constrained systems. Achieving resource awareness with clean separation of concerns and reasonable overhead is still a challenge - especially where this awareness concerns runtime performance. Among the difficult issues are for example transparent performance monitoring or platform independent performance evaluation. To advance the current state of the art in resource awareness, we propose a performance awareness framework for the domain of component-based systems. The framework is based on the Stochastic Performance Logic (SPL), which enables explicit description and automatic evaluation of assumptions about performance using logic formulas. We demonstrate the potential of the framework on multiple use-cases and outline extensions that facilitate the runtime resource awareness.},
+	booktitle = {2012 {IEEE} 36th {Annual} {Computer} {Software} and {Applications} {Conference} {Workshops}},
+	author = {Bulej, L. and Bures, T. and Horky, V. and Keznikl, J. and Tuma, P.},
+	month = jul,
+	year = {2012},
+	keywords = {component-based systems, component systems, Contracts, dynamic adaptation, Generators, Instruments, logic formulas, Market research, Measurement, object-oriented programming, performance awareness, performance awareness framework, platform independent performance evaluation, Prototypes, resource allocation, resource awareness, resource-constrained component systems, resource-constrained systems, Runtime, software performance evaluation, SPL, stochastic performance logic, transparent performance monitoring},
+	pages = {514--519},
+	file = {IEEE Xplore Abstract Record:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/N3WQJTGW/6341628.html:text/html}
+}
+
+@inproceedings{horky_utilizing_2015,
+	address = {New York, NY, USA},
+	series = {{ICPE} '15},
+	title = {Utilizing {Performance} {Unit} {Tests} {To} {Increase} {Performance} {Awareness}},
+	isbn = {978-1-4503-3248-4},
+	url = {http://doi.acm.org/10.1145/2668930.2688051},
+	doi = {10.1145/2668930.2688051},
+	abstract = {Many decisions taken during software development impact the resulting application performance. The key decisions whose potential impact is large are usually carefully weighed. In contrast, the same care is not used for many decisions whose individual impact is likely to be small -- simply because the costs would outweigh the benefits. Developer opinion is the common deciding factor for these cases, and our goal is to provide the developer with information that would help form such opinion, thus preventing performance loss due to the accumulated effect of many poor decisions. Our method turns performance unit tests into recipes for generating performance documentation. When the developer selects an interface and workload of interest, relevant performance documentation is generated interactively. This increases performance awareness -- with performance information available alongside standard interface documentation, developers should find it easier to take informed decisions even in situations where expensive performance evaluation is not practical. We demonstrate the method on multiple examples, which show how equipping code with performance unit tests works.},
+	booktitle = {Proceedings of the 6th {ACM}/{SPEC} {International} {Conference} on {Performance} {Engineering}},
+	publisher = {ACM},
+	author = {Horký, Vojtěch and Libič, Peter and Marek, Lukáš and Steinhauser, Antonin and Tůma, Petr},
+	year = {2015},
+	keywords = {java, javadoc, performance awareness, performance documentation, performance testing},
+	pages = {289--300},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/IG2WSNNU/Horký et al. - 2015 - Utilizing Performance Unit Tests To Increase Perfo.pdf:application/pdf}
+}
+
+@inproceedings{bulej_we_2017,
+	address = {New York, NY, USA},
+	series = {{ICPE} '17 {Companion}},
+	title = {Do {We} {Teach} {Useful} {Statistics} for {Performance} {Evaluation}?},
+	isbn = {978-1-4503-4899-7},
+	url = {http://doi.acm.org/10.1145/3053600.3053638},
+	doi = {10.1145/3053600.3053638},
+	abstract = {Basic topics from probability and statistics -- such as probability distributions, parameter estimation, confidence intervals and statistical hypothesis testing -- are often included in computing curricula and used as tools for experimental performance evaluation. Unfortunately, data collected through experiments may not meet the requirements of many statistical analysis methods, such as independent sampling or normal distribution. As a result, the analysis methods may be more tricky to apply and the analysis results may be more tricky to interpret than one might expect. Here, we look at some of the issues on methods and experiments that would be considered basic in performance evaluation education.},
+	booktitle = {Proceedings of the 8th {ACM}/{SPEC} on {International} {Conference} on {Performance} {Engineering} {Companion}},
+	publisher = {ACM},
+	author = {Bulej, Lubomír and Horký, Vojtech and Tůma, Petr},
+	year = {2017},
+	keywords = {confidence interval, performance evaluation, performance evaluation education, statistical testing},
+	pages = {185--189},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/R3KTFWGK/Bulej et al. - 2017 - Do We Teach Useful Statistics for Performance Eval.pdf:application/pdf}
+}
+
+@inproceedings{stefan_unit_2017,
+	address = {New York, NY, USA},
+	series = {{ICPE} '17},
+	title = {Unit {Testing} {Performance} in {Java} {Projects}: {Are} {We} {There} {Yet}?},
+	isbn = {978-1-4503-4404-3},
+	shorttitle = {Unit {Testing} {Performance} in {Java} {Projects}},
+	url = {http://doi.acm.org/10.1145/3030207.3030226},
+	doi = {10.1145/3030207.3030226},
+	abstract = {Although methods and tools for unit testing of performance exist for over a decade, anecdotal evidence suggests unit testing of performance is not nearly as common as unit testing of functionality. We examine this situation in a study of GitHub projects written in Java, looking for occurrences of performance evaluation code in common performance testing frameworks. We quantify the use of such frameworks, identifying the most relevant performance testing approaches, and describe how we adjust the design of our SPL performance testing framework to follow these conclusions.},
+	booktitle = {Proceedings of the 8th {ACM}/{SPEC} on {International} {Conference} on {Performance} {Engineering}},
+	publisher = {ACM},
+	author = {Stefan, Petr and Horky, Vojtech and Bulej, Lubomir and Tuma, Petr},
+	year = {2017},
+	keywords = {jmh, open source, performance unit testing, SPL, survey},
+	pages = {401--412},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/GZKGTTUH/Stefan et al. - 2017 - Unit Testing Performance in Java Projects Are We .pdf:application/pdf}
+}
+
+@misc{center_for_history_and_new_media_zotero_nodate,
+	title = {Zotero {Quick} {Start} {Guide}},
+	url = {http://zotero.org/support/quick_start_guide},
+	author = {{Center for History and New Media}},
+	annote = {Welcome to Zotero!View the Quick Start Guide to learn how to begin collecting, managing, citing, and sharing your research sources.Thanks for installing Zotero.}
+}
+
+@inproceedings{huang_predicting_2010,
+	address = {USA},
+	series = {{NIPS}'10},
+	title = {Predicting {Execution} {Time} of {Computer} {Programs} {Using} {Sparse} {Polynomial} {Regression}},
+	url = {http://dl.acm.org/citation.cfm?id=2997189.2997288},
+	abstract = {Predicting the execution time of computer programs is an important but challenging problem in the community of computer systems. Existing methods require experts to perform detailed analysis of program code in order to construct predictors or select important features. We recently developed a new system to automatically extract a large number of features from program execution on sample inputs, on which prediction models can be constructed without expert knowledge. In this paper we study the construction of predictive models for this problem. We propose the SPORE (Sparse POlynomial REgression) methodology to build accurate prediction models of program performance using feature data collected from program execution on sample inputs. Our two SPORE algorithms are able to build relationships between responses (e.g., the execution time of a computer program) and features, and select a few from hundreds of the retrieved features to construct an explicitly sparse and non-linear model to predict the response variable. The compact and explicitly polynomial form of the estimated model could reveal important insights into the computer program (e.g., features and their non-linear combinations that dominate the execution time), enabling a better understanding of the program's behavior. Our evaluation on three widely used computer programs shows that SPORE methods can give accurate prediction with relative error less than 7\% by using a moderate number of training data samples. In addition, we compare SPORE algorithms to state-of-the-art sparse regression algorithms, and show that SPORE methods, motivated by real applications, outperform the other methods in terms of both interpretability and prediction accuracy.},
+	booktitle = {Proceedings of the 23rd {International} {Conference} on {Neural} {Information} {Processing} {Systems}},
+	publisher = {Curran Associates Inc.},
+	author = {Huang, Ling and Jia, Jinzhu and Yu, Bin and Chun, Byung-Gon and Maniatis, Petros and Naik, Mayur},
+	year = {2010},
+	pages = {883--891}
+}
+
+@inproceedings{goldsmith_measuring_2007,
+	address = {New York, NY, USA},
+	series = {{ESEC}-{FSE} '07},
+	title = {Measuring {Empirical} {Computational} {Complexity}},
+	isbn = {978-1-59593-811-4},
+	url = {http://doi.acm.org/10.1145/1287624.1287681},
+	doi = {10.1145/1287624.1287681},
+	abstract = {The standard language for describing the asymptotic behavior of algorithms is theoretical computational complexity. We propose a method for describing the asymptotic behavior of programs in practice by measuring their empirical computational complexity. Our method involves running a program on workloads spanning several orders of magnitude in size, measuring their performance, and fitting these observations to a model that predicts performance as a function of workload size. Comparing these models to the programmer's expectations or to theoretical asymptotic bounds can reveal performance bugs or confirm that a program's performance scales as expected. Grouping and ranking program locations based on these models focuses attention on scalability-critical code. We describe our tool, the Trend Profiler (trend-prof), for constructing models of empirical computational complexity that predict how many times each basic block in a program runs as a linear (y = a + bx) or a powerlaw (y = axb) function of user-specified features of the program's workloads. We ran trend-prof on several large programs and report cases where a program scaled as expected, beat its worst-case theoretical complexity bound, or had a performance bug.},
+	booktitle = {Proceedings of the the 6th {Joint} {Meeting} of the {European} {Software} {Engineering} {Conference} and the {ACM} {SIGSOFT} {Symposium} on {The} {Foundations} of {Software} {Engineering}},
+	publisher = {ACM},
+	author = {Goldsmith, Simon F. and Aiken, Alex S. and Wilkerson, Daniel S.},
+	year = {2007},
+	keywords = {empirical computational complexity, trend-prof},
+	pages = {395--404},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/BK75G88S/Goldsmith et al. - 2007 - Measuring Empirical Computational Complexity.pdf:application/pdf}
+}
+
+@inproceedings{gupta_pqr:_2008,
+	address = {Washington, DC, USA},
+	series = {{ICAC} '08},
+	title = {{PQR}: {Predicting} {Query} {Execution} {Times} for {Autonomous} {Workload} {Management}},
+	isbn = {978-0-7695-3175-5},
+	shorttitle = {{PQR}},
+	url = {http://dx.doi.org/10.1109/ICAC.2008.12},
+	doi = {10.1109/ICAC.2008.12},
+	abstract = {Modern enterprise data warehouses have complex workloads that are notoriously difficult to manage. One of the key pieces to managing workloads is an estimate of how long a query will take to execute. An accurate estimate of this query execution time is critical to self managing Enterprise Class Data Warehouses.In this paper we study the problem of predicting the execution time of a query on a loaded data warehouse with a dynamically changing workload. We use a machine learning approach that takes the query plan, combines it with the observed load vector of the system and uses the new vector to predict the execution time of the query. The predictions are made as time ranges. We validate our solution using real databases and real workloads. We show experimentally that our machine learning approach works well. This technology is slated for incorporation into a commercial, enterprise class DBMS.},
+	booktitle = {Proceedings of the 2008 {International} {Conference} on {Autonomic} {Computing}},
+	publisher = {IEEE Computer Society},
+	author = {Gupta, Chetan and Mehta, Abhay and Dayal, Umeshwar},
+	year = {2008},
+	keywords = {Autonomic, Manageability, Predictability},
+	pages = {13--22}
+}
+
+@misc{noauthor_voteforamerica.net_nodate,
+	title = {{VoteForAmerica}.net :: {Electoral} {Projections} {Using} {LOESS}},
+	url = {http://voteforamerica.net/editorials/Comments.aspx?ArticleId=28&ArticleName=Electoral+Projections+Using+LOESS},
+	urldate = {2017-07-02},
+	file = {VoteForAmerica.net \:\: Electoral Projections Using LOESS:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/P5A8CZHQ/Comments.html:text/html}
+}
+
+@article{cleveland_regression_1988,
+	title = {Regression by local fitting},
+	volume = {37},
+	issn = {0304-4076},
+	url = {http://www.sciencedirect.com/science/article/pii/0304407688900772},
+	doi = {10.1016/0304-4076(88)90077-2},
+	abstract = {Local regression is a procedure for estimating regression surfaces by the local fitting of linear or quadratic functions of the independent variables in a moving fashion that is analogous to how a moving average is computed for a time series. The advantage of the methodology over the global fitting of parametric functions of the independent variables by least squares, the current paradigm in regression studies, is that a much wider class of regression functions can be estimated without distortion. In this paper, we discuss the methods, their statistical properties, and computational algorithms.},
+	number = {1},
+	journal = {Journal of Econometrics},
+	author = {Cleveland, William S. and Devlin, Susan J. and Grosse, Eric},
+	month = jan,
+	year = {1988},
+	pages = {87--114},
+	file = {ScienceDirect Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/K6ETEJ33/Cleveland et al. - 1988 - Regression by local fitting.pdf:application/pdf;ScienceDirect Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/UUFJJNTP/0304407688900772.html:text/html}
+}
+
+@article{cleveland_computational_1991,
+	title = {Computational methods for local regression},
+	volume = {1},
+	issn = {0960-3174, 1573-1375},
+	url = {https://link.springer.com/article/10.1007/BF01890836},
+	doi = {10.1007/BF01890836},
+	abstract = {Local regression is a nonparametric method in which the regression surface is estimated by fitting parametric functions locally in the space of the predictors using weighted least squares in a moving fashion similar to the way that a time series is smoothed by moving averages. Three computational methods for local regression are presented. First, fast surface fitting and evaluation is achieved by building ak-d tree in the space of the predictors, evaluating the surface at the corners of the tree, and then interpolating elsewhere by blending functions. Second, surfaces are made conditionally parametric in any proper subset of the predictors by a simple alteration of the weighting scheme. Third degree-of-freedom quantities that would be extremely expensive to compute exactly are approximated, not by numerical methods, but through a statistical model that predicts the quantities from the trace of the hat matrix, which can be computed easily.},
+	language = {en},
+	number = {1},
+	urldate = {2017-07-02},
+	journal = {Statistics and Computing},
+	author = {Cleveland, William S. and Grosse, E.},
+	month = sep,
+	year = {1991},
+	pages = {47--62},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/K6ITJBEU/BF01890836.html:text/html}
+}
+
+@inproceedings{smith_predicting_1998,
+	address = {London, UK, UK},
+	series = {{IPPS}/{SPDP} '98},
+	title = {Predicting {Application} {Run} {Times} {Using} {Historical} {Information}},
+	isbn = {978-3-540-64825-3},
+	url = {http://dl.acm.org/citation.cfm?id=646379.689526},
+	booktitle = {Proceedings of the {Workshop} on {Job} {Scheduling} {Strategies} for {Parallel} {Processing}},
+	publisher = {Springer-Verlag},
+	author = {Smith, Warren and Foster, Ian T. and Taylor, Valerie E.},
+	year = {1998},
+	pages = {122--142},
+	annote = {Uses linear regression and confidence intervals!!!}
+}
+
+@misc{noauthor_wiley:_nodate,
+	title = {Wiley: {Applied} {Regression} {Analysis}, 3rd {Edition} - {Norman} {R}. {Draper}, {Harry} {Smith}},
+	shorttitle = {Wiley},
+	url = {http://www.wiley.com/WileyCDA/WileyTitle/productCd-0471170828.html},
+	urldate = {2017-07-02},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/KF8Z2BJR/productCd-0471170828.html:text/html}
+}
+
+@book{weiss_introductory_2010,
+	address = {Boston},
+	edition = {9 edition},
+	title = {Introductory {Statistics}},
+	isbn = {978-0-321-69122-4},
+	abstract = {Weiss’s Introductory Statistics, Ninth Edition is the ideal textbook for introductory statistics classes that emphasize statistical reasoning and critical thinking. The text is suitable for a one- or two-semester course. Comprehensive in its coverage, Weiss’s meticulous style offers careful, detailed explanations to ease the learning process. With more than 1,000 data sets and more than 2,600 exercises, most using real data, this text takes a data-driven approach that encourages students to apply their knowledge and develop statistical literacy.      Introductory Statistics, Ninth Edition, contains parallel presentation of critical-value and p-value approaches to hypothesis testing. This unique design allows both the flexibility to concentrate on one approach or the opportunity for greater depth in comparing the two.     This edition continues the book’s tradition of being on the cutting edge of statistical pedagogy, technology, and data analysis. It includes hundreds of new and updated exercises with real data from journals, magazines, newspapers, and websites.     Datasets and other resources (where applicable) for this book are available here.},
+	language = {English},
+	publisher = {Pearson},
+	author = {Weiss, Neil A.},
+	month = dec,
+	year = {2010},
+	annote = {Welch (nonpooled) t-test p. 452
+	},
+	file = {Introductory Statistics.pdf:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/IHFQ63HR/Introductory Statistics.pdf:application/pdf}
+}
+
+@misc{noauthor_performance_2013,
+	title = {Performance prediction},
+	copyright = {Creative Commons Attribution-ShareAlike License},
+	url = {https://en.wikipedia.org/w/index.php?title=Performance_prediction&oldid=583931147},
+	abstract = {In computer science, performance prediction means to estimate the execution time or other performance factors (such as cache misses) of a program on a given computer. It is being widely used for computer architects to evaluate new computer designs, for compiler writers to explore new optimizations, and also for advanced developers to tune their programs.
+	There are many approaches to predict program 's performance on computers. They can be roughly divided into three major categories:
+	simulation-based prediction
+	profile-based prediction
+	analytical modeling},
+	language = {en},
+	journal = {Wikipedia},
+	month = nov,
+	year = {2013},
+	note = {Page Version ID: 583931147},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/CAQP99FQ/index.html:text/html}
+}
+
+@article{jarvis_performance_2006,
+	title = {Performance {Prediction} and {Its} {Use} in {Parallel} and {Distributed} {Computing} {Systems}},
+	volume = {22},
+	issn = {0167-739X},
+	url = {http://dx.doi.org/10.1016/j.future.2006.02.008},
+	doi = {10.1016/j.future.2006.02.008},
+	abstract = {Performance prediction is set to play a significant role in supportive middleware that is designed to manage workload on parallel and distributed computing systems. This middleware underpins the discovery of available resources, the identification of a task's requirements and the matchmaking, scheduling and staging that follow.This paper documents two prediction-based middleware services that address the implications of executing a particular workload on a given set of resources. These services are based on an established performance prediction system that is employed at both the local (intra-domain) and global (multi-domain) levels to provide dynamic workload steering. These additional facilities bring about significant performance improvements, the details of which are presented with regard to system- and user-level qualities of service. The middleware has been designed for the management of resources and distributed workload across multiple administrative boundaries, a requirement that is of central importance to grid computing.},
+	number = {7},
+	journal = {Future Gener. Comput. Syst.},
+	author = {Jarvis, Stephen A. and Spooner, Daniel P. and Keung, Helene N. Lim Choi and Cao, Junwei and Saini, Subhash and Nudd, Graham R.},
+	month = aug,
+	year = {2006},
+	keywords = {grid computing, performance prediction, resource management},
+	pages = {745--754}
+}
+
+@inproceedings{hammond_warpp_2009,
+	address = {Rome, Italy},
+	title = {{WARPP} : a toolkit for simulating high performance parallel scientific codes},
+	shorttitle = {{WARPP}},
+	url = {http://dx.doi.org/10.4108/ICST.SIMUTOOLS2009.5753},
+	abstract = {There are a number of challenges facing the High Performance Computing (HPC) community, including increasing levels of concurrency (threads, cores, nodes), deeper and more complex memory hierarchies (register, cache, disk, network), mixed hardware sets (CPUs and GPUs) and increasing scale (tens or hundreds of thousands of processing elements). Assessing the performance of complex scientific applications on specialised high-performance computing architectures is difficult. In many cases, traditional computer benchmarking is insufficient as it typically requires access to physical machines of equivalent (or similar) specification and rarely relates to the potential capability of an application. A technique known as application performance modelling addresses many of these additional requirements. Modelling allows future architectures and/or applications to be explored in a mathematical or simulated setting, thus 
+	enabling hypothetical questions relating to the configuration of a potential future architecture to be assessed in terms of its impact on key scientific codes.
+	
+	This paper describes the Warwick Performance Prediction (WARPP) simulator, which is used to construct application performance models for complex industry-strength parallel scientific codes executing on thousands of processing cores. The capability and accuracy of the simulator is demonstrated through its application to a scientific benchmark developed by the United Kingdom Atomic Weapons Establishment (AWE). The results of the simulations are validated for two different HPC architectures, each case demonstrating a greater than 90\% accuracy for run-time prediction. Simulation results, collected from runs on a standard PC, are provided for up to 65,000 processor cores. It is also shown how the addition of operating system jitter to the simulator can improve the quality of the application performance model results.},
+	urldate = {2017-07-02},
+	booktitle = {{SIMUTools} '09 2nd {International} {Conference} on {Simulation} {Tools} and {Techniques}},
+	publisher = {ICST (Institute for Computer Sciences, Social-Informatics and Telecommunications Engineering)},
+	author = {Hammond, Simon D. and Mudalige, Gihan R. and Smith, J. A. and Jarvis, Stephen A. and Herdman, J. A. and Vadgama, A.},
+	month = mar,
+	year = {2009},
+	pages = {Article no. 19},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/DN9ST8FX/47519.html:text/html}
+}
+
+@article{alkindi_optimisation_2001,
+	series = {High {Performance} {Computing} and {Networking}},
+	title = {Optimisation of application execution on dynamic systems},
+	volume = {17},
+	issn = {0167-739X},
+	url = {http://www.sciencedirect.com/science/article/pii/S0167739X0100036X},
+	doi = {10.1016/S0167-739X(01)00036-X},
+	abstract = {In this paper, we demonstrate the impact of using a dynamic (on-the-fly) performance prediction tool-set, PACE, for optimising application execution on dynamic systems. The need for steering the application execution arises from the ever-growing use of distributed and GRID systems. The unquestionable aim to overcome bottleneck problems, allocation, and performance degradation due to shared CPU time has prompted many investigations into the best way in which the performance of an application can be enhanced. In this work, we present a novel approach to dynamically optimise the performance of an application. An example application, the FFTW (the fastest Fourier transform in the west), is used to illustrate the approach which itself is a novel method that optimises the execution of an FFT. It is shown that performance prediction can provide the same quality of information as a measurement process for application optimisation but in a fraction of the time and thus improving the overall application performance.},
+	number = {8},
+	journal = {Future Generation Computer Systems},
+	author = {Alkindi, A. M and Kerbyson, D. J and Papaefstathiou, E and Nudd, G. R},
+	month = jun,
+	year = {2001},
+	keywords = {Application steering, Dynamic performance prediction, FFTW, Performance modelling, Performance optimisation},
+	pages = {941--949},
+	file = {ScienceDirect Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/Z829VW7U/S0167739X0100036X.html:text/html}
+}
+
+@article{dinda_online_2002,
+	title = {Online {Prediction} of the {Running} {Time} of {Tasks}},
+	volume = {5},
+	issn = {1386-7857, 1573-7543},
+	url = {https://link.springer.com/article/10.1023/A:1015634802585},
+	doi = {10.1023/A:1015634802585},
+	abstract = {We describe and evaluate the Running Time Advisor (RTA), a system that can predict the running time of a compute-bound task on a typical shared, unreserved commodity host. The prediction is computed from linear time series predictions of host load and takes the form of a confidence interval that neatly expresses the error associated with the measurement and prediction processes – error that must be captured to make statistically valid decisions based on the predictions. Adaptive applications make such decisions in pursuit of consistent high performance, choosing, for example, the host where a task is most likely to meet its deadline. We begin by describing the system and summarizing the results of our previously published work on host load prediction. We then describe our algorithm for computing predictions of running time from host load predictions. We next evaluate the system using over 100,000 randomized testcases run on 39 different hosts, finding that is indeed capable of computing correct and useful confidence intervals. Finally, we report on our experience with using the RTA in application-oriented real-time scheduling in distributed systems.},
+	language = {en},
+	number = {3},
+	urldate = {2017-07-02},
+	journal = {Cluster Computing},
+	author = {Dinda, Peter A.},
+	month = jul,
+	year = {2002},
+	pages = {225--236},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/76HM2HHN/A1015634802585.html:text/html}
+}
+
+@article{nudd_pacetoolset_2000,
+	title = {Pace–{A} {Toolset} for the {Performance} {Prediction} of {Parallel} and {Distributed} {Systems}},
+	volume = {14},
+	issn = {1094-3420},
+	url = {http://dx.doi.org/10.1177/109434200001400306},
+	doi = {10.1177/109434200001400306},
+	abstract = {This paper describes a methodology that provides detailed predictive performance information throughout the software design and implementation cycles. It is structured around a hierarchy of performance models that describe the computing system in terms of its software, parallelization, and hardware components. The methodology is illustrated with an implementation, the performance analysis and characterization environment (PACE) system, which provides information concerning execution time, scalability, and resource use. A principal aim of the work is to provide a capability for rapid calculation of relevant performance numbers without sacrificing accuracy. The predictive nature of the approach provides both pre and post implementation analyses and allows implementation alternatives to be explored prior to the commitment of an application to a system. Because of the relatively fast analysis times, these techniques can be used at runtime to assist in application steering and scheduling with reference to dynamically changing systems and metacomputing.},
+	number = {3},
+	journal = {Int. J. High Perform. Comput. Appl.},
+	author = {Nudd, G. R. and Kerbyson, D. J. and Papaefstathiou, E. and Perry, S. C. and Harper, J. S. and Wilcox, D. V.},
+	month = aug,
+	year = {2000},
+	pages = {228--251}
+}
+
+@inproceedings{amaris_simple_2015,
+	title = {A {Simple} {BSP}-based {Model} to {Predict} {Execution} {Time} in {GPU} {Applications}},
+	doi = {10.1109/HiPC.2015.34},
+	abstract = {Models are useful to represent abstractions of software and hardware processes. The Bulk Synchronous Parallel (BSP) is a bridging model for parallel computation that allows algorithmic analysis of programs on parallel computers using performance modeling. The main idea of BSP model is the treatment of communication and computation as abstractions of a parallel system. Meanwhile, the use of GPU devices are becoming more widespread and they are currently capable of performing efficient parallel computation for applications that can be decomposed on thousands of simple threads. However, few models for predicting application execution time on GPUs have been proposed. In this work we present a simple and intuitive BSP-based model for predicting the CUDA application execution times on GPUs. The model is based on the number of computations and memory accesses of the GPU, with additional information on cache usage obtained from profiling. Scalability, divergence, effect of optimizations and differences of architectures are adjusted by a single parameter. We evaluated our model using two applications and six different boards. We showed by using profile information for a single board, that the model is general enough to predict the execution time of an application with different input sizes and on different boards with the same architecture. Our model predictions were within 0.8 to 1.2 times the measured execution times, which are reasonable for such a simple model. These results indicate that the model is good enough to generalize the predictions for different problem sizes and GPU configurations.},
+	booktitle = {2015 {IEEE} 22nd {International} {Conference} on {High} {Performance} {Computing} ({HiPC})},
+	author = {Amarís, M. and Cordeiro, D. and Goldman, A. and Camargo, R. Y. d},
+	month = dec,
+	year = {2015},
+	keywords = {application execution time prediction, bridging model, BSP model, bulk synchronous parallel, cache storage, cache usage, Computational modeling, Computer architecture, CUDA, CUDA application execution time, divergence, GPGPU, GPU application, GPU configuration, GPU devices, graphics processing units, hardware process, Instruction sets, Kepler Architecture, Kernel, memory access, parallel architectures, parallel computation, parallel computer, parallel programming, parallel system, performance modeling, performance prediction, Predictive models, profile information, program algorithmic analysis, program diagnostics, scalability, simple BSP-based model, software process},
+	pages = {285--294},
+	file = {IEEE Xplore Abstract Record:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/5QZ63F5R/7397643.html:text/html}
+}
+
+@article{wu_towards_2013,
+	title = {Towards {Predicting} {Query} {Execution} {Time} for {Concurrent} and {Dynamic} {Database} {Workloads}},
+	volume = {6},
+	issn = {2150-8097},
+	url = {http://dx.doi.org/10.14778/2536206.2536219},
+	doi = {10.14778/2536206.2536219},
+	abstract = {Predicting query execution time is crucial for many database management tasks including admission control, query scheduling, and progress monitoring. While a number of recent papers have explored this problem, the bulk of the existing work either considers prediction for a single query, or prediction for a static workload of concurrent queries, where by "static" we mean that the queries to be run are fixed and known. In this paper, we consider the more general problem of dynamic concurrent workloads. Unlike most previous work on query execution time prediction, our proposed framework is based on analytic modeling rather than machine learning. We first use the optimizer's cost model to estimate the I/O and CPU requirements for each pipeline of each query in isolation, and then use a combination queueing model and buffer pool model that merges the I/O and CPU requests from concurrent queries to predict running times. We compare the proposed approach with a machine-learning based approach that is a variant of previous work. Our experiments show that our analytic-model based approach can lead to competitive and often better prediction accuracy than its machine-learning based counterpart.},
+	number = {10},
+	journal = {Proc. VLDB Endow.},
+	author = {Wu, Wentao and Chi, Yun and Hacígümüş, Hakan and Naughton, Jeffrey F.},
+	month = aug,
+	year = {2013},
+	pages = {925--936},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/R9VTV96J/Wu et al. - 2013 - Towards Predicting Query Execution Time for Concur.pdf:application/pdf}
+}
+
+@article{aman_adaptive_1997,
+	title = {Adaptive {Algorithms} for {Managing} a {Distributed} {Data} {Processing} {Workload}},
+	volume = {36},
+	issn = {0018-8670},
+	url = {http://dx.doi.org/10.1147/sj.362.0242},
+	doi = {10.1147/sj.362.0242},
+	number = {2},
+	journal = {IBM Syst. J.},
+	author = {Aman, J. and Eilert, C. K. and Emmes, D. and Yocom, P. and Dillenberger, D.},
+	month = apr,
+	year = {1997},
+	pages = {242--283}
+}
+
+@misc{fogus_baysick:_2017,
+	title = {baysick: {An} embedded {Insane}-specific {Language} for {Scala} implementing the {BASIC} programming language},
+	copyright = {MIT},
+	shorttitle = {baysick},
+	url = {https://github.com/fogus/baysick},
+	author = {Fogus},
+	month = jun,
+	year = {2017},
+	note = {original-date: 2009-03-13T17:07:34Z},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/I8JNFTV5/master.html:text/html}
+}
+
+@misc{ansel_opentuner:_2017,
+	title = {opentuner: {An} extensible framework for program autotuning},
+	copyright = {MIT},
+	shorttitle = {opentuner},
+	url = {https://github.com/jansel/opentuner},
+	author = {Ansel, Jason},
+	month = jul,
+	year = {2017},
+	note = {original-date: 2012-11-27T21:22:13Z},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/DDK8935Q/opentuner.html:text/html}
+}
+
+@misc{tobolski_scala_nodate,
+	title = {Scala {DSL} tutorial - writing a web framework router},
+	url = {https://www.monterail.com/blog/2012/scala-dsl-tutorial-writing-web-framework-router},
+	abstract = {Recently released Play 2.0 framework brings new way of creating web services to Java community.},
+	urldate = {2017-07-02},
+	author = {Tobolski, Tymon},
+	file = {Snapshot:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/RGQG8F87/scala-dsl-tutorial-writing-web-framework-router.html:text/html}
+}
+
+@misc{noauthor_jlinalg_nodate,
+	title = {{JLinAlg} - {Open} {Source} {And} {Easy}-to-{Use} {Java}-library {For} {Linear} {Algebra}},
+	url = {http://jlinalg.sourceforge.net/},
 	urldate = {2017-07-03}
 }
 
@@ -372,4 +910,47 @@
 	month = aug,
 	year = {1969},
 	pages = {354--356}
+}
+
+
+@inproceedings{bulej_capturing_2012,
+	address = {New York, NY, USA},
+	series = {{ICPE} '12},
+	title = {Capturing {Performance} {Assumptions} {Using} {Stochastic} {Performance} {Logic}},
+	isbn = {978-1-4503-1202-8},
+	url = {http://doi.acm.org/10.1145/2188286.2188345},
+	doi = {10.1145/2188286.2188345},
+	abstract = {Compared to functional unit testing, automated performance testing is difficult, partially because correctness criteria are more difficult to express for performance than for functionality. Where existing approaches rely on absolute bounds on the execution time, we aim to express assertions on code performance in relative, hardware-independent terms. To this end, we introduce Stochastic Performance Logic (SPL), which allows making statements about relative method performance. Since SPL interpretation is based on statistical tests applied to performance measurements, it allows (for a special class of formulas) calculating the minimum probability at which a particular SPL formula holds. We prove basic properties of the logic and present an algorithm for SAT-solver-guided evaluation of SPL formulas, which allows optimizing the number of performance measurements that need to be made. Finally, we propose integration of SPL formulas with Java code using higher-level performance annotations, for performance testing and documentation purposes.},
+	booktitle = {Proceedings of the 3rd {ACM}/{SPEC} {International} {Conference} on {Performance} {Engineering}},
+	publisher = {ACM},
+	author = {Bulej, Lubomír and Bureš, Tomáš and Keznikl, Jaroslav and Koubková, Alena and Podzimek, Andrej and Tůma, Petr},
+	year = {2012},
+	keywords = {performance testing, regression benchmarking},
+	pages = {311--322},
+	file = {ACM Full Text PDF:/Users/PK250187/Library/Application Support/Zotero/Profiles/21izuzof.default/zotero/storage/HJBH8E5C/Bulej et al. - 2012 - Capturing Performance Assumptions Using Stochastic.pdf:application/pdf}
+}
+
+@MastersThesis{Trojanek:Thesis:2013,
+	author = {Trojánek, Tomáš},
+	title = {{Capturing Performance Assumptions using Stochastic Performance Logic}},
+	school ={Faculty of Mathematics and Physics, Charles University},
+	address = {Prague, Czech Republic},
+	year = {2013},
+}
+
+@MastersThesis{Kotrc:Thesis:2015,
+	author = {Kotrč, Jaroslav},
+	title = {{Run-time performance testing in Java}},
+	school ={Faculty of Mathematics and Physics, Charles University},
+	address = {Prague, Czech Republic},
+	year = {2015},
+}
+
+@MastersThesis{Naplava:Thesis:2015,
+	type = {Bachelor's thesis},
+	author = {Náplava, Jakub},
+	title = {{PerfJavaDoc: extending API documentation with performance information}},
+	school ={Faculty of Mathematics and Physics, Charles University},
+	address = {Prague, Czech Republic},
+	year = {2015},
 }
