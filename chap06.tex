@@ -36,22 +36,48 @@ The test consists of randomly generating 500 sequences of 0-5000 random integers
 
 As we can see, using combined function was worse than using quick sort all the time in this scenario. It is most likely caused by the fact that all the cases with smaller inputs where selection sort is faster than quick sort are in general so fast that having better results there has almost no impact in comparison with larger inputs.
 
-In figure \ref{fig:sorting_graph}, we can see the execution times of quick sort, selection sort and combined function (using the window-bound linear regression strategy) for different input sizes from this test. The upper graph shows the whole range of input sizes and as we can see, the combined function times are mostly similar to the quick sort times. In the lower graph, we can see the interval 0-1200, where selection sort tends to be better. The combined function, however, has the worst performance, which is caused by the invocation overhead.
+In figure \ref{fig:sorting_graph_all}, we can see the execution times of quick sort, selection sort and combined function (using the window-bound linear regression strategy) for different input sizes from this test. As we can see, the combined function times are mostly similar to the quick sort times. The figure \ref{fig:sorting_graph_start} shows only the interval 0-1200, where selection sort tends to be better. The combined function, however, has the worst performance, which is caused by the invocation overhead.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+\centerline{
+	\mbox{
+		\includegraphics[width=100mm]{./img/sort_all_select.png}
+	}
+}
+\centerline{
+	\mbox{
+		\includegraphics[width=100mm]{./img/sort_all_quick.png}
+	}
+}
+\centerline{
+	\mbox{
+		\includegraphics[width=100mm]{./img/sort_all_combined.png}
+	}
+}
+	\caption{Sorting times of sequences of different sizes using selection sort, quick sort and a combined function (from top to bottom).}
+	\label{fig:sorting_graph_all}
+\end{figure}
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{
 		\mbox{
-			\includegraphics[width=110mm]{./img/sort_graph1.png}
+			\includegraphics[width=100mm]{./img/sort_start_select.png}
 		}
 	}
 	\centerline{
 		\mbox{
-			\includegraphics[width=110mm]{./img/sort_graph2.png}
+			\includegraphics[width=100mm]{./img/sort_start_quick.png}
 		}
 	}
-	\caption{Sorting times of sequences of different sizes using quick sort (orange), selection sort (gray) and a combined function (blue).}
-	\label{fig:sorting_graph}
+	\centerline{
+		\mbox{
+			\includegraphics[width=100mm]{./img/sort_start_combined.png}
+		}
+	}
+	\caption{Detailed view of the sorting times of sequences of different sizes using selection sort, quick sort and a combined function (from top to bottom).}
+	\label{fig:sorting_graph_start}
 \end{figure}
 
 In conclusion, ScalaAdaptive is not suitable for performing optimization for very small inputs of various algorithms. The overhead time leads to worse performance overall, even though the selection is working fine and the better options are correctly selected.
@@ -62,7 +88,7 @@ Another example of an algorithmic problem where ScalaAdaptive could be used is m
 
 The practical problem with most of these fast algorithms is that they have quite high constants and therefore are not suitable for smaller matrices. In this test, we will use the ScalaAdaptive with the Strassen algorithm (complexity $O(N^2.807)$, \cite{strassen_gaussian_1969}), and with the basic multiplication algorithm. We will use a simple implementation of both algorithms from \cite{noauthor_jlinalg_nodate}. The goal of this test is not to find the fastest way to multiply matrices, but to simply demonstrate that adaptation can improve the performance of this class of algorithms.
 
-We tried generating 80 pairs of square matrices with random sizes between 50 and 900, filled with random integers. Then, we multiplied each pair using the basic algorithm, the Strassen algorithm, and the combined function with the window-bound linear regression strategy. Because the run times are quite high in this case, the minimal number of observation before selection was lowered to 5. The results can be seen in table \ref{tab:matrix_results}. As we can see, the overall results are in favor of the combined version. If we examine the relation between the run time and the size of the matrices in figure \ref{fig:matrix_mul_graph}, we can see the unusual character of the Strassen algorithm, caused by it rounding up the matrix to the size corresponding to a power of two. This kind of an input dependency does not work well with linear regression, especially on the edges. Nevertheless, the selection process worked fine enough, except for a few individual mistakes caused by not having enough data available.
+We tried generating 200 pairs of square matrices with random sizes between 50 and 900, filled with random integers. Then, we multiplied each pair using the basic algorithm, the Strassen algorithm, and the combined function with the window-bound linear regression strategy. Because the run times are quite high in this case, the minimal number of observation before selection was lowered to 5. The results can be seen in table \ref{tab:matrix_results}. As we can see, the overall results are in favor of the combined version. If we examine the relation between the run time and the size of the matrices in figure \ref{fig:matrix_mul_graph}, we can see the unusual character of the Strassen algorithm, caused by it rounding up the matrix to the size corresponding to a power of two. This kind of an input dependency does not work well with linear regression, especially on the edges. Nevertheless, the selection process worked fine enough, except for a few individual mistakes caused by not having enough data available.
 
 \begin{table}[]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -72,13 +98,13 @@ We tried generating 80 pairs of square matrices with random sizes between 50 and
 	\begin{tabular}{|l|r|}
 		\hline
 		& \multicolumn{1}{l|}{\textbf{Total time (s)}} \\ \hline
-		\textbf{Basic algorithm}    & 1059.10                                      \\ \hline
-		\textbf{Strassen algorithm} & 873.89                                       \\ \hline
-		\textbf{Combined (LR)}      & 818.98                                       \\ \hline
+		\textbf{Basic algorithm}    & 2230.21                                      \\ \hline
+		\textbf{Strassen algorithm} & 2168.29                                       \\ \hline
+		\textbf{Combined (LR)}      & 1673.63                                       \\ \hline
 	\end{tabular}
 \end{center}
 \egroup
-\caption{Total times of multiplying 80 pairs of square matrices of sizes 50-900.}
+\caption{Total times of multiplying 200 pairs of square matrices of sizes 50-900.}
 \label{tab:matrix_results}
 \end{table}
 
@@ -87,10 +113,20 @@ We tried generating 80 pairs of square matrices with random sizes between 50 and
 	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{
 		\mbox{
-			\includegraphics[width=110mm]{./img/matrix_mul_graph.png}
+			\includegraphics[width=100mm]{./img/matrix_mul_basic.png}
 		}
 	}
-	\caption{Multiplication times of matrices of different sizes using basic algorithm (orange), Strassen algorithm (gray) and a combined function (blue).}
+	\centerline{
+	\mbox{
+		\includegraphics[width=100mm]{./img/matrix_mul_strassen.png}
+	}
+}
+	\centerline{
+	\mbox{
+		\includegraphics[width=100mm]{./img/matrix_mul_combined.png}
+	}
+}
+	\caption{Multiplication times of matrices of different sizes using basic algorithm, Strassen algorithm and a combined function (from the top to the bottom).}
 	\label{fig:matrix_mul_graph}
 \end{figure}
 
@@ -145,7 +181,7 @@ During the test, we ran each one of the three parsing functions 10000 times on t
 		& \textbf{GSON} & \textbf{Jackson} & \textbf{Combined} \\ \hline
 		10000 * Small JSON & 1830.36 & 4883.24 & 2566.54 \\ \hline	
 		Small JSON average & 0.18 & 0.49 & 0.26 \\ \hline	
-		5000* Medium JSON & 4865.89 & 3142.05 & 3059.18 \\ \hline	
+		5000 * Medium JSON & 4865.89 & 3142.05 & 3059.18 \\ \hline	
 		Medium JSON average & 0.97 & 0.63 & 0.61 \\ \hline	
 		200 * Large JSON & 15790.47 & 7298.75 & 7740.31 \\ \hline	
 		Large JSON average & 78.95 & 36.49 & 38.70 \\ \hline
@@ -208,14 +244,18 @@ We can take advantage of the possibility to curry the function and create the co
 
 \lstset{style=Scala}
 \begin{lstlisting}
+private def getRequest(s: Server) = 
+  IdentifiedFunction(performRequest(s.url) _, s"request_${s.name}")
 val balancedRequest =
 (
-  urls.tail.foldLeft(performRequest(urls.head) _) { (f, url) =>
-    f.or(performRequest(url)) } 
-  selectUsing Selection.NonPredictive 
+  servers.tail.foldLeft(getRequest(servers.head)) { (f, s) =>
+    f.or(getRequest(s)) }
+  selectUsing Selection.NonPredictive
   limitedTo Duration.ofSeconds(20)
 )
 \end{lstlisting}
+
+Note that we need to use the custom identifier feature as mentioned in \ref{subsubsec:custom_identifier}, because the function is combined from a single eta-expanded method with different arguments fixed in the currying process. The closure type is therefore the same for all the resulting functions.
 
 For the actual test, we used two instances of the web server running on different ports of the same machine. We simulated the problems with load on the machines by artificially changing the response times of the servers every 50 seconds according to a set of predefined scenarios. From the client application, we sent one request every 0.5 seconds directly to each one of the servers and one using our balanced method. The results for three different scenarios can be seen in figure \ref{fig:load_balance_scen}. The lines represent response time evolution in time - direct requests are marked with blue and orange, the balanced request is gray. We can observe that most of the time, the gray line copies the lower of the two remaining lines. Sometimes, the gray line repeatedly reaches the higher line, which means that the balanced request is sent to the slower server in order to gather fresh run data.
 
@@ -279,7 +319,7 @@ Spark currently supports three different APIs that can be used to construct Spar
 
 \subsubsection{RDD}
 
-RDD (Resilient Distributed Dataset) was the first API introduced and is basically a distributed dataset of JVM objects, which can be queried using higher order functions like \inlinecode{map()}, \inlinecode{filter()}, etc. Spark isn't aware of structure of the internal JVM objects, it is treating the individuals like blackboxes. The query is typed and constructed using lambda expressions that work with these objects. It gets executed when a function that doesn't produce new RDD is called, e.g. \inlinecode{collect()} or \inlinecode{count()}. 
+RDD (Resilient Distributed Dataset) was the first API introduced and is basically a distributed dataset of JVM objects, which can be queried using higher order functions like \inlinecode{map()}, \inlinecode{filter()}, etc. Spark isn't aware of structure of the internal JVM objects, it is treating the individuals like blackboxes. The query is typed and constructed using lambda expressions that work with these objects. It gets executed when a function that doesn't produce new RDD is called, e.g. \inlinecode{collect()} or \inlinecode{count()}:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -290,7 +330,7 @@ Upon execution, the Spark worker engine works with the RDDs as a whole (partitio
 
 \subsubsection{DataFrames and Spark SQL}
 
-DataFrames API was introduced later into the Spark framework with a goal of achieving better performance and scalability. The data within DataFrames are described by a schema, somehow similar to classic SQL schema - Spark knows exactly how are the data records structured. The queries are constructed using Spark SQL, a query language (DSL in Scala) that uses string names of the record attributes (or columns). As we can see in the following example, the actions are described by strings and parsed by Spark upon execution.
+DataFrames API was introduced later into the Spark framework with a goal of achieving better performance and scalability. The data within DataFrames are described by a schema, somehow similar to classic SQL schema - Spark knows exactly how are the data records structured. The queries are constructed using Spark SQL, a query language (DSL in Scala) that uses string names of the record attributes (or columns). As we can see in the following example, the actions are described by strings and parsed by Spark upon execution:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -334,7 +374,7 @@ Because the execution engine does not understand the mapping action (RDDs do not
 data.reduceByKey((arr1, arr2) => arr1 ++ arr2)
 \end{lstlisting}
 
-Upon executing this, the groups can be first formed and reduced within the nodes and just the aggregated values will be passed and reduced again.
+Upon execution, the groups can be first formed and reduced within the nodes and just the aggregated values will be passed and reduced again.
 
 ScalaAdaptive was used to decide between these two queries, and the analytics data show the following average run times on a 5000 key-value pair sequence in Local[8] mode:
 \begin{itemize}
@@ -412,7 +452,7 @@ The test was performed on a Dataset of records which was filtered, grouped by an
 
 The table \ref{tab:spark_adaptive_config_test} shows the average execution times fetched from the combined function analytics data. As we can see, the performances of the options vary a lot depending on the input size and on the execution environment. The default configuration (with \textit{adaptive execution} disabled) in the local execution on small data is by far the worst, in large cluster is among the better ones. Configuration number 2 is the best in all cases, but we can see that the results tend to change a lot, and using ScalaAdaptive can help discover eventual better configurations.
 
-The only disadvantage of using ScalaAdaptive in this case is that selection from quite a lot alternatives is required, and when using the t-test selection strategy with Bonferroni correction (which lowers the significance level of elementary tests) increases the chances of the test not being able to decide about the best configuration. In case of the results discussed, the test wasn't able to decide in the case of Local[8], 10000 entries. The test not being able to decide between the two best options leads to rotating all the options, including the worse ones.
+The only disadvantage of using ScalaAdaptive in this case is that selection from quite a lot alternatives is required, which complicates the selector decisions. In case of the results discussed, the test wasn't able to decide in the case of Local[8], 10000 entries. The test not being able to decide between the two best options leads to rotating all the options, including the worse ones.
 
 \begin{table}[h!]
 	\centering
@@ -428,11 +468,13 @@ The only disadvantage of using ScalaAdaptive in this case is that selection from
 		Cluster 200000     & 2879.25                                     & 2538.94                          & 5639.02                          & 2853.10                          \\ \hline
 	\end{tabular}
 \egroup
-\caption{Run times (in ms) of Spark queries with different configurations in various environments.}
+\caption{Average run times (in ms) of Spark queries with different configurations in various environments.}
 \label{tab:spark_adaptive_config_test}
 \end{table}
 
 \section{Problems with the practical use of the framework}
+
+Using adaptive framework in the development process is a new concept with many consequences. While designing, implementing and evaluating the framework, we discovered a few potential problems that can complicate its practical application.
 
 \subsection{Invocation overhead}
 
