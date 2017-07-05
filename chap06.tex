@@ -485,6 +485,10 @@ As part of future work on the framework, there could be a Java API added, enabli
 
 As already briefly mentioned in section \ref{subsec:policy_improvements}, the policies are currently relatively limited, both in the data they have to base their decision on, and in the results they can produce. It would be interesting to analyze possible extensions while keeping the evaluation overhead as minimal as possible. The policies could give hints to the selection strategies, limit the data that they are working with, etc.
 
+\subsubsection{Custom selection rules based on the SPL}
+
+The \cite{bulej_performance_2012} introduces an extension of the SPL language designed to describe conditions based on the trends of historical performance data of functions. A special selector could be designed to accept the SPL conditions and make decisions according to them. This would allow the framework user to have more control over the selection process. 
+
 \subsubsection{Improving the persistent storage}
 
 The run data in the persistent storage are currently stored in CSV file format, which is not very fast to serialize and deserialize. In addition, the serialization buffering is done in a very basic way, leading to a loss of run data when the application ends with a non-empty buffer. In addition, this solution still has a non-trivial overhead. A potential improvement task might be to select a new format and a method how to flush the buffer upon closing the application, i.e. using JVM shutdown hooks.
