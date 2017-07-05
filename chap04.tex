@@ -1,4 +1,4 @@
-\chapter{Deciding between function}
+\chapter{Deciding between functions}
 \label{chap:deciding}
 
 The key purpose of the ScalaAdaptive library is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, etc. All these factors can be valuable and be the goal of the system run optimization.
@@ -213,7 +213,7 @@ If we assume that the measured function run times come from a normal distributio
 
 Suppose we have two samples of run times for the two functions involved, $X_1, ..., X_n$ and $Y_1, ..., Y_m$. Next, suppose that these samples come from normal distributions with expectations $\mu_1$ and $\mu_2$, respectively. These expectations are unknown for us, just like the variances. In addition, we suppose that the two variances are different. The goal is to test the expectations of the two samples against each other.
 
-Based on these requirements, we will use a \textit{two-sample t-test}. Standard Student's t-test works only under the assumption that the sample variances are equal, so it cannot be used in this case. We are going to use the Welch's t-test, which is not as strong, but can work with samples with different variances.
+Based on these requirements, we will use a \textit{two-sample t-test}. Standard Student's t-test works only under the assumption that the sample variances are equal, so it cannot be used in this case. We are going to use the generalized version, the Welch's (nonpooled) t-test, which is not as strong, but can work with samples with different variances. More detailed reasoning can be found in \cite{welch_generalisation_1947}.
 
 %TODO: Reference to the Welch's and Student's test
 The default hypotheses for the test are:
