@@ -50,7 +50,7 @@ In figure \ref{fig:sorting_graph}, we can see the execution times of quick sort,
 			\includegraphics[width=110mm]{./img/sort_graph2.png}
 		}
 	}
-	\caption{Sorting times of sequences of different sizes using quick sort (orange), selection sort (gray) and a combined algorithm (blue).}
+	\caption{Sorting times of sequences of different sizes using quick sort (orange), selection sort (gray) and a combined function (blue).}
 	\label{fig:sorting_graph}
 \end{figure}
 
@@ -62,7 +62,39 @@ Another example of an algorithmic problem where ScalaAdaptive could be used is m
 
 The practical problem with most of these fast algorithms is that they have quite high constants and therefore are not suitable for smaller matrices. In this test, we will use the ScalaAdaptive with the Strassen algorithm (complexity $O(N^2.807)$, \cite{strassen_gaussian_1969}), and with the basic multiplication algorithm. We will use a simple implementation of both algorithms from \cite{noauthor_jlinalg_nodate}. The goal of this test is not to find the fastest way to multiply matrices, but to simply demonstrate that adaptation can improve the performance of this class of algorithms.
 
+We tried generating 80 pairs of square matrices with random sizes between 50 and 900, filled with random integers. Then, we multiplied each pair using the basic algorithm, the Strassen algorithm, and the combined function with the window-bound linear regression strategy. Because the run times are quite high in this case, the minimal number of observation before selection was lowered to 5. The results can be seen in table \ref{tab:matrix_results}. As we can see, the overall results are in favor of the combined version. If we examine the relation between the run time and the size of the matrices in figure \ref{fig:matrix_mul_graph}, we can see the unusual character of the Strassen algorithm, caused by it rounding up the matrix to the size corresponding to a power of two. This kind of an input dependency does not work well with linear regression, especially on the edges. Nevertheless, the selection process worked fine enough, except for a few individual mistakes caused by not having enough data available.
 
+\begin{table}[]
+	\captionsetup{justification=centering,margin=0.5cm}
+\bgroup
+\def\arraystretch{1.5}%
+\begin{center}
+	\begin{tabular}{|l|r|}
+		\hline
+		& \multicolumn{1}{l|}{\textbf{Total time (s)}} \\ \hline
+		\textbf{Basic algorithm}    & 1059.10                                      \\ \hline
+		\textbf{Strassen algorithm} & 873.89                                       \\ \hline
+		\textbf{Combined (LR)}      & 818.98                                       \\ \hline
+	\end{tabular}
+\end{center}
+\egroup
+\caption{Total times of multiplying 80 pairs of square matrices of sizes 50-900.}
+\label{tab:matrix_results}
+\end{table}
+
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{
+		\mbox{
+			\includegraphics[width=110mm]{./img/matrix_mul_graph.png}
+		}
+	}
+	\caption{Multiplication times of matrices of different sizes using basic algorithm (orange), Strassen algorithm (gray) and a combined function (blue).}
+	\label{fig:matrix_mul_graph}
+\end{figure}
+
+The matrix multiplication algorithms represent an ideal problem for the adaptive execution. Current approach to designing a fast library method for multiplying matrices would consist of measuring the matrix size limit where the Strassen algorithm becomes faster than the basic one  and then putting a fixed branching in the method, deciding, which one to take. With ScalaAdaptive framework, this whole process can be skipped.
 
 \subsection{JSON parsing}
 \label{subsec:json_parsing}
