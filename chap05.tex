@@ -164,6 +164,7 @@ The most common usage pattern is the one where the functions used with the \inli
 The problem is that at runtime, the implicit type conversion method or the \inlinecode{or} method will always get the already \textit{eta-expanded} function object with a compiled \inlinecode{apply} method. The names have to be extracted at compile time, using the def macros (see \ref{sec:defmacros}). At the moment of implicit conversion from \inlinecode{FunctionN} to \inlinecode{FunctionAdaptorN}, the AST\footnote{Abstract syntax tree.} of the \inlinecode{FunctionN} expression can be examined - if it's a lambda expression containing one method call, the method name can be extracted.
 
 \subsubsection{Custom identifier}
+\label{subsubsec:custom_identifier}
 
 In order to handle the specific cases where type name and method name identifiers do not distinguish correctly between different functions, there is also a possibility of choosing a custom, arbitrary identifier. This has to be triggered specifically by the user in the API and should be used in the cases where:
 
