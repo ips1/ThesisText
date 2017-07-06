@@ -1,14 +1,14 @@
 \chapter{Deciding between functions}
 \label{chap:deciding}
 
-The key purpose of the ScalaAdaptive library is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, etc. All these factors can be valuable and be the goal of the system run optimization.
+The key purpose of the ScalaAdaptive framework is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, execution counts for various parts of the code, etc. All these factors can be valuable and be the goal of the system run optimization.
 
-This thesis is focused on the task of optimizing the function run time or time complexity in general. The core of the library, however, is designed to be extensible by modules that can analyze the function run in different ways. More on this topic will be covered in future chapters. %TODO: REFERENCE
+This thesis is focused on the task of optimizing the function run time or time complexity in general. The core of the framework, however, is designed to be extensible by modules that can analyze the function run in different ways. More on this topic will be covered in future chapters. %TODO: REFERENCE
 
 \section{Selection and invocation process}
 \label{sec:selection_and_invocation_process}
 
-Suppose we have a combined function \inlinecode{f()} created using the API described in chapter \ref{chapter:api} by combining multiple functions \inlinecode{f1()}, ..., \inlinecode{fn()}. We have a new function (or a function-like object) that can be invoked and we expect it to run one of the functions \inlinecode{f1()}, ..., \inlinecode{fn()}.
+Suppose we have a combined function \inlinecode{f()} created using the API described in chapter \ref{chapter:api} by combining multiple functions \inlinecode{f1()}, ..., \inlinecode{fn()}. \inlinecode{f()} is a new function (or a function-like object) that can be called and we expect it to run one of the implementations \inlinecode{f1()}, ..., \inlinecode{fn()}.
 
 The basic steps required to do so are the following:
 
@@ -19,9 +19,11 @@ The basic steps required to do so are the following:
 	\item Update the history data of \inlinecode{fk()} with the new run time record
 \end{enumerate}
 
+In the following sections, we will go through the steps of the process and discuss the options we have for implementing them.
+
 \subsection{Run time evaluation}
 
-When talking about function run time (or an execution time of a function), there are two types of values that we could be evaluating:
+When talking about function run time (or an execution time of a function), there are two types of values that we could be observing:
 
 \begin{itemize}
 	\item \textbf{\textit{Wall clock time}} - time elapsed between entering and leaving the function
@@ -30,46 +32,87 @@ When talking about function run time (or an execution time of a function), there
 
 The \textit{wall clock time} is always higher than the \textit{CPU time}, because it includes not only the time when CPU is executing the function code, but also the time when the executing thread is waiting for its turn in time-sharing multitasking OS or sleeping on a blocking I/O\footnote{Input / Output operation} operation, synchronization primitive, or for some other reason. This means that the \textit{wall clock time} also gets affected by concurrently running processes, network load, and other environment-based factors, and tends to vary much more between multiple invocations.
 
-For the purposes of the ScalaAdaptive library, it might seem that the \textit{CPU time} would be more appropriate, as it gives clearer results not affected by the state of the executing environment. The truth is, however, that many of the use cases of the library require the thread sleeping time to be included in the measurement, as the functions run times are determined mainly by the duration of an I/O operation (e.g. database queries, network requests, etc.), so using \textit{CPU time} would not give us the necessary results.
+For the purposes of the ScalaAdaptive framework, it might seem that the \textit{CPU time} would be more appropriate, as it gives clearer results not affected by the state of the executing environment. The truth is, however, that many of the use cases of the framework require the thread sleeping time to be included in the measurement, as the functions run times are determined mainly by the duration of an I/O operation (e.g. database queries, network requests, etc.), so using \textit{CPU time} would not give us the necessary results.
 
-It is also quite difficult to determine the \textit{CPU time} - it requires support from the executing system with tracking the time that every thread has spent in execution. For this reason and for the reason stated above, the selection process in this text is based on \textit{wall clock time}. It might be, however, interesting as a future extension to implement measuring both of the times and allowing the user to select for each combined function which time should be used.
+It is also quite difficult to determine the \textit{CPU time} - it requires support from the operating system with tracking the time that every thread has spent in execution. For this reason and for the reason stated above, the selection process in this text is based on the \textit{wall clock time}. It might be, however, interesting as a future extension to implement measuring of both of the times and allowing the user to decide for each combined function which time should be used.
 
-The \textit{wall clock time} is measured by fetching high-precision system time in nanoseconds right before calling the function apply method and right after returning from the call. The result is the run time in nanoseconds. This measurement is precise enough for all the use cases of the library, because it is targeting mainly functions with non-negligible time complexities.
+The \textit{wall clock time} is measured by fetching high-precision system time in nanoseconds right before calling the function apply method and right after returning from the call. The result is the run time in nanoseconds. This measurement is precise enough for all the use cases of the framework, because it is targeting mainly functions with non-negligible time complexities.
+
+The evaluation data might potentially contain more information that can help with classifying the function run and make better decisions in the selection process, e.g. the data about execution counts of certain code paths of the function, like in \cite{chun_mantis:_2010}. That would, however, require instrumentation of the executed code, and was not implemented in this work for its complexity.
 
 \subsection{Storing the evaluation data}
 
-After having invoked the function and evaluated its run time, the evaluation data have to be stored before passing the return value back to the caller. The history of all the run time evaluations is kept together for each function as a vector of values. We suppose that multiple combined function that all include one real function will share its run time history. More on that along with different implementation options will be discussed in chapter \ref{chap:implementation}.
+After having invoked the function and evaluated its run, the evaluation data have to be stored before passing the return value back to the caller. The history of all the run evaluations is kept together for each function as a vector of values. We suppose that multiple combined function that all include one real function will share its run history. More on that along with different implementation options will be discussed in chapter \ref{chap:implementation}.
 
 \subsection{Selecting a function}
 
-The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input $in$ of the function \inlinecode{f()} and by the evaluation data gathered in previous runs. We can use one of various strategies to decide on the result.
+The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input $in$ of the function \inlinecode{f()} and by the evaluation data gathered in previous runs. What we basically need to do is to use the historical data to formulate an expectation about the run time of all the functions, and then try to decide, which one is the most optimistic.
 
-The most straightforward approach would be to look at the function run history and select the function with the lowest average runtime in the measured runs. This solution has a few problems. First of all, the runtime of the inner functions \inlinecode{f1()}, ..., \inlinecode{fn()} might depend on the input \inlinecode{in}, which could lead to incorrect assumptions if the historical data were measured on runs with various inputs. And secondly, the method does not solve the case where the data do not give us an exact answer, for example if there are too few, if the historical results are too scattered (which might have been caused by different conditions upon invocation, etc.), and in general when we cannot make a clear decision and need to collect more data instead.
+This process has two basic complications:
 
-The \textit{input dependency} problem might be solved in various ways. Methods to analyze the relation between the input and the runtime might be employed in order to predict an approximate runtime on a new input. We call these methods \textit{predictive strategies}. A simpler approach that can be used universally with any \textit{non-predictive strategy} without changing it dramatically is to apply it on a smaller subset of the history records that have inputs of a very similar size. 
+\begin{itemize}
+	\item The run times may depend on the input $in$
+	\item The run times may depend on the environment
+	\item The expectations are never precise, they have certain probability based on the amount and the character of the historical data
+\end{itemize}
 
-As for the \textit{uncertainty} problem, the key is to collect a fixed amount of data first before using any of the strategies. Additionally, a techniques from statistical testing can be used so that the strategy could have a maximal probability of an error (a wrong decision).
+The \textit{input dependency} problem is being solved in many works about the program execution time predictions. Certain features of the input are analyzed and a model is constructed describing the relation to the run time. The model then can be used to formulate predictions. This approach was used in \cite{chun_mantis:_2010,goldsmith_measuring_2007}. The authors of \cite{smith_predicting_1998} propose clustering the inputs prior to creating any models.
 
-Based on these observations, a couple of strategies to select function were proposed and implemented as a part of the ScalaAdaptive library, and will be described in further sections. The user of the library can decide by himself on which one to use.
+The \textit{environment dependency} is more complicated - there are no factors that we could watch and use to classify the runs or to include in the prediction model. The simplest solution is to give the history records a limited duration after which they expire, as the environment changes are not expected to occur very often and new run data can be gathered in between. This technique is suggested among the adaptive framework use-cases in \cite{bulej_performance_2012}.
 
-\section{Predictive strategies}
+As for the \textit{uncertainty} problem, the works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of expectations used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision.
+
+Based on these observations, a couple of supporting techniques as well as strategies for the actual selection were proposed and will be described in the following sections.
+
+\section{Supporting techniques for selection}
+
+These techniques can be used to filter out the historical data in order to improve the selection process. All of them have to be explicitly enabled and configured by the user.
+
+\subsection{Grouping}
+\label{subsec:grouping}
+
+In \cite{smith_predicting_1998}, an automatic method of clustering the inputs is used before formulating any predictions about the run time. This is done because of the fact that inputs with common factors are in general expected to lead to similar run times, or at least to run times that can be described by the same, simpler model. Due to the performance limitations and the overall complexity of the solution, we will not include the algorithmic clustering. The user will, however, be able to specify a method of assigning the inputs to \textit{groups}. Upon selection, only the historical records from the corresponding group will be used.
+
+\subsubsection{Group selection}
+\label{subsubsec:group_selection}
+
+The group selection function that determines a group for a given input is called a \textit{group selector} and has to be provided by the user when creating the combined function. Groups are identified by a custom type that can be either an integer, or a special \inlinecode{NoGroup} value. The grouping can be based on the \textit{input descriptor}, but can also use other factors of the input, e.g., if there are some boolean flags passed to the function that affect its functionality, it is usually a good idea to use it in the grouping.
+
+%TODO Reference to the policy
+
+Some of the most common ways how to group values for the input descriptors might be:
+\begin{itemize}
+	\item Logarithmic - orders of magnitude
+	\item Linear - tens, hundreds, thousands
+	\item Fixed - predefined finite number of groups
+\end{itemize}
+
+The groups in general should not be too small, as the selection process relies on only the data from the group. The advantage of groups with growing size (e.g. the logarithmic grouping) is that there is a lot of groups in the areas where the functions tend to compete in the performance (smaller inputs).
+
+\subsection{Limiting the history record age}
+\label{subsec:limiting_record_age}
+
+When we expect the run times to fluctuate over time due to environment changes, we should use only the most recent records in the selection process. Not only will this lead to better results of the statistical selection strategies, but it also means that the framework will be able to quickly adapt to a new environment in case that the function performances get dramatically different.
+
+We have the historical run records marked with the timestamps. The user of the framework will provide a maximum age of a record that should be taken into account for a \textit{combined function}. Upon invocation, the records that are older than this limit will be filtered from the history vector of each one of the functions. This should not lead to any significant overhead if the vectors preserve the ordering in which they are build, having the most recent data at the end.
+
+\section{Predictive selection strategies}
 \label{sec:predictive_strategies}
 
-These strategies are useful solely for the purpose of the functions for which the run time is directly related to the input of the function, e.g. size of a data structure, length of a data file, a number, etc. This relation is usually expressed using the computational complexity of an algorithm, which is a function of the size of the inputs of the algorithm and represents an amount of abstract elementary computational steps that have to be performed. The actual run time depends on the complexity, as every computational step has to take some CPU time. 
+\textit{Predictive strategies} are the strategies that use the current input value $in$ to make the decision, usually by creating specific run time predictions for each of the functions and comparing them. These strategies are useful solely when the function run time is directly related to the input, e.g. size of a data structure, length of a data file, a number, etc. 
 
-The problem is that in reality, the duration of different steps differ as well, depend on hardware optimization, cache misses, pagefaults, scheduling of the OS and many other factors, so the relation, although still present, gets very distorted. In addition, the complexities are often worst-case - the actual complexity can be different for every input as the algorithm execution can vary. Despite these facts and for the purposes of only rough approximation, we will suppose that for function \inlinecode{f()} \(\exists g\) so that 
-\(\forall in\) possible inputs holds \(t = g(in)\), where \(t\) is the runtime on input \(in\) of \inlinecode{f()}.
+This relation is usually expressed on theoretical level using the computational complexity of an algorithm, which is a function of the size of the inputs and represents an amount of abstract elementary computational steps that have to be performed when processing said input. The physical run time, however, cannot be easily derived, as in reality, the duration of different steps differs as well, depending on hardware optimization, cache misses, pagefaults, scheduling of the OS and many other factors.
 
-The input, as mentioned earlier, can be a complex structure with a lot of factors contributing to the run time\footnote{Consider for example a general graph - for most of the algorithms, both number of vertices and edges have to be taken into account}. For the simplicity of the strategies, we need to introduce an \textit{input descriptor} - an integer that can be computed from the input and that can be used in the process of finding an approximation of $g$. 
+Nevertheless, for the purposes of rough approximation, we will suppose that for Scala function \inlinecode{f()} \(\exists g\) so that \(\forall in\) possible inputs holds \(t = g(in) + \varepsilon\), where \(t\) is the runtime on input \(in\) of \inlinecode{f()}, and $\varepsilon$ is an error represented by a random variable with normal distribution. A more rigorous approach is taken in \cite{bulej_capturing_2012}, where the run times are considered to be random variables and a formalism is built upon this.
+
+The input, as mentioned earlier, can be a complex structure with multiple factors contributing to the run time\footnote{Consider for example a general graph - for most of the algorithms, both number of vertices and edges have to be taken into account}. Common prediction techniques (\cite{chun_mantis:_2010,goldsmith_measuring_2007}) work with vectors of features of the input that were selected either automatically or manually. In our case, solely for the simplicity of the strategies and the models constructed, we will use just one manually selected feature represented by an integer. This \textit{input descriptor} will be used in the selection process instead of the entire input.
 
 In other words, we suppose that for function \inlinecode{f()} \(\exists h, g_1\) so that
 \(g = h \circ g_1\) 
 and 
-\(\forall in \quad h(in) \in \mathbb{N}\). In this case, the \textit{input descriptor} of input \(in\) would be the value of \(h(in)\).
-This assumption is not true in general - we would need at least a multi-dimensional \textit{input descriptor} to cover functions with complexities depending on more factors. In most cases, a sufficient function \(h\) can be found so that the results are precise enough. We call it the \textit{descriptor function}.
+\(\forall in \quad h(in) \in \mathbb{N}\). In this case, the \textit{input descriptor} of input \(in\) would be the value of \(h(in)\). We will call $h$ the \textit{descriptor function}. The goal of the \textit{predictive strategies} is to use the historical data and their \textit{input descriptors} to build a model that would approximate the function $g_1$. This model would then be used to formulate predictions about the run time, which the selection should be based upon.
 
-The \textit{descriptor function} has to be provided by the user of the library when creating the combined function. %TODO: reference to API?
-Such function could be:
+The \textit{descriptor function} has to be provided by the user of the framework when creating the combined function. It could be an extractor of one of the following:
 \begin{itemize}
 	\item Number of elements in a data structure argument
 	\item Sum of numbers of vertices and edges in a graph
@@ -78,17 +121,15 @@ Such function could be:
 \end{itemize}
 Naturally, the \textit{descriptor function} itself should not have a significant complexity, as it is going to be invoked during every call.
 
-The task of the strategies listed in this section is to make an approximation of the \(g_1\) function and use it to compute \(g_1(h(in))\) upon every invocation and to select the function with the best (minimal) result.
-
 \subsection{Simple linear regression}
 \label{subsec:simple_linear_regression}
 
-First strategy supposes that the function \(h\) can be approximated precisely enough using a linear function \(h'\) in the following form:
+The first strategy supposes that the function \(h\) can be approximated precisely enough using a linear function \(h'\) in the following form:
 \[h'(x) = a' x + b'\]
 
 This approximation is a \textit{simple linear regression model}. The slope \(a'\) and intercept \(b'\) of the linear function can be determined using a least squares method, which minimizes the squares of the distances of the actual function values from the ones predicted by the model.
 
-A big advantage of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. 
+A big advantage of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. In addition, the model can be easily cached for fixed set of samples and updated when adding new data without having to construct it all over again.
 
 The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph marked with the green color. The red line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
 
@@ -99,29 +140,35 @@ The main problem is that the linear regression model applied to a case where the
 	\label{fig:selection_sort_linear_trendline}
 \end{figure}
 
-In our application we do not care about the accuracy of the predicted value itself, we simply need to know if the prediction is significantly better than the prediction of the second model, taking into account the accuracy of both models. We would like to find a statistical method that could give us this answer.
+Next, we need to find a way how to select the best function with given certainty using a set of these models.
 
 \subsubsection{Confidence interval based selection from two functions}
 \label{subsubsec:confidence_interval_selection}
 
-Suppose we have a linear regression model \(h'(x) = a' x + b'\) constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\epsilon_i = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation on the model.
+Suppose we have a linear regression model \(h'(x) = a' x + b'\) of a function $h(x) = ax + b$ constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\varepsilon = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation on the model.
 
-Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with n-2 degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests with $a$ and $b$. The default tests hypotheses have the following form:
+Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with $n-2$ degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests with $a$ and $b$. The default tests hypotheses have the following form:
 
 \[H_0: a = a_0\]
 \[H_1: a \neq a_0 \]
 
-We basically test equality of $a$ (or $b$) and a fixed value $a_0$ (or $b_0$) - this test can be used to verify if the data have a linear relation of some kind. If we put $a_0 = 0$, we can find out if the data even have any relation, or if the observations $y_i$ are constant. None of these tests and statistics, however, allow us to test the certainty of the prediction - we need to take into account both the intercept and the slope estimation certainty, and, in addition, the location of the $x$ we want the prediction for from the mean $\bar{x}$, because if we commit an error in the slope $a'$, the error in predictions increases with the distance from $\bar{x}$. 
+We basically test equality of $a$ (or $b$) and a fixed value $a_0$ (or $b_0$) - this test can be used to verify if the data have a specific linear relation. If we put $a_0 = 0$, we can whether the observations $y_i$ are constant. 
 
-With these facts, a confidence interval on level $1 - \alpha$ for $y = h'(x)$ can be constructed (specifically for each point $x$). Width of the interval is the following:
+None of these tests and statistics, however, allows us to test the certainty of the prediction - we need to consider both the intercept and the slope estimation certainty, and, in addition, the distance of the $x$ we want the prediction for from the mean $\bar{x}$, because if we commit an error in the slope estimation $a'$, the corresponding error in predictions increases with the distance from $\bar{x}$. 
+
+With these facts, a confidence interval on level $1 - \alpha$ for $h'(x)$ can be constructed (specifically for each point $x$). According to \cite{weiss_introductory_2010}, the width of the interval is the following:
 
 \[
-w_{x, \alpha} = t_{n - 2}(1-\frac{\alpha}{2}) \sqrt{(\frac{1}{n - 2} MSE) (\frac{1}{n} + \frac{(x - \bar{x})^2}{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 })}
+w_{x, \alpha} = t_{n - 2}(1-\frac{\alpha}{2}) s_e\sqrt{1 + \frac{1}{n} + \frac{(x - \bar{x})^2}{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 }}
 \]
 
-where \(\bar{x}\) is the mean of \(x_i\), $t_{n - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom, and $MSE$\footnote{Mean square error} can be computed as:
+where \(\bar{x}\) is the mean of \(x_i\), $t_{n - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom, and $s_e$\footnote{Standard error of the estimate} can be computed as:
 
-\[MSE =  \sum_{i = 1}^{n} \epsilon_i^2  =  \sum_{i = 1}^{n} (y_i - y_i')^2 \]
+\[s_e = \sqrt{\frac{SSE}{n-2}}\]
+
+And:
+
+\[SSE = \sum_{i = 1}^{n} \varepsilon_i^2  =  \sum_{i = 1}^{n} (y_i - y_i')^2 \]
 
 for \(y_i' = h'(x_i)\).
 
@@ -130,69 +177,73 @@ It now holds that for any $x$, the corresponding $y \in [a'x + b' \pm w_{x, \alp
 Now in the situation where we have two regression models and we want to find the best prediction of $x$, we can construct these confidence intervals for both models and:
 
 \begin{itemize}
-	\item If the intervals do not overlap, the predictions have at least a $(1 - \alpha)$ probability of not being switched, i.e., the lower prediction actually being lower
+	\item If the intervals do not overlap, the predictions have at least a $(1 - \alpha)^2$ probability of correctly setting the order, i.e. the worse prediction actually being the worse function
 	\item If the intervals overlap, there is a non-trivial chance of the predictions being mixed up by error
 \end{itemize}
 
-In the first case, we can decide that the first model gives significantly better prediction and select the first function. In the second case, we cannot decide with given certainty.
+In the first case, we can decide that one function is significantly better and select it. In the second case, we cannot decide with given certainty.
 
 \subsubsection{Confidence interval based selection from multiple functions}
 
-The described methods allows us to decide between two functions with given certainty. Now, when choosing among $n$ functions with regressions $h'_1, ..., h'_n$ for given $x$, we are looking for the $k$ for which the following holds:
+The described method allows us to decide between two functions with given certainty. Now, when choosing among $n$ functions with regressions $h'_1, ..., h'_n$ for given $x$, we are looking for the $k$ for which the following holds:
 
 \begin{itemize}
-	\item The confidence interval on level $1-\alpha$ for prediction $h'_k(x)$ does not overlap with any other of the confidence interval for prediction.
+	\item The confidence interval on level $(1-\alpha)$ for prediction $h'_k(x)$ does not overlap with any other of the confidence interval for prediction.
 	\item $\forall j \ne k: h'_k(x) < h'_j(x)$
 \end{itemize}
 
-We find it by preparing all the regressions and then $\forall i$ perform the comparison described in \ref{subsubsec:confidence_interval_selection} of $h_i$ with $h_j, \forall j \ne i$. If $h_i$ is better than all of the $h_j$, we can choose the corresponding function.
+It can be done by constructing all the regression models and then $\forall i$ performing the comparison described in \ref{subsubsec:confidence_interval_selection} of $h_i$ with $h_j, \forall j \ne i$. If $h_i$ is better than all of the $h_j$, we can choose the corresponding function.
 
-The strength of this decision is influenced by the fact that we perform multiple confidence interval constructions - the errors an error in any of them can influence the result of the selection, se the significance gets lower in general. If we wanted the results to be precise, we would have to perform the correction of the significance level $\alpha$. In our case, however, we need the method to behave well in real cases, so we should probably decide on the $\alpha$ experimentally and by the system behavior observation.
+The strength of this decision is influenced by the fact that we perform multiple confidence interval constructions - the errors an error in any of them can influence the result of the selection, se the significance gets lower in general. If we wanted the results to be precise, we would have to perform the correction of the significance level $\alpha$.
+
+%TODO: How to set alpha? correction?
 
 \subsection{Window-bound linear regression}
 \label{subsec:window_bound_regression}
 
-To be able to apply the strategy described in section \ref{subsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ of the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on a smaller subset.
+To be able to apply the strategy described in section \ref{subsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of historical measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ of the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on the model in a smaller subset.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=110mm]{./img/window_examples.png}}}
+	\centerline{\mbox{\includegraphics[width=140mm]{./img/window_examples.png}}}
 	\caption{Examples of subsets of the data from figure \ref{fig:selection_sort_linear_trendline} with linear regressions.}
 	\label{fig:window_examples}
 \end{figure}
 
-When selecting a function for a specific \textit{input descriptor} $d$, a window around its value of specific width $w$ can be created and the regression model built upon it. We do it by selecting the data samples $x_k, y_k$ where $\abs{x_k - d} < w$, and using them as the entire data set.
+When selecting a function for a specific \textit{input descriptor} $d$, a window around its value of specific width $w$ can be created and the regression model built using the data from said window. We do it by selecting only the historical samples $x_k, y_k$ where $\abs{x_k - d} < w$ when constructing the regression.
 
-There are multiple ways how to decide on the window width $w$. Using a fixed number across all the functions and all the data samples would not be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want to split the set. This would not help us in a case where there are a few extreme values of \textit{input descriptors} in the data set and the rest of the values lie together. 
+There are multiple ways how to decide on the window width $w$. Using a fixed number across all the functions and all the data samples would not be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want it to be split. 
 
-The most complicated but also the most adaptive window selection method is based on analysis of the entire data set - we compute the average distance between two neighboring \textit{input descriptors} and set the $w$ as $avg * m$, where m is the expected number of samples in one window. For the value of $m$, we can chose a number of about 50-100.
+More flexible approach is to dynamically determine the $p$. Suppose we want the average window to contain $r$ records. We find out what is the average distance between two neighboring records as $d =  \frac{max(x_i) - min(x_i)}{n - 1}$ and then set the $p = r * d$. This way, the window size will always be adapted to the density of the dataset.
+
+The window limitation might seem similar to the grouping described in \ref{subsec:grouping}, but there are two major differences. First, the windows are based on the \textit{input descriptor}, whereas the \textit{group selector} might use different features of the input. And second, the groups are deterministic and do not move with the \textit{input descriptor} and change their size based on historical data. Both these concept can be used at the same time.
 
 \subsection{Local regression}
 \label{subsec:local_regression}
 
-The approach explained in \ref{subsec:window_bound_regression} can be extended further - the locally constructed linear regression models can be used to build up a model for the entire data set. This leads to a model that is non-linear, in other words, the function that approximates the original data relation is not a linear function.
+The approach explained in \ref{subsec:window_bound_regression} can be extended further - the locally constructed linear regression models might be used to build up a model for the entire data set. This leads to a model that is non-linear, i.e., the function that approximates the original data relation is not a linear function.
 
-One possible regression method that behaves this way is \textit{LOESS} (Local Regression). It uses methods similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The output is a \textit{Loess Curve}, which is a function that is artificially constructed and does not have any simple (or even known) formula. This is the one of the advantages - the original relation between \textit{input descriptors} and the run times did not have to be expressed by a nice simple function in order to be modeled correctly.
+One possible regression method that behaves this way is \textit{LOESS} (Local Regression, \cite{cleveland_locally_1988,cleveland_regression_1988,cleveland_computational_1991}). It uses methods similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The output is a \textit{Loess Curve}, an artificially constructed function that does not necessarily have to be expressed by a formula. This is one of the advantages of the model - the original relation between \textit{input descriptors} and the run times did not have to be expressed by a nice simple function in order to be captured correctly.
 
-%TODO: Add some sources
+The \textit{LOESS} model can be used to predict the function run times. It is, however, a lot more complicated to derive the prediction confidence intervals. Therefore, only the values will be used in this selection strategy, which could lead to some wrong decisions.
 
-There is also a few disadvantages of this strategy. First of all, the entire local regression model has to be recomputed whenever there is a new data in the dataset, the model ca not be simply updated like the \textit{simple linear regression}. Secondly, it is much more computationally complex and the model construction takes non-trivial time, so it has a negative impact of the library overhead, especially when used with short and simple functions. Next, there is no simple way how to perform statistical tests on the accuracy of the model. The last downside of \textit{local regression} is its inability to predict further behavior past the minimum and maximum data sample.
+There are other disadvantages of this strategy as well. First of all, the entire local regression model has to be recomputed whenever there is a new record in the dataset, the model cannot be simply updated like the \textit{simple linear regression}. Secondly, it is much more computationally complex and the model construction takes non-trivial time, so it has a negative impact of the framework overhead, especially when used with short and simple functions. The last downside of \textit{local regression} is its inability to predict further behavior past the minimum and maximum data sample.
 
 \subsection{Whitebox model construction}
 
-The methods that were described so far are examples of the blackbox techniques - they does not analyze the function itself, they base all their predictions only on the run time measured.
+The methods that were described so far are examples of the blackbox techniques - they do not analyze the function itself, the models are based only on the relation of the run times and the \textit{input descriptors}. 
 
-More thorough predictions could be made after examining the function code as well. It can be analyzed, key structures in the code identified (loops, branches, function calls, variables) and a model can be created using these information. The code can be instrumented and the measurement can be done for each of the structures mentioned. It would require more complex run time measurement data, but the library is prepared for this. The prediction will then be based on the model and the data measured for its elements.
+The techniques used in the research projects focused on formulating accurate predictions about program run times (like \cite{goldsmith_measuring_2007,chun_mantis:_2010,huang_predicting_2010}) often build the model using more detailed information about every run. These extra data can be obtained by examining and instrumenting the function code. Key structures (loops, branches, method invocation, ...) can be identified and an execution counts can be tracked. Then, a model that captures the relation between the input features, the described structure execution counts and the run time. This added dimension might lead to more accurate model and therefore better predictions.
 
 %TODO: Add reference / bibliography
-Similar approach was taken in [Predicting Execution Time of Computer Programs] with the goal of predicting program execution time on a specified input with very high precision.
+In \cite{chun_mantis:_2010}, a Mantis framework for high accuracy program performance prediction was implemented. The basic principles are similar to the approach described above. It was tested on a series of data gathered from runs of the ImageJ application, and compared with a blackbox prediction model based on interpolating a polynomial of degree 3. The prediction error of the whitebox approach was 5.5\%, the blackbox approach error rate reached more than 35\%.
 %TODO: Add results?
 
-This approach has a few problems concerning the intended use cases of ScalaAdaptive library. The model will not add any value to the predictions if the majority of the execution time will be spent waiting on an I/O operation. Specifically, it will not help with any of the cases where we are selecting a database query, remote server to connect to, etc.
+This approach has, however, a few problems concerning the intended use cases of ScalaAdaptive framework. The model will not improve the predictions if the majority of the execution time is spent waiting on an I/O operation. Specifically, it will not help with any of the cases where we are selecting a database query, remote server to connect to, etc. In addition, it would require the method code to be instrumented at runtime, which would lead, together with the model construction, to a significant overhead.
 
-For these reasons and because of the complexity, it was not implemented in the library, but it represents a potential future work that could be done on the topic.
+For these reasons and because of the complexity, the whitebox model was not implemented in the framework, but it represents a potential future work that could be done on the topic.
 
-\section{Non-predictive strategies}
+\section{Non-predictive selection strategies}
 \label{sec:non_predictive_strategies}
 
 In some cases, the function run time does not depend on the input, or the relation is not significant enough. In such a situation, we consider all the runs of the function equal and we want to decide based on the historical measurements which one of the functions has a higher chance of being faster.
@@ -431,7 +482,7 @@ The selection process and all the strategies described in sections \ref{sec:pred
 
 Similarly, it might be desirable to control the overhead time spent on the selection, or, in general, on invoking the functions using selection (which might lead to a bad decision), either per a specific time period, or per a specific action of the system (user request, processing unit, etc.). All of these decisions are taken at a higher level than the run time history analysis performed by the selection strategies.  
 
-\textit{Invocation policies} are a concept introduced into the ScalaAdaptive library that tries to address these cases, with the main purpose of lowering its execution overhead. Every \textit{combined function} has an \textit{invocation policy} associated with it. In the function selection chain, the \textit{policy} gets evaluated right after invoking the \textit{combined function} and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
+\textit{Invocation policies} are a concept introduced into the ScalaAdaptive framework that tries to address these cases, with the main purpose of lowering its execution overhead. Every \textit{combined function} has an \textit{invocation policy} associated with it. In the function selection chain, the \textit{policy} gets evaluated right after invoking the \textit{combined function} and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
 
 The possible results of the \textit{policy} evaluation are the following:
 
@@ -549,7 +600,7 @@ The described behavior is the preferred way of limiting the selection overhead. 
 	\label{fig:limited_overhead}
 \end{figure}
 
-Policies can be used to limit the library involvement per a real-time period, so that the selection overhead, or overhead generated by gathering data or wrongly selecting the slower function doesn't damage the system more than a specified limit. The \textbf{Limited overhead} policy in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it cannot select anymore and keeps using the most selected function until the end of the period.
+Policies can be used to limit the framework involvement per a real-time period, so that the selection overhead, or overhead generated by gathering data or wrongly selecting the slower function doesn't damage the system more than a specified limit. The \textbf{Limited overhead} policy in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it cannot select anymore and keeps using the most selected function until the end of the period.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -592,6 +643,12 @@ val conditional: Policy = (
 )
 \end{lstlisting}
 
+\subsection{Policies and groups}
+
+One of the techniques for improving the selection process is grouping the history records using some input features, as described in \ref{subsec:grouping}. We will extend the grouping to function statistics and to the current policy. It means that the \textit{combined function} needs to hold the policy and the statistical data for every group and to evaluate and update the 
+
+The main advantage is the possibility to take faster decisions in some groups, using for example the \textit{Pause selection after streak} policy. When a function is significantly faster than the others for some category of inputs, the streak will build up fast within the group and the invocation for future inputs from such a group will require no selection and will be very quick, yielding correct results.
+
 \subsection{Possible improvements}
 \label{subsec:policy_improvements}
 
@@ -603,25 +660,3 @@ Another improvement that might seem useful is to allow the \textit{policies} to 
 With a different approach, we could achieve the same thing by giving selection strategies a state that could involve their decision. The state would be managed by the combined function and it could even be the same state that is used by the \textit{policies}. 
 
 %TODO - when do I need more data?
-
-\section{Grouping}
-
-The problem with input dependency and with different expected decisions for various inputs can be partially solved by putting the history data and the function statistics according to the input into multiple groups. When deciding using the policies or selecting using one of the strategies described, only the data from the relevant group (based on the current input) is used. 
-
-It would mean that the \textit{combined function} would need to hold the policy and the statistical data for every group, and the function run time history would have to be separate for different groups as well. The main advantage would be the possibility to take faster decisions in some groups, using for example the \textit{Pause selection after streak} policy. When a function is significantly faster than the others for very large inputs for example, it would quickly collect the streak for the decisions within the group, and the selection for future inputs from such a group would be quick.
-
-\subsection{Group selection}
-\label{subsec:group_selection}
-
-The group selection function that determines a group for a given input is called a \textit{group selector} and has to be provided by the user when creating the combined function. Groups are identified by a custom type that can be either an integer, or a special \inlinecode{NoGroup} value. The grouping can be based on the \textit{input descriptor}, but can also use other factors of the input, e.g., if there are some boolean flags passed to the function that affect its functionality, it is usually a good idea to use it in the grouping.
-
-%TODO Reference to the policy
-
-Some of the most common ways how to group values for the input descriptors might be:
-\begin{itemize}
-	\item Logarithmic - orders of magnitude
-	\item Linear - tens, hundreds, thousands
-	\item Fixed - predefined finite number of groups
-\end{itemize}
-
-The groups in general should not be too small, as the selection process relies on only the data from the group. The advantage of groups with growing size (e.g. the logarithmic grouping) is that there is a lot of groups in the areas where the functions tend to compete in the performance (smaller inputs).
