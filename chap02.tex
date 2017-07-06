@@ -144,7 +144,7 @@ DSL (Domain Specific Language) is a type of a programming language that is narro
 
 In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language, using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This significantly speeds up the development process - there is no need to implement the syntax parser, compiler, the end user does not have to have any specialized tools to actually use the language. A program written in such a language will just get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, interpret it and carry out required tasks.
 
-These DSLs became recently very popular for defining configurations, build and deployment processes - an example could be the Gradle scripting language, which is actually a DSL in Groovy, or the Chef recipes, being just Ruby scripts.
+These DSLs became recently very popular for defining configurations, build and deployment processes - an example could be the Gradle scripting language \cite{noauthor_gradle_nodate}, which is actually a DSL in Groovy, or the Recipe DSL for Chef \cite{noauthor_chef_nodate} built atop of the Ruby language.
 
 %TODO: Gradle and Chef references
 
@@ -157,9 +157,6 @@ greeting should equal ("hi") (after being lowerCased)
 \end{lstlisting}
 
 The above is a valid Scala code that can be compiled and run, and is used by the framework to express unit test assertions.
-
-%TODO: ref https://www.manning.com/books/dsls-in-action
-%TODO: http://www.scalatest.org/
 
 \subsection{Infix operators}
 \label{subsec:infixops}
