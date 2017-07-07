@@ -3,7 +3,7 @@
 
 The key purpose of the ScalaAdaptive framework is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, execution counts for various parts of the code, etc. All these factors can be valuable and be the goal of the system run optimization.
 
-This thesis is focused on the task of optimizing the function run time or time complexity in general. The core of the framework, however, is designed to be extensible by modules that can analyze the function run in different ways. More on this topic will be covered in future chapters. %TODO: REFERENCE
+This thesis is focused on the task of optimizing the function run time or time complexity in general. The core of the framework, however, is designed to be extensible by modules that can analyze the function run in different ways. More on this topic will be covered in chapter \ref{chap:implementation}.
 
 \section{Selection and invocation process}
 \label{sec:selection_and_invocation_process}
@@ -48,7 +48,7 @@ After having invoked the function and evaluated its run, the evaluation data hav
 
 The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input $in$ of the function \inlinecode{f()} and by the evaluation data gathered in previous runs. What we basically need to do is to use the historical data to formulate an expectation about the run time of all the functions, and then try to decide, which one is the most optimistic.
 
-This process has two basic complications:
+This process has three basic complications:
 
 \begin{itemize}
 	\item The run times may depend on the input $in$
@@ -60,9 +60,13 @@ The \textit{input dependency} problem is being solved in many works about the pr
 
 The \textit{environment dependency} is more complicated - there are no factors that we could watch and use to classify the runs or to include in the prediction model. The simplest solution is to give the history records a limited duration after which they expire, as the environment changes are not expected to occur very often and new run data can be gathered in between. This technique is suggested among the adaptive framework use-cases in \cite{bulej_performance_2012}.
 
-As for the \textit{uncertainty} problem, the works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of expectations used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision.
+As for the \textit{uncertainty} problem, the works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of expectations used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision. Such a case should be solved by executing the function with least data to gather more observations.
 
-Based on these observations, a couple of supporting techniques as well as strategies for the actual selection were proposed and will be described in the following sections.
+The decision goal is obvious when selecting from two functions - compare the expectations and select the one that is better with given significance, or refuse to select when there is not such a function. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better that each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
+
+For simplicity, we will consider only the case where one function is better than all the others, the remaining situations will be treated as ambiguous and none will be selected. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance, we are not able to make a decision and we keep cycling through all three functions.
+
+Based on all of these observations, a couple of supporting techniques as well as strategies for the actual selection were proposed and will be described in the following sections.
 
 \section{Supporting techniques for selection}
 
@@ -77,8 +81,6 @@ In \cite{smith_predicting_1998}, an automatic method of clustering the inputs is
 \label{subsubsec:group_selection}
 
 The group selection function that determines a group for a given input is called a \textit{group selector} and has to be provided by the user when creating the combined function. Groups are identified by a custom type that can be either an integer, or a special \inlinecode{NoGroup} value. The grouping can be based on the \textit{input descriptor}, but can also use other factors of the input, e.g., if there are some boolean flags passed to the function that affect its functionality, it is usually a good idea to use it in the grouping.
-
-%TODO Reference to the policy
 
 Some of the most common ways how to group values for the input descriptors might be:
 \begin{itemize}
@@ -246,27 +248,19 @@ For these reasons and because of the complexity, the whitebox model was not impl
 \section{Non-predictive selection strategies}
 \label{sec:non_predictive_strategies}
 
-In some cases, the function run time does not depend on the input, or the relation is not significant enough. In such a situation, we consider all the runs of the function equal and we want to decide based on the historical measurements which one of the functions has a higher chance of being faster.
+In some cases, the function run time does not depend on the input, or the relation is not significant enough. For simplification, we suppose that the function complexity is constant in such a case. Using the same formalism as in \ref{sec:predictive_strategies}, for run times $t$ on input $in$ holds \(t = g(in) + \varepsilon\) for a $g$ constant, i.e. $\forall in$ $g(in) = c$. Therefore, $t = c + \varepsilon$, where $\varepsilon$ is the error which we suppose has a normal distribution with a zero mean. Under these assumptions, $t$ is a random variable with normal distribution and mean equal to $c$, which is the expected constant run time of the function.
 
-The trivial solutions being the following:
-\begin{itemize}
-	\item Select the function with the lowest average run time
-	\item Select the function with the lowest minimal run time
-	\item Select the function with the lowest maximal run time
-\end{itemize}
-
-Each of these strategies does make sense and might be useful in some cases, the problem is that they cannot give us the certainty with which the function is better. Again, using statistical methods to express the level of certainty we require from the decision, can solve the problem.
+The \textit{non-predictive} strategies will use the sample data to determine the means of the function time distributions with given certainty and use them as the expected run times in the decision process.
 
 \subsection{T-test for two functions}
 \label{subsec:t_test_two}
 
-If we assume that the measured function run times come from a normal distribution, we can use the methods of statistical testing to determine whether one function is faster than the other with given significance. 
+To compare means of two samples from certain distribution and make conclusion about their equality, statistical tests are commonly used.
 
-Suppose we have two samples of run times for the two functions involved, $X_1, ..., X_n$ and $Y_1, ..., Y_m$. Next, suppose that these samples come from normal distributions with expectations $\mu_1$ and $\mu_2$, respectively. These expectations are unknown for us, just like the variances. In addition, we suppose that the two variances are different. The goal is to test the expectations of the two samples against each other.
+Suppose we have two samples of run times for the two functions involved, $X_1, ..., X_n$ and $Y_1, ..., Y_m$. Next, suppose that these samples come from normal distributions with means $\mu_1$ and $\mu_2$, respectively. These means are unknown for us, just like the variances, which we suppose to be different. The goal is to test the means of the two samples against each other.
 
-Based on these requirements, we will use a \textit{two-sample t-test}. Standard Student's t-test works only under the assumption that the sample variances are equal, so it cannot be used in this case. We are going to use the generalized version, the Welch's (nonpooled) t-test, which is not as strong, but can work with samples with different variances. More detailed reasoning can be found in \cite{welch_generalisation_1947}.
+Based on these requirements, we will use a \textit{two-sample t-test}. Standard Student's t-test works only under the assumption that the sample variances are equal, so it cannot be used in this case. We are going to use the generalized version, the Welch's (nonpooled) t-test \cite{welch_generalisation_1947}, which is not as strong, but can work with samples with different variances. More detailed reasoning about the test selection can be found in \cite{weiss_introductory_2010}.
 
-%TODO: Reference to the Welch's and Student's test
 The default hypotheses for the test are:
 
 \[
@@ -276,10 +270,10 @@ H_0: \mu_1 = \mu_2
 H_1: \mu_1 \ne  \mu_2
 \]
 
-and the test statistics
+and the test statistics used:
 
 \[
-T = \frac{\bar{X}_n + \bar{Y}_m}{S}
+T = \frac{\bar{X}_n - \bar{Y}_m}{S}
 \]
 
 where $\bar{X}_n$ and $\bar{Y}_m$ are the sample means and $S$ is the following:
@@ -297,7 +291,7 @@ S_X^2 = \frac{1}{n-1} \sum_{i=1}^{n}(X_i - \bar{X}_n)^2
 S_Y^2 = \frac{1}{m-1} \sum_{i=1}^{m}(Y_i - \bar{Y}_m)^2
 \]
 
-This test statistics can be estimated using Student's t-distribution with $df$ degrees of freedom for:
+This test statistics can be estimated according to \cite{weiss_introductory_2010} using Student's t-distribution with $df$ degrees of freedom for:
 
 \[
 df = \frac{(\frac{S_X^2}{n} + \frac{S_Y^2}{m})^2}{\frac{S_X^4}{n^2(n - 1)} + \frac{S_Y^4}{m^2(m - 1)}}
@@ -309,7 +303,7 @@ The hypothesis $H_0$ will be rejected in favor of hypothesis $H_1$ with the sign
 
 The $t_{df}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $df$ degrees of freedom.
 
-Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have significantly different expectations, i.e., one of the functions is expected to give better results than the other. In order to find out which of the functions is the favored one, we need to use a \textit{one-sided test}. To do so, we introduce additional hypotheses:
+Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have significantly different expectations, i.e., one of the functions is expected to give better results than the other. In order to find out which one of the functions is the favored one, we need to use a \textit{one-sided test}. To do so, we introduce additional hypotheses:
 
 \[
 H_2: \mu_1 > \mu_2
@@ -326,21 +320,16 @@ or reject the hypothesis $H_0$ in favor of $H_3$ if
 
 \[T < -t_{df}(1-\alpha)\]
 
-By performing the \textit{one-sided tests} with $H_2$ and $H_3$ as alternatives, we can easily determine, which of the functions has lower expectation of run time and is a candidate to be selected to run with given certainty (the probability of $1-\alpha$).
+By performing the \textit{one-sided tests} with $H_2$ and $H_3$ as alternatives, we can easily determine, which of the functions has lower expected run time and should be selected to run with given certainty (the probability of $1-\alpha$). If we cannot reject the $H_0$, the strategy is not able to determine which function is better with given certainty and should not give a result.
 
 \subsection{T-test for multiple functions}
 \label{subsec:t_test_multiple}
 
 The selection strategy that was described in \ref{subsec:t_test_two} works only with two functions. If we want to select from three or more, we need to modify the strategy.
 
-The goal of selecting among three or more functions is not as clear as it was for the two functions alternative. Ideally, we would like to be able to identify a function that is significantly better that each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the 
-possibility that there is a faster option.
+Suppose we have $k$ samples $X_{1,1}, ..., X_{1, n_1}, ..., X_{k,1}, ..., X_{k, n_k}$ from normal distributions with unknown expectations $\mu_1, ..., \mu_k$ and unknown variances. We would like to compare the expectations and find out whether there is a sample with mean significantly different from the others.
 
-For simplicity and possibility to support the decision of the selection strategy with the significance level and the probability connected to it, we will consider only the case where one function is better than all the others. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance and we are not able to make a decision.
-
-Suppose we have $k$ samples $X_{1,1}, ..., X_{1, n_1}, ..., X_{k,1}, ..., X_{k, n_k}$ from normal distributions with unknown expectations $\mu_1, ..., \mu_k$ and unknown variances. We would like to compare the expectations and find out whether there is a significant difference or not.
-
-Common techniques for testing hypotheses about the expectations of multiple samples involve \textit{ANOVA}\footnote{Analysis of variance} or its modified version, the \textit{Kruskal-Wallis test}. The tests are based on variance comparison, assume that the samples have similar standard deviations, and can decide about the following hypotheses:
+Common techniques for testing hypotheses about the expectations of multiple samples involve \textit{ANOVA}\footnote{Analysis of variance} or its modified version, the \textit{Kruskal-Wallis test} (both described in \cite{weiss_introductory_2010}). The tests are based on variance comparison, assume that the samples have similar standard deviations, and can decide about the following hypotheses:
 
 %TODO: Add references to the tests
 
@@ -351,9 +340,9 @@ H_0: \mu_1 = \mu_2 = ... = \mu_k
 H_1: \exists i, j: \mu_i \neq \mu_j
 \]
 
-These multiple-sample tests are usually preferred over performing multiple t-tests, because in case of the t-tests, it is necessary to correct the significance level by artificially lowering their significance level, which leads to lower test strengths. In our case, however, this approach has a few problems. Firstly, we want to actually find out which of the samples is the deviating one, or, if there are more, which one is the most deviating one. Additionally, we need only one-sided alternative (to find out the lowest expectation). 
+These multiple-sample tests are usually preferred over performing multiple t-tests, because in case of the t-tests, it is necessary to correct the significance level by artificially lowering the $\alpha$ of each of the tests, which leads to lower test strengths. In our case, however, this approach would have a few problems. Firstly, we want to actually find out which of the samples is the deviating one, or, if there are more, which one is the most deviating one. Secondly, we need the one-sided alternative (to find out the lowest expectation). 
 
-Based on these observations, we need to come up with different hypotheses. Lets consider a simple alternative first - suppose we want to test $\mu_1$ against all the other expectations:
+Based on these observations, it is necessary to come up with different hypotheses. We will consider a simpler task first - suppose we want to test $\mu_1$ against all the other expectations:
 
 \[
 H_0: \mu_1 = \mu_2 \vee ... \vee \mu_1 = \mu_k
@@ -362,21 +351,24 @@ H_0: \mu_1 = \mu_2 \vee ... \vee \mu_1 = \mu_k
 H_1: \mu_1 < \mu_2 \wedge ... \wedge \mu_1 < \mu_k
 \]
 
-$H_0$ is basically saying that there is at least one other sample with the same expectation, and the one-sided alternative $H_1$ puts $\mu_1$ as the lowest of all the expectations.
+$H_0$ is basically saying that there is at least one other sample with the same mean, and the one-sided alternative $H_1$ puts $\mu_1$ as the lowest of all the means.
 
 We can perform a simple t-test of $H_{j,0}: \mu_1 = \mu_j$ against $H_{j,1}: \mu_1 < \mu_j$ $\forall j = 2, ..., k$. It is clear that the $H_0$ can be rejected in favor of $H_1$ only if all of the $H_{j,0}$ were rejected in favor of $H_{j,1}$. 
 
-As mentioned before, the procedure of combining statistical tests usually requires to artificially lower the significance level of the individual tests with the goal of keeping the significance level of the whole set of tests reasonably low. These methods are based on the assumption that committing a type-I error in any of the individual tests leads to a type-I error overall, and the probability of committing at least one gets higher with the number of tests.
+As mentioned before, the procedure of combining statistical tests usually requires artificially lowering the significance level of the individual tests with the goal of keeping the significance level of the whole set of tests reasonably low. These methods are based on the assumption that committing a type-I error in any of the individual tests leads to a type-I error overall, and the probability of committing at least one gets higher with the number of tests.
 
-In our case, however, a type-I error in one of the individual tests does not necessarily lead to a type-I error in the whole test. Suppose that $H_0$ is true, so for an $l \geq 1$ $\exists i_1,...,i_l: \mu_1 = \mu_{i_1} \wedge ... \wedge \mu_1 = \mu_{i_l}$. In order to commit a type-I error, we need to reject $H_{i_j,0}$ $\forall j = 1, ..., l$, thus committing the type-I error on the individual tests $l$-times. At the same time, we need to decide correctly about the remaining $k-l$ tests. So the probability of committing a type-I error overall is $\alpha^l(1-\alpha)^{k-l}$, and consequentially, the significance level of the entire test gets even lower than $\alpha$. The assumption is that the number $k$ of the functions involved will be low enough not to affect the significance too much. 
+In our case, however, a type-I error in one of the individual tests does not necessarily lead to a type-I error in the whole test. Suppose that $H_0$ is true, so for an $l \geq 1$ $\exists i_1,...,i_l: \mu_1 = \mu_{i_1} \wedge ... \wedge \mu_1 = \mu_{i_l}$. In order to commit a type-I error, we need to reject $H_{i_j,0}$ $\forall j = 1, ..., l$, by committing the type-I error on the individual tests $l$-times. At the same time, we need to decide correctly about the remaining $k-l$ tests. So the probability of committing a type-I error overall is $\alpha^l(1-\alpha)^{k-l}$, and consequentially, the significance level of the entire test gets even lower than $\alpha$.
 
-As the $\alpha$ decreases with growing $k$, the test gets more pessimistic - it will require more data and more certainty in order to reject the $H_0$. If we wanted to keep the significance level at exactly $\alpha$, we would need to apply a reverse correction - artificially increase $\alpha$. The exact method how to do so would, however, be quite difficult to derive, as there are a lot of cases to consider with unknown probabilities. 
+As the $\alpha$ decreases with growing $k$, the test gets more pessimistic - it will require more data and more certainty in order to reject the $H_0$. If we wanted to keep the significance level at exactly $\alpha$, we would need to apply a reverse correction - artificially increase $\alpha$. The exact method how to do so would, however, be quite difficult to derive, as there are a lot of cases to consider with unknown probabilities. The assumption is that the number $k$ of the functions involved will be low enough not to affect the significance too much. 
 
 Now, we are able to decide about a function whether it is significantly better than all of the others. In the selection strategy, this test will be performed for all the functions one by one and the first one where the $H_0$ is rejected in favor of $H_1$ gets selected. This means performing at most $k$ of these combined tests. In this case, the type-I error in any of the tests leads to a critical error of the selection process and we should try to keep it as unlikely as possible, by applying one of the correction techniques mentioned. A simple example of such a technique could be the \textit{Bonferroni correction}, which sets the $\alpha'$ of the individual tests to $\alpha / k$ for $\alpha$ being the desired significance overall and $k$ the number of samples.
 
+%TODO: Bonferroni correction reference
+%TODO: Teoria statistica delle classi e calcolo delle probabilità? :D
+
 \subsection{Window-bound t-test}
 
-The t-test methods as described in this section work with all the run data collected and use it to make a decision about the function with the best performance. It works under the assumption that the run times of a specific function have a normal distribution. This could be the truth only for the functions with constant complexity - whenever the function run time depends on the input, the distribution of the sample of measurements depends heavily on the distribution of the inputs.
+The t-test methods as described in this section work with all the historical run data collected and use it to make a decision about the function with the best performance. It works under the assumption that the run times of a specific function have a normal distribution. This could be the truth only for the functions with constant complexity - whenever the function run time depends on the input, the distribution of the sample of measurements depends heavily on the distribution of the inputs.
 
 Even if we assumed that the inputs were distributed normally and that the relation was linear, the whole procedure could only decide about the better function overall, which might not be desirable in the cases where we want to select different function for different inputs based on their size or other factors (in the way the predictive strategies work).
 
@@ -396,9 +388,9 @@ Even if we assumed that the inputs were distributed normally and that the relati
 
 If we wanted to use the t-test strategy on the functions with non-constant complexity, the same approach as with the \textit{simple linear regression} can be taken - we can perform the t-test just for a subset of the historical data with very similar \textit{input descriptors}. Instead of assuming that the relation in the small window is linear, we want it to be constant and normally distributed. Consequently, even smaller window sizes should be selected, so that these assumptions held at least approximately. The t-test significance levels and strengths will be approximate as well, but our goal is to get reasonable results, we do not need to be precise.
 
-The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms. Obviously, there is a relation to the input size, so the simple t-test would not help us in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - 0-3000, 7000-10000 and 17000-20000. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
+The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms on random arrays of sizes $0-30000$. Obviously, there is a relation to the input size, so the simple t-test would not help us in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - $0-3000$, $7000-10000$ and $17000-20000$. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
 
-If we reduce the window size to a constant 0, we will get a method in which only the results for inputs with the same descriptor are tested. This might be useful in cases where we know that the function will be called 
+The window sizes can be determined in a similar way as in section \ref{subsec:window_bound_regression}. If we reduce it to a constant 0, we will get a technique in which only the results for inputs with the same descriptor are tested. When there are none, we refuse to select and wait until data is gathered. This might be useful in cases where we know that the function will be called repeatedly on a limited set of input variants, and basically rules out the prediction factor, as we need to have actual observation for each input before making any conclusions. Similar approach is taken in \cite{bulej_performance_2012}.
 
 \section{Strategy comparison}
 \label{sec:strategy_comparison}
@@ -412,15 +404,17 @@ In general, the predictive strategies do not handle well more historical results
 	If the function is expected to be invoked with a discrete and very limited set of inputs, non-predictive strategy is preferred. On the other hand, if the function will be called repeatedly with randomly distributed inputs, the predictive strategies are a better choice.
 \end{itemize}
 
-As we introduced only one non-predictive strategy independent on the input, there is not much of a choice. In the field of predictive strategies, on the other hand, is a choice of at least three.
+Considering these facts, the framework will contain both a predictive and a non-predictive strategy, and will automatically use the predictive one if the user specified an \textit{input descriptor}, and the non-predictive one otherwise. The user will be able to override this choice if he wants.
 
-\subsection{Predictive strategy success rate}
+The actual strategies used should be easily replaceable, but some have to be chosen as default for the common usages. As we introduced only one non-predictive strategy independent on the input, there is not much of a choice. The situation is more complicated In the field of predictive strategies, and we need to perform a couple of tests.
 
-To compare the efficiency of the selection strategies, we used an artificial scenario with two functions. One with linear complexity that computes a sum of $n$ random numbers for an input $n$. The other computes a sum of $n * k$ random numbers for an input $n$, where $k$ is an \textit{error factor} determining how much slower the function is. We would expect the selection strategy to always pick the first function, so we will track the number of wrong decisions (i.e. number of times the strategy selects the second function) for the three predictive strategies and for various \textit{error factor} values.
+\subsection{Predictive strategies success rates}
 
-We will use the values 4, 2, 1.5, 1.2 and 1.1 for $k$ and for each of them generate 5 sequences of 200 inputs. Then, we will use each of the selection strategies on all the sequences, flushing the run history in between. There is a minimum of 30 records in the function history before the decision process starts, so the actual decision will take place only on 140 inputs in each sequence.
+To compare the efficiency of the selection strategies, we used an artificial scenario with two functions. One with linear complexity that computes a sum of $n$ random numbers for an input $n$. The other computes a sum of $n * k$ random numbers for an input $n$, where $k$ is an \textit{error factor} determining how much slower the function is. We would expect the selection strategy to always pick the first function for any $k>1$, so we will track the number of wrong decisions (i.e. number of times the strategy selects the second function) for the three predictive strategies and for various \textit{error factor} values.
 
-The results for the described text after adding up the wrong decision numbers for all 5 sequences can be found in table \ref{tab:strategy_comparison}. The numbers shown are the numbers of times the slower function was selected out of 700 in total, along with the percentage. The strategies used are the linear regression (LR) with $\alpha = 0.05$, window-bound linear regression with $\alpha = 0.05$ and the local regression (LOESS).
+We will use the values 4, 2, 1.5, 1.2 and 1.1 for $k$ and for each of them generate 5 sequences of 200 inputs. Then, we will use all the selection strategies on every sequence, removing all the historical records in between. There is a minimum of 30 records in the function history before the decision process starts, so the actual decision will take place only on 140 inputs in each sequence.
+
+The results for the described text after adding up the wrong decision numbers for all 5 sequences can be found in table \ref{tab:strategy_comparison}. The numbers shown are the numbers of times the slower function was selected out of 700 in total, along with corresponding percentage. The strategies used are the linear regression (LR) with $\alpha = 0.05$, window-bound linear regression with $\alpha = 0.05$ and the local regression (LOESS).
 
 \begin{table}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -441,9 +435,9 @@ The results for the described text after adding up the wrong decision numbers fo
 	\label{tab:strategy_comparison}
 \end{table}
 
-The baseline solution for this test would be a round-robin strategy that would run the wrong function 350 out of 700 times, having a success rate of 50\%. 
+The baseline solution for this test would be a round-robin strategy that would run the wrong function 350 times out of 700 times, having a success rate of 50\%. 
 
-As we can see, even though the function complexity is linear, the linear regression has a 15\% error rate on a 4 times slower function. The window-bound linear regression has a lot better results on a significantly slower function (the $k=2$ and $k=4$ cases). Both the linear regression and the window-bound linear regression fail on the function with smallest difference, most likely because of the significance level interval testing. Adjusting $\alpha$ might increase the success rate in these cases. The local regression is the clear winner in all the cases except for the first one, where the model on one of the 5 sequences made 139 wrong decisions out of 140 calls in total. This demonstrates a complete failure of the model and a problem caused by not having any tests for certainty in the strategy.
+As we can see, even though the function complexity is linear, the linear regression has a 15\% error rate on a 4 times slower function. The window-bound linear regression has a lot better results on a significantly slower function (the $k=2$ and $k=4$ cases). Both the linear regression and the window-bound linear regression fail on the function with smallest difference, most likely because of the significance level interval testing. Adjusting $\alpha$ might increase the success rate in these cases. The local regression is the clear winner in all the cases except for the first one, where the model on one of the 5 sequences made 139 wrong decisions out of 140 calls in total. This demonstrates a complete failure of the model and a problem caused by not having any tests for certainty incorporated in the strategy.
 
 In conclusion, the overall best results are provided by the local regression strategy, although it is a little error-prone. The window-bound linear regression is worse, but still usable, especially in case of more significant differences between the functions.
 
@@ -452,9 +446,9 @@ In conclusion, the overall best results are provided by the local regression str
 
 When deciding for one of the strategies, there is another concern that we should keep in mind. The strategies tend to be quite complex and their execution time might become non-trivial. As they need to process the entire run history of each of the functions, their selection times increase over time, as more historical measurements are collected.
 
-For some of the strategies, it is possible to compute and cache some of the statistical data in advance, at the moment of storing newly measured data, allowing them to avoid processing all the records again during the selection. From our strategy list, this is possible to be done for the linear regression and the t-tests. Unfortunately, neither the window-bound strategies, nor the local regression support this approach.
+For some of the strategies, it is possible to compute and cache the statistical data in advance, at the moment of storing newly measured data, allowing them to avoid processing all the records again during the selection. From our strategy list, this is possible to be done for the linear regression and the t-tests. Unfortunately, neither the window-bound strategies, nor the local regression support this approach.
 
-To compare the practical overheads, we ran the selection using each of the strategies 20000 times in a row (while evaluating the runs and adding new data in the process). The resulting average selection strategy run times from samples collected every 50 runs are in table \ref{tab:strategy_execution_comparison}.
+To compare the practical overheads, we ran the selection using each of the strategies 20000 times in a row (while evaluating the runs and adding new data in the process). The window-bound strategies had the window size calculated to contain 25 records in average. The resulting average selection strategy run times from samples collected every 50 runs are in table \ref{tab:strategy_execution_comparison}.
 
 \begin{table}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -474,7 +468,7 @@ To compare the practical overheads, we ran the selection using each of the strat
 \label{tab:strategy_execution_comparison}
 \end{table}
 
-The results are showing that local regression has extremely high run times that can grow above 100ms with larger numbers of run history records. An overhead of around 100ms on every selection would be too high for most common usages, so the local regression strategy, even though it had the best success rate, should be used with extreme caution and only in cases where it is clear that overheads this high cannot damage the system performance. As for the remaining strategies, it seems that caching speeds up the selection about 10 times. The window-bound linear regression cannot be improved by the caching (as the regression done for each input is potentially different), but has the lowest execution time of all the not cached strategies, and therefore is quite usable.
+The results are showing that local regression has extremely high run times that can grow above 100ms with larger numbers of run history records. An overhead of around 100ms on every selection would be too high for most common usages, so the local regression strategy, even though it has the best success rate, should be used with extreme caution and only in cases where it is clear that overhead this high cannot damage the system performance. As for the remaining strategies, it seems that caching speeds up the selection about 10 times. The window-bound linear regression cannot be improved by the caching (as the regression done for each input is potentially different), but has the lowest execution time of all the not cached strategies, and therefore is quite usable.
 
 \section{Invocation policies}
 
