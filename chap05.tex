@@ -475,7 +475,7 @@ It contains the following immutable data:
 	\begin{itemize}
 		\item	Each function holds up to two references - one based on the closure type name, the other being either a method name or a custom name, depending on the creation process (see \ref{subsec:function_identifiers})
 	\end{itemize}
-	\item \textit{Descriptor function} (wrapped into the tuple form), see \ref{sec:predictive_strategies}
+	\item \textit{Descriptor function} (wrapped into the tuple form), see \ref{sec:input_based_strategies}
 	\item \textit{Group selector} function (wrapped into the tuple form), see \ref{subsubsec:group_selection}
 	\item A \inlinecode{FunctionConfiguration} a setup independent on the argument and return value types, consisting of the following:
 	\begin{itemize}
@@ -554,7 +554,7 @@ These instances can be wrapped in the following decorator classes:
 
 \subsubsection{SelectionStrategy}
 
-Very simple trait that represents the selection strategies described in detail in sections \ref{sec:predictive_strategies} and \ref{sec:non_predictive_strategies}. The implementations should be stateless and should work only with the \inlinecode{RunHistory} records that it receives (in order not to mix together decisions about two separate history storage locations). The strategy implementations often have a customizable fallback strategy that is used in cases where the current strategy is not able to make a decision.
+Very simple trait that represents the selection strategies described in detail in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies}. The implementations should be stateless and should work only with the \inlinecode{RunHistory} records that it receives (in order not to mix together decisions about two separate history storage locations). The strategy implementations often have a customizable fallback strategy that is used in cases where the current strategy is not able to make a decision.
 
 The strategies are parametrized by the \inlinecode{TMeasurement} type of the function run evaluation. All of the implemented strategies work with function run time represented by \inlinecode{Long}.
 

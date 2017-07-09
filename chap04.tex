@@ -1,4 +1,4 @@
-\chapter{Deciding between functions}
+\chapter{Selecting functions to run}
 \label{chap:deciding}
 
 The key purpose of the ScalaAdaptive framework is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, execution counts for various parts of the code, etc. All these factors can be valuable and be the goal of the system run optimization.
@@ -7,6 +7,33 @@ This thesis is focused on the task of optimizing the function run time or time c
 
 \section{Selection and invocation process}
 \label{sec:selection_and_invocation_process}
+
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\State $(result, newPolicy) \gets evaluatePolicy(currentPolicy)$
+	\State $currentPolicy \gets newPolicy$
+	\Switch{$result$}
+		\Case{UseLast}
+			\State $f \gets getLast()$
+			\State \Return{$f()$}
+		\EndCase
+		\Case{UseMost}
+			\State $f \gets getMost()$
+			\State \Return{$f()$}
+		\EndCase
+	\EndSwitch
+	\For{$i = 1$ to $n$}
+		\State $d_i \gets getHistoricalData(d_i)$
+	\EndFor	
+	\If{not $equalityRejected$}
+	\State use secondary selector
+	\EndIf
+	\If {$mean(data_1) < mean(data_2)$}
+	\State select $f_1$
+	\Else 
+	\State select $f_2$
+	\EndIf
+\end{algorithmic}
 
 Suppose we have a combined function \inlinecode{f()} created using the API described in chapter \ref{chapter:api} by combining multiple functions \inlinecode{f1()}, ..., \inlinecode{fn()}. \inlinecode{f()} is a new function (or a function-like object) that can be called and we expect it to run one of the implementations \inlinecode{f1()}, ..., \inlinecode{fn()}.
 
@@ -46,25 +73,21 @@ After having invoked the function and evaluated its run, the evaluation data hav
 
 \subsection{Selecting a function}
 
-The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input $in$ of the function \inlinecode{f()} and by the evaluation data gathered in previous runs. What we basically need to do is to use the historical data to formulate an expectation about the run time of all the functions, and then try to decide, which one is the most optimistic.
+The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input $in$ of the function \inlinecode{f()} and by the evaluation data gathered in previous runs. What we basically need to do is to use the historical data to formulate a prediction of the run times of all the functions, and then try to decide, which one is the most optimistic.
 
 This process has three basic complications:
 
 \begin{itemize}
 	\item The run times may depend on the input $in$
 	\item The run times may depend on the environment
-	\item The expectations are never precise, they have certain probability based on the amount and the character of the historical data
+	\item The predictions are never precise, they have certain probability based on the amount and the character of the historical data
 \end{itemize}
 
-The \textit{input dependency} problem is being solved in many works about the program execution time predictions. Certain features of the input are analyzed and a model is constructed describing the relation to the run time. The model then can be used to formulate predictions. This approach was used in \cite{chun_mantis:_2010,goldsmith_measuring_2007}. The authors of \cite{smith_predicting_1998} propose clustering the inputs prior to creating any models.
+The \textit{input dependency} problem is being solved in many works about the program execution time predictions. Certain features of the input are analyzed and a model is constructed describing the relation to the run time. The model then can be used to predict the times for new inputs. This approach was used in \cite{chun_mantis:_2010,goldsmith_measuring_2007}. The authors of \cite{smith_predicting_1998} propose clustering the inputs prior to creating any models.
 
-The \textit{environment dependency} is more complicated - there are no factors that we could watch and use to classify the runs or to include in the prediction model. The simplest solution is to give the history records a limited duration after which they expire, as the environment changes are not expected to occur very often and new run data can be gathered in between. This technique is suggested among the adaptive framework use-cases in \cite{bulej_performance_2012}.
+The \textit{environment dependency} is more complicated - there are no factors that we could watch and use to classify the runs or to include in the prediction model. The simplest solution is to give the history records a limited duration after which they expire, as the environment changes are not expected to occur very often, making the most recent data the most suitable for modeling. This technique is suggested among the adaptive framework use-cases in \cite{bulej_performance_2012}.
 
 As for the \textit{uncertainty} problem, the works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of expectations used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision. Such a case should be solved by executing the function with least data to gather more observations.
-
-The decision goal is obvious when selecting from two functions - compare the expectations and select the one that is better with given significance, or refuse to select when there is not such a function. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better that each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
-
-For simplicity, we will consider only the case where one function is better than all the others, the remaining situations will be treated as ambiguous and none will be selected. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance, we are not able to make a decision and we keep cycling through all three functions.
 
 Based on all of these observations, a couple of supporting techniques as well as strategies for the actual selection were proposed and will be described in the following sections.
 
@@ -72,17 +95,49 @@ Based on all of these observations, a couple of supporting techniques as well as
 
 These techniques can be used to filter out the historical data in order to improve the selection process. All of them have to be explicitly enabled and configured by the user.
 
+
+
+\subsection{Input in the selection process}
+\label{subsec:input_in_selection}
+
+The input, as mentioned earlier, can be a complex structure with multiple factors contributing to the run time\footnote{Consider for example a general graph - for most of the algorithms, both number of vertices and edges have to be taken into account}. Common prediction techniques (\cite{chun_mantis:_2010,goldsmith_measuring_2007}) use simplified model of the input $in$ represented by a vector of \textit{features} $f_1, ..., f_n$. 
+
+Based on this approach, we will suppose that for each Scala function \(\exists g\) so that \(\forall in\) modeled by $f_1, ..., f_n$ holds \(t = g(f_1, ..., f_n) + \varepsilon\), where \(t\) is the runtime on input \(in\) of \inlinecode{f()}, and $\varepsilon$ is an error represented by a random variable with normal distribution.
+
+Now, the \textit{features} can be divided into 2 basic categories:
+
+\begin{itemize}
+	\item \textit{Features} with distance metrics
+	\item \textit{Features} without distance metrics
+\end{itemize}
+
+If the \textit{feature} has distance metrics, i.e., is comparable (typically sizes of structures), we can construct models that use the it to analyze the trends and make predictions about inputs with feature values that were not processed before. The \textit{features} without the distance (usually enumerations and discrete configuration values) cannot be treated this way, and we need previous observations for given value before making any assumptions. 
+
+To integrate these concepts into the framework with simplicity for the selection strategies, two mechanisms were included. First, to replace the vector of \textit{features} with distance metrics, a single integer called \textit{input descriptor} is used. The user can define a \textit{descriptor function} that extracts the \textit{input descriptor} from the input $in$ for given function. Then, at the beginning of the selection process, the \textit{descriptor function} is used and the resulting values is passed to the selecting strategy. In addition, the \textit{input descriptors} are stored in the run history as well, so a model can be built upon it and used in the selection process. We will suppose that \(\exists h\) so that \(\forall in\) with input descriptor $desc$ holds \(t = h(desc) + \varepsilon\).
+
+The \textit{input descriptor} should actually be a tuple that includes all the distance-based \textit{features}, but that would lead to more complex models for the purposes of the framework prototype. 
+
+As for the \textit{features} with no metrics, the simplest way of addressing the issue is to treat different combinations of these \textit{features} the same way as if they were different functions. They should have completely separate historical measurement records, and the strategies can build separate models for them, using the \textit{input descriptor} on top of that. A possibility of grouping the inputs was therefore added and will be discussed in a separate section.
+
+\subsection{Selecting from multiple functions}
+
+The decision goal is obvious when selecting from two functions - compare the expectations and select the one that is better with given significance, or refuse to select when there is not such a function. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better that each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
+
+For simplicity, we will consider only the case where one function is better than all the others, the remaining results will be treated as ambiguous and none will be selected. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance, we are not able to make a decision and we keep cycling through all three functions.
+
 \subsection{Grouping}
 \label{subsec:grouping}
 
-In \cite{smith_predicting_1998}, an automatic method of clustering the inputs is used before formulating any predictions about the run time. This is done because of the fact that inputs with common factors are in general expected to lead to similar run times, or at least to run times that can be described by the same, simpler model. Due to the performance limitations and the overall complexity of the solution, we will not include the algorithmic clustering. The user will, however, be able to specify a method of assigning the inputs to \textit{groups}. Upon selection, only the historical records from the corresponding group will be used.
+In \cite{smith_predicting_1998}, an automatic method of clustering the inputs is used before formulating any predictions about the run time. This is done because of the fact that inputs with common factors are in general expected to lead to similar run times, or at least to run times that can be described by the same, simpler model. In addition, it might be necessary to split the inputs using the values of \textit{input features} with no distance metrics, as explained in \ref{subsec:input_in_selection}.
+
+Due to the performance limitations and the overall complexity of the solution, we will not include the algorithmic clustering. The user will, however, be able to specify a method of assigning the inputs to \textit{groups}. Upon selection, only the historical records from the corresponding group will be used.
 
 \subsubsection{Group selection}
 \label{subsubsec:group_selection}
 
-The group selection function that determines a group for a given input is called a \textit{group selector} and has to be provided by the user when creating the combined function. Groups are identified by a custom type that can be either an integer, or a special \inlinecode{NoGroup} value. The grouping can be based on the \textit{input descriptor}, but can also use other factors of the input, e.g., if there are some boolean flags passed to the function that affect its functionality, it is usually a good idea to use it in the grouping.
+The group selection function that determines a group for a given input is called a \textit{group selector} and has to be provided by the user when creating the combined function. Groups are identified by a custom type that can be either an integer, or a special \inlinecode{NoGroup} value. 
 
-Some of the most common ways how to group values for the input descriptors might be:
+The grouping should be primarily based on the discrete values that affect the function behavior - enumerations, boolean flags and similar, as these cannot be included in the \textit{input descriptor} based model of the selection strategies. It can, optionally, include the \textit{features} covered by \textit{input descriptor} as well, in order to divide the range of all its possible values into more smaller ranges, which can increase precisions of the models. Some of the most common ways how to group values for the \textit{input descriptors} might be:
 \begin{itemize}
 	\item Logarithmic - orders of magnitude
 	\item Linear - tens, hundreds, thousands
@@ -98,159 +153,12 @@ When we expect the run times to fluctuate over time due to environment changes, 
 
 We have the historical run records marked with the timestamps. The user of the framework will provide a maximum age of a record that should be taken into account for a \textit{combined function}. Upon invocation, the records that are older than this limit will be filtered from the history vector of each one of the functions. This should not lead to any significant overhead if the vectors preserve the ordering in which they are build, having the most recent data at the end.
 
-\section{Predictive selection strategies}
-\label{sec:predictive_strategies}
+\section{Mean based selection strategies}
+\label{sec:mean_based_strategies}
 
-\textit{Predictive strategies} are the strategies that use the current input value $in$ to make the decision, usually by creating specific run time predictions for each of the functions and comparing them. These strategies are useful solely when the function run time is directly related to the input, e.g. size of a data structure, length of a data file, a number, etc. 
+In some cases, the function run time does not depend on the input, or the relation is not significant enough. For simplification, we suppose that the function complexity is constant in such a case. Using the same formalism as in \ref{subsec:input_in_selection}, for run time $t$ on input $in$ with \textit{input descriptor} $desc$ holds \(t = h(desc) + \varepsilon\) for a $h$ constant, i.e. $\forall x$ $g(x) = c$. Therefore, $t = c + \varepsilon$, where $\varepsilon$ is the error which we suppose has a normal distribution with a zero mean. Under these assumptions, $t$ is a random variable with normal distribution and mean equal to $c$, which is the expected constant run time of the function.
 
-This relation is usually expressed on theoretical level using the computational complexity of an algorithm, which is a function of the size of the inputs and represents an amount of abstract elementary computational steps that have to be performed when processing said input. The physical run time, however, cannot be easily derived, as in reality, the duration of different steps differs as well, depending on hardware optimization, cache misses, pagefaults, scheduling of the OS and many other factors.
-
-Nevertheless, for the purposes of rough approximation, we will suppose that for Scala function \inlinecode{f()} \(\exists g\) so that \(\forall in\) possible inputs holds \(t = g(in) + \varepsilon\), where \(t\) is the runtime on input \(in\) of \inlinecode{f()}, and $\varepsilon$ is an error represented by a random variable with normal distribution. A more rigorous approach is taken in \cite{bulej_capturing_2012}, where the run times are considered to be random variables and a formalism is built upon this.
-
-The input, as mentioned earlier, can be a complex structure with multiple factors contributing to the run time\footnote{Consider for example a general graph - for most of the algorithms, both number of vertices and edges have to be taken into account}. Common prediction techniques (\cite{chun_mantis:_2010,goldsmith_measuring_2007}) work with vectors of features of the input that were selected either automatically or manually. In our case, solely for the simplicity of the strategies and the models constructed, we will use just one manually selected feature represented by an integer. This \textit{input descriptor} will be used in the selection process instead of the entire input.
-
-In other words, we suppose that for function \inlinecode{f()} \(\exists h, g_1\) so that
-\(g = h \circ g_1\) 
-and 
-\(\forall in \quad h(in) \in \mathbb{N}\). In this case, the \textit{input descriptor} of input \(in\) would be the value of \(h(in)\). We will call $h$ the \textit{descriptor function}. The goal of the \textit{predictive strategies} is to use the historical data and their \textit{input descriptors} to build a model that would approximate the function $g_1$. This model would then be used to formulate predictions about the run time, which the selection should be based upon.
-
-The \textit{descriptor function} has to be provided by the user of the framework when creating the combined function. It could be an extractor of one of the following:
-\begin{itemize}
-	\item Number of elements in a data structure argument
-	\item Sum of numbers of vertices and edges in a graph
-	\item Size of a data file
-	\item Identity, if the input is an integer determining the complexity (such as factorial, Fibonacci sequence, etc.)
-\end{itemize}
-Naturally, the \textit{descriptor function} itself should not have a significant complexity, as it is going to be invoked during every call.
-
-\subsection{Simple linear regression}
-\label{subsec:simple_linear_regression}
-
-The first strategy supposes that the function \(h\) can be approximated precisely enough using a linear function \(h'\) in the following form:
-\[h'(x) = a' x + b'\]
-
-This approximation is a \textit{simple linear regression model}. The slope \(a'\) and intercept \(b'\) of the linear function can be determined using a least squares method, which minimizes the squares of the distances of the actual function values from the ones predicted by the model.
-
-A big advantage of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. In addition, the model can be easily cached for fixed set of samples and updated when adding new data without having to construct it all over again.
-
-The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph marked with the green color. The red line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
-
-\begin{figure}[h!]
-	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=90mm]{./img/selection_sort_linear_trendline.png}}}
-	\caption{Linear regression line (red) of a selection sort runtime samples.}
-	\label{fig:selection_sort_linear_trendline}
-\end{figure}
-
-Next, we need to find a way how to select the best function with given certainty using a set of these models.
-
-\subsubsection{Confidence interval based selection from two functions}
-\label{subsubsec:confidence_interval_selection}
-
-Suppose we have a linear regression model \(h'(x) = a' x + b'\) of a function $h(x) = ax + b$ constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\varepsilon = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation on the model.
-
-Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with $n-2$ degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests with $a$ and $b$. The default tests hypotheses have the following form:
-
-\[H_0: a = a_0\]
-\[H_1: a \neq a_0 \]
-
-We basically test equality of $a$ (or $b$) and a fixed value $a_0$ (or $b_0$) - this test can be used to verify if the data have a specific linear relation. If we put $a_0 = 0$, we can whether the observations $y_i$ are constant. 
-
-None of these tests and statistics, however, allows us to test the certainty of the prediction - we need to consider both the intercept and the slope estimation certainty, and, in addition, the distance of the $x$ we want the prediction for from the mean $\bar{x}$, because if we commit an error in the slope estimation $a'$, the corresponding error in predictions increases with the distance from $\bar{x}$. 
-
-With these facts, a confidence interval on level $1 - \alpha$ for $h'(x)$ can be constructed (specifically for each point $x$). According to \cite{weiss_introductory_2010}, the width of the interval is the following:
-
-\[
-w_{x, \alpha} = t_{n - 2}(1-\frac{\alpha}{2}) s_e\sqrt{1 + \frac{1}{n} + \frac{(x - \bar{x})^2}{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 }}
-\]
-
-where \(\bar{x}\) is the mean of \(x_i\), $t_{n - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom, and $s_e$\footnote{Standard error of the estimate} can be computed as:
-
-\[s_e = \sqrt{\frac{SSE}{n-2}}\]
-
-And:
-
-\[SSE = \sum_{i = 1}^{n} \varepsilon_i^2  =  \sum_{i = 1}^{n} (y_i - y_i')^2 \]
-
-for \(y_i' = h'(x_i)\).
-
-It now holds that for any $x$, the corresponding $y \in [a'x + b' \pm w_{x, \alpha}]$ with probability $(1-\alpha)$.
-
-Now in the situation where we have two regression models and we want to find the best prediction of $x$, we can construct these confidence intervals for both models and:
-
-\begin{itemize}
-	\item If the intervals do not overlap, the predictions have at least a $(1 - \alpha)^2$ probability of correctly setting the order, i.e. the worse prediction actually being the worse function
-	\item If the intervals overlap, there is a non-trivial chance of the predictions being mixed up by error
-\end{itemize}
-
-In the first case, we can decide that one function is significantly better and select it. In the second case, we cannot decide with given certainty.
-
-\subsubsection{Confidence interval based selection from multiple functions}
-
-The described method allows us to decide between two functions with given certainty. Now, when choosing among $n$ functions with regressions $h'_1, ..., h'_n$ for given $x$, we are looking for the $k$ for which the following holds:
-
-\begin{itemize}
-	\item The confidence interval on level $(1-\alpha)$ for prediction $h'_k(x)$ does not overlap with any other of the confidence interval for prediction.
-	\item $\forall j \ne k: h'_k(x) < h'_j(x)$
-\end{itemize}
-
-It can be done by constructing all the regression models and then $\forall i$ performing the comparison described in \ref{subsubsec:confidence_interval_selection} of $h_i$ with $h_j, \forall j \ne i$. If $h_i$ is better than all of the $h_j$, we can choose the corresponding function.
-
-The strength of this decision is influenced by the fact that we perform multiple confidence interval constructions - the errors an error in any of them can influence the result of the selection, se the significance gets lower in general. If we wanted the results to be precise, we would have to perform the correction of the significance level $\alpha$.
-
-%TODO: How to set alpha? correction?
-
-\subsection{Window-bound linear regression}
-\label{subsec:window_bound_regression}
-
-To be able to apply the strategy described in section \ref{subsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of historical measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ of the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on the model in a smaller subset.
-
-\begin{figure}[h!]
-	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=140mm]{./img/window_examples.png}}}
-	\caption{Examples of subsets of the data from figure \ref{fig:selection_sort_linear_trendline} with linear regressions.}
-	\label{fig:window_examples}
-\end{figure}
-
-When selecting a function for a specific \textit{input descriptor} $d$, a window around its value of specific width $w$ can be created and the regression model built using the data from said window. We do it by selecting only the historical samples $x_k, y_k$ where $\abs{x_k - d} < w$ when constructing the regression.
-
-There are multiple ways how to decide on the window width $w$. Using a fixed number across all the functions and all the data samples would not be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want it to be split. 
-
-More flexible approach is to dynamically determine the $p$. Suppose we want the average window to contain $r$ records. We find out what is the average distance between two neighboring records as $d =  \frac{max(x_i) - min(x_i)}{n - 1}$ and then set the $p = r * d$. This way, the window size will always be adapted to the density of the dataset.
-
-The window limitation might seem similar to the grouping described in \ref{subsec:grouping}, but there are two major differences. First, the windows are based on the \textit{input descriptor}, whereas the \textit{group selector} might use different features of the input. And second, the groups are deterministic and do not move with the \textit{input descriptor} and change their size based on historical data. Both these concept can be used at the same time.
-
-\subsection{Local regression}
-\label{subsec:local_regression}
-
-The approach explained in \ref{subsec:window_bound_regression} can be extended further - the locally constructed linear regression models might be used to build up a model for the entire data set. This leads to a model that is non-linear, i.e., the function that approximates the original data relation is not a linear function.
-
-One possible regression method that behaves this way is \textit{LOESS} (Local Regression, \cite{cleveland_locally_1988,cleveland_regression_1988,cleveland_computational_1991}). It uses methods similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The output is a \textit{Loess Curve}, an artificially constructed function that does not necessarily have to be expressed by a formula. This is one of the advantages of the model - the original relation between \textit{input descriptors} and the run times did not have to be expressed by a nice simple function in order to be captured correctly.
-
-The \textit{LOESS} model can be used to predict the function run times. It is, however, a lot more complicated to derive the prediction confidence intervals. Therefore, only the values will be used in this selection strategy, which could lead to some wrong decisions.
-
-There are other disadvantages of this strategy as well. First of all, the entire local regression model has to be recomputed whenever there is a new record in the dataset, the model cannot be simply updated like the \textit{simple linear regression}. Secondly, it is much more computationally complex and the model construction takes non-trivial time, so it has a negative impact of the framework overhead, especially when used with short and simple functions. The last downside of \textit{local regression} is its inability to predict further behavior past the minimum and maximum data sample.
-
-\subsection{Whitebox model construction}
-
-The methods that were described so far are examples of the blackbox techniques - they do not analyze the function itself, the models are based only on the relation of the run times and the \textit{input descriptors}. 
-
-The techniques used in the research projects focused on formulating accurate predictions about program run times (like \cite{goldsmith_measuring_2007,chun_mantis:_2010,huang_predicting_2010}) often build the model using more detailed information about every run. These extra data can be obtained by examining and instrumenting the function code. Key structures (loops, branches, method invocation, ...) can be identified and an execution counts can be tracked. Then, a model that captures the relation between the input features, the described structure execution counts and the run time. This added dimension might lead to more accurate model and therefore better predictions.
-
-%TODO: Add reference / bibliography
-In \cite{chun_mantis:_2010}, a Mantis framework for high accuracy program performance prediction was implemented. The basic principles are similar to the approach described above. It was tested on a series of data gathered from runs of the ImageJ application, and compared with a blackbox prediction model based on interpolating a polynomial of degree 3. The prediction error of the whitebox approach was 5.5\%, the blackbox approach error rate reached more than 35\%.
-%TODO: Add results?
-
-This approach has, however, a few problems concerning the intended use cases of ScalaAdaptive framework. The model will not improve the predictions if the majority of the execution time is spent waiting on an I/O operation. Specifically, it will not help with any of the cases where we are selecting a database query, remote server to connect to, etc. In addition, it would require the method code to be instrumented at runtime, which would lead, together with the model construction, to a significant overhead.
-
-For these reasons and because of the complexity, the whitebox model was not implemented in the framework, but it represents a potential future work that could be done on the topic.
-
-\section{Non-predictive selection strategies}
-\label{sec:non_predictive_strategies}
-
-In some cases, the function run time does not depend on the input, or the relation is not significant enough. For simplification, we suppose that the function complexity is constant in such a case. Using the same formalism as in \ref{sec:predictive_strategies}, for run times $t$ on input $in$ holds \(t = g(in) + \varepsilon\) for a $g$ constant, i.e. $\forall in$ $g(in) = c$. Therefore, $t = c + \varepsilon$, where $\varepsilon$ is the error which we suppose has a normal distribution with a zero mean. Under these assumptions, $t$ is a random variable with normal distribution and mean equal to $c$, which is the expected constant run time of the function.
-
-The \textit{non-predictive} strategies will use the sample data to determine the means of the function time distributions with given certainty and use them as the expected run times in the decision process.
+The \textit{mean based} strategies will use the sample data to determine the means of the function time distributions with given certainty and use them as the expected run times in the decision process.
 
 \subsection{T-test for two functions}
 \label{subsec:t_test_two}
@@ -303,24 +211,31 @@ The hypothesis $H_0$ will be rejected in favor of hypothesis $H_1$ with the sign
 
 The $t_{df}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $df$ degrees of freedom.
 
-Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have significantly different expectations, i.e., one of the functions is expected to give better results than the other. In order to find out which one of the functions is the favored one, we need to use a \textit{one-sided test}. To do so, we introduce additional hypotheses:
+Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have significantly different expectations, i.e., one of the functions is expected to give better results than the other. We can then simply compare the sample means and determine, which of the functions has lower expected run time and should be selected to run with given certainty (the probability of $1-\alpha$). If we cannot reject the $H_0$, the strategy is not able to determine which function is better with given certainty and should not give a result.
 
-\[
-H_2: \mu_1 > \mu_2
-\]
-\[
-H_3: \mu_1 < \mu_2
-\]
+\subsubsection{Selection algorithm}
 
-Now we can reject the hypothesis $H_0$ in favor of $H_2$ if
+\lstset{style=Pseudo}
+\begin{lstlisting}
+select from f1, f2 with data1, data2
+p = tTest(data1, data2)
+if (p > 2 * alpha) use secondary selector
+if (mean(data1) < mean(data2)) select f1
+else select f2
+\end{lstlisting}
 
-\[T > t_{df}(1-\alpha)\]
-
-or reject the hypothesis $H_0$ in favor of $H_3$ if
-
-\[T < -t_{df}(1-\alpha)\]
-
-By performing the \textit{one-sided tests} with $H_2$ and $H_3$ as alternatives, we can easily determine, which of the functions has lower expected run time and should be selected to run with given certainty (the probability of $1-\alpha$). If we cannot reject the $H_0$, the strategy is not able to determine which function is better with given certainty and should not give a result.
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\INPUT$f1_,f_2,data_1,data_2$
+	\State $equalityRejected \gets twoSidedTTest(data_1, data_2, \alpha)$
+	\If{not $equalityRejected$}
+	\State use secondary selector
+	\EndIf
+	\If {$mean(data_1) < mean(data_2)$}
+	\State select $f_1$
+	\Else 
+	\State select $f_2$
+	\EndIf
+\end{algorithmic}
 
 \subsection{T-test for multiple functions}
 \label{subsec:t_test_multiple}
@@ -353,7 +268,7 @@ H_1: \mu_1 < \mu_2 \wedge ... \wedge \mu_1 < \mu_k
 
 $H_0$ is basically saying that there is at least one other sample with the same mean, and the one-sided alternative $H_1$ puts $\mu_1$ as the lowest of all the means.
 
-We can perform a simple t-test of $H_{j,0}: \mu_1 = \mu_j$ against $H_{j,1}: \mu_1 < \mu_j$ $\forall j = 2, ..., k$. It is clear that the $H_0$ can be rejected in favor of $H_1$ only if all of the $H_{j,0}$ were rejected in favor of $H_{j,1}$. 
+We can perform a simple t-test of $H_{j,0}: \mu_1 = \mu_j$ against $H_{j,1}: \mu_1 < \mu_j$ $\forall j = 2, ..., k$. It is clear that the $H_0$ can be rejected in favor of $H_1$ only if all of the $H_{j,0}$ were rejected in favor of $H_{j,1}$. Note that the $H_{j,1}$ is an alternative hypothesis of a one-sided test - we need to take it into account when performing the test and modify the critical values.
 
 As mentioned before, the procedure of combining statistical tests usually requires artificially lowering the significance level of the individual tests with the goal of keeping the significance level of the whole set of tests reasonably low. These methods are based on the assumption that committing a type-I error in any of the individual tests leads to a type-I error overall, and the probability of committing at least one gets higher with the number of tests.
 
@@ -366,11 +281,247 @@ Now, we are able to decide about a function whether it is significantly better t
 %TODO: Bonferroni correction reference
 %TODO: Teoria statistica delle classi e calcolo delle probabilità? :D
 
+\subsubsection{Selection algorithm}
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\INPUT$f_1,...,f_n,data_1,...,data_n$
+	\For{$i = 1$ to $n$}
+		\State $better \gets true$
+		\For{$j = 1$ to $n$}
+			\State $equalityRejected \gets oneSidedTTest(data_i, data_j, \alpha)$
+			\If{(not $equalityRejected$) or $mean(data_i) > mean(data_j)$}
+				\State $better \gets false$
+			\EndIf
+		\EndFor
+		\If{$better$}
+			\State select $f_i$
+		\EndIf
+	\EndFor
+	\State use secondary selector
+	
+\end{algorithmic}
+
+\subsection{Mann–Whitney U test}
+
+The t-tests used in strategies from sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} requires the historical measurement data to come from a normal distribution. Even though it was one of our assumptions at the beginning, it does not necessarily hold in reality, as the fluctuations in the run time depend on many factors of the environment. We might try to use a test that is nonparametric, i.e., does not require any standardized and parametrized distribution of the data. One of these tests is the Mann–Whitney U test (for details see \cite{weiss_introductory_2010}), which only requires the sample observations to be independent.
+
+Supposing we have the samples $X_1, ..., X_n$ and $Y_1, ..., Y_m$ from distributions with respective means $\mu_1$ and $\mu_2$, the hypotheses are going to be exactly the same as for the t-test:
+
+\[
+H_0: \mu_1 = \mu_2
+\]
+\[
+H_1: \mu_1 \ne \mu_2
+\]
+
+The test itself is based on ranking all the observation from both samples together by their values, and then adding up the ranks in the first sample ($R_1$) and in the second sample ($R_2$). The test statistics is the following:
+
+\[U = min(U_1, U_2)\]
+
+\[U_1 = R_1 - \frac{n(n+1)}{2}\]
+\[U_2 = R_2 - \frac{m(m+1)}{2}\]
+
+Now, U has, in case of valid $H_0$, a known distribution whose critical values can be either looked up for small fixed values, or approximated using a normal distribution for higher values. Therefore, we can reject the $H_0$ for $U < U(\alpha, n, m)$, where $U(\alpha, n, m)$ is the tabulated or approximated critical value for the significance level $\alpha$ and given sample sizes.
+
+The strategy can be extended to three or more functions exactly in the same way as the t-test (see section \ref{subsec:t_test_multiple}), the individual tests involved will have to be changed to one-tailed (by using doubled $\alpha$) and an overall $\alpha$ correction should be used.
+
+\subsubsection{Selection algorithm}
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\INPUT$f_1,...,f_n,data_1,...,data_n$
+	\For{$i = 1$ to $n$}
+	\State $better \gets true$
+	\For{$j = 1$ to $n$}
+	\State $equalityRejected \gets oneSidedUTest(data_i, data_j, \alpha)$
+	\If{(not $equalityRejected$) or $mean(data_i) > mean(data_j)$}
+	\State $better \gets false$
+	\EndIf
+	\EndFor
+	\If{$better$}
+	\State select $f_i$
+	\EndIf
+	\EndFor
+	\State use secondary selector
+	
+\end{algorithmic}
+
+
+\section{Input based selection strategies}
+\label{sec:input_based_strategies}
+
+\textit{Input based strategies} are the strategies that use the historical measurements along with corresponding \textit{input descriptor} to construct a model that approximates the function $h$ (see \ref{subsec:input_in_selection}). A prediction for a new \textit{input descriptor} can be derived from the model and used to decide which of the functions will have better performance on given input.
+
+\subsection{Simple linear regression}
+\label{subsec:simple_linear_regression}
+
+The first strategy supposes that the function \(h\) can be approximated precisely enough using a linear function \(h'\) in the following form:
+\[h'(x) = a' x + b'\]
+
+This approximation is a \textit{simple linear regression model}. The slope \(a'\) and intercept \(b'\) of the linear function can be determined using a least squares method, which minimizes the squares of the distances of the actual function values from the ones predicted by the model.
+
+A big advantage of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. In addition, the model can be easily cached for fixed set of samples and updated when adding new data without having to construct it all over again.
+
+The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph marked with the green color. The red line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{\mbox{\includegraphics[width=90mm]{./img/selection_sort_linear_trendline.png}}}
+	\caption{Linear regression line (red) of a selection sort runtime samples.}
+	\label{fig:selection_sort_linear_trendline}
+\end{figure}
+
+Next, we need to find a way how to select the best function with given certainty using a set of these models.
+
+\subsubsection{Confidence interval based selection from two functions}
+\label{subsubsec:confidence_interval_selection}
+
+Suppose we have a linear regression model \(h'(x) = a' x + b'\) of a function $h(x) = ax + b$ constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\varepsilon = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation on the model.
+
+Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with $n-2$ degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests with $a$ and $b$. The default tests hypotheses have the following form:
+
+\[H_0: a = a_0\]
+\[H_1: a \neq a_0 \]
+
+We basically test equality of $a$ (or $b$) and a fixed value $a_0$ (or $b_0$) - this test can be used to verify if the data have a specific linear relation. If we put $a_0 = 0$, we can whether the observations $y_i$ are constant. 
+
+None of these tests and statistics, however, allows us to test the certainty of the prediction - we need to consider both the intercept and the slope estimation certainty, and, in addition, the distance of the $x$ we want the prediction for from the mean $\bar{x}$, because if we commit an error in the slope estimation $a'$, the corresponding error in predictions increases with the distance from $\bar{x}$. 
+
+With these facts, a confidence interval on level $1 - \alpha$ for $h'(x)$ can be constructed (specifically for each point $x$). According to \cite{weiss_introductory_2010}, the width of the interval is the following:
+
+%TODO: Change the text to "mean prediction interval"
+
+\[
+w_{x, \alpha} = t_{n - 2}(1-\frac{\alpha}{2}) s_e\sqrt{\frac{1}{n} + \frac{(x - \bar{x})^2}{ \sum_{i = 1}^{n} (x_i - \bar{x})^2 }}
+\]
+
+where \(\bar{x}\) is the mean of \(x_i\), $t_{n - 2}(1-\frac{\alpha}{2})$ is the $(1-\frac{\alpha}{2})$-th quantile of \textit{t-distribution} with $n-2$ degrees of freedom, and $s_e$\footnote{Standard error of the estimate} can be computed as:
+
+\[s_e = \sqrt{\frac{SSE}{n-2}}\]
+
+And:
+
+\[SSE = \sum_{i = 1}^{n} \varepsilon_i^2  =  \sum_{i = 1}^{n} (y_i - y_i')^2 \]
+
+for \(y_i' = h'(x_i)\).
+
+It now holds that for any $x$, the corresponding $y \in [a'x + b' \pm w_{x, \alpha}]$ with probability $(1-\alpha)$.
+
+Now in the situation where we have two regression models and we want to find the best prediction of $x$, we can construct these confidence intervals for both models and:
+
+\begin{itemize}
+	\item If the intervals do not overlap, the predictions have at least a $(1 - \alpha)^2$ probability of correctly setting the order, i.e. the worse prediction actually being the worse function
+	\item If the intervals overlap, there is a non-trivial chance of the predictions being mixed up by error
+\end{itemize}
+
+In the first case, we can decide that one function is significantly better and select it. In the second case, we cannot decide with given certainty.
+
+\subsubsection{Confidence interval based selection from multiple functions}
+
+The described method allows us to decide between two functions with given certainty. Now, when choosing among $n$ functions with regressions $h'_1, ..., h'_n$ for given $x$, we are looking for the $k$ for which the following holds:
+
+\begin{itemize}
+	\item The confidence interval on level $(1-\alpha)$ for prediction $h'_k(x)$ does not overlap with any other of the confidence interval for prediction.
+	\item $\forall j \ne k: h'_k(x) < h'_j(x)$
+\end{itemize}
+
+It can be done by constructing all the regression models and then $\forall i$ performing the comparison described in \ref{subsubsec:confidence_interval_selection} of $h_i$ with $h_j, \forall j \ne i$. If $h_i$ is better than all of the $h_j$, we can choose the corresponding function.
+
+The strength of this decision is influenced by the fact that we perform multiple confidence interval constructions - the errors an error in any of them can influence the result of the selection, se the significance gets lower in general. If we wanted the results to be precise, we would have to perform the correction of the significance level $\alpha$.
+
+%TODO: How to set alpha? correction?
+
+\subsubsection{Selection algorithm}
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\INPUT functions $f_1,...,f_n$, historical data vectors $d_1,...,d_n$, input descriptor $x$
+	\For{$i=1$ to $n$}
+	\State $r_i \gets createRegression(d_i)$
+	\EndFor
+	\For{$i = 1$ to $n$}
+	\State $better \gets$ true
+	\For{$j = 1$ to $n$, $j \ne i$}
+	\State $(k_1, l_1) \gets predictionInterval(r_i, x, \alpha)$
+	\State $(k_2, l_2) \gets predictionInterval(r_j, x, \alpha)$
+	\If{$(k_1, l_1)$ overlaps $(k_2, l_2)$ or $k_1 > k_2$}
+	\State $better \gets$ false
+	\EndIf
+	\EndFor
+	\If{$better$}
+	\State select $f_i$
+	\EndIf
+	\EndFor
+	\State use secondary selector
+\end{algorithmic}
+
+\subsection{Window-bound linear regression}
+\label{subsec:window_bound_regression}
+
+To be able to apply the strategy described in section \ref{subsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of historical measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ of the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on the model in a smaller subset.
+
+\begin{figure}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centerline{\mbox{\includegraphics[width=140mm]{./img/window_examples.png}}}
+	\caption{Examples of subsets of the data from figure \ref{fig:selection_sort_linear_trendline} with linear regressions.}
+	\label{fig:window_examples}
+\end{figure}
+
+When selecting a function for a specific \textit{input descriptor} $d$, a window around its value of specific width $w$ can be created and the regression model built using the data from said window. We do it by selecting only the historical samples $x_k, y_k$ where $\abs{x_k - d} < w$ when constructing the regression.
+
+There are multiple ways how to decide on the window width $w$. Using a fixed number across all the functions and all the data samples would not be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want it to be split. 
+
+More flexible approach is to dynamically determine the $p$. Suppose we want the average window to contain $r$ records. We find out what is the average distance between two neighboring records as $d =  \frac{max(x_i) - min(x_i)}{n - 1}$ and then set the $p = r * d$. This way, the window size will always be adapted to the density of the dataset.
+
+The window limitation might seem similar to the grouping described in \ref{subsec:grouping}, but there are two major differences. First, the windows are based on the \textit{input descriptor}, whereas the \textit{group selector} might use different features of the input. And second, the groups are deterministic and do not move with the \textit{input descriptor} and change their size based on historical data. Both these concept can be used at the same time.
+
+\subsubsection{Selection algorithm}
+
+The strategy itself is parametrized by an average record count per window $avg$.
+
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\INPUT 
+	\Statex Functions $f_1,...,f_n$
+	\Statex Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$
+	\Statex Input descriptor $x$
+	\Statex
+	\For{$i=1$ to $n$}
+	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / l_i$
+	\State $w \gets dist * avg$
+	\State $d'_i \gets [(x_{i,j}, y_{i, j}); \forall j: \abs{x_{i,j} - x} \leq w/2]$
+	\EndFor
+	\State use LinearRegressionStrategy with $f_1,...,f_n, d'_1,...,d'_n, x$
+\end{algorithmic}
+
+\subsection{Local regression}
+\label{subsec:local_regression}
+
+The approach explained in \ref{subsec:window_bound_regression} can be extended further - the locally constructed linear regression models might be used to build up a model for the entire data set. This leads to a model that is non-linear, i.e., the function that approximates the original data relation is not a linear function.
+
+One possible regression method that behaves this way is \textit{LOESS} (Local Regression, \cite{cleveland_locally_1988,cleveland_regression_1988,cleveland_computational_1991}). It uses methods similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The output is a \textit{Loess Curve}, an artificially constructed function that does not necessarily have to be expressed by a formula. This is one of the advantages of the model - the original relation between \textit{input descriptors} and the run times did not have to be expressed by a nice simple function in order to be captured correctly.
+
+The \textit{LOESS} model can be used to predict the function run times. It is, however, a lot more complicated to derive the prediction confidence intervals. Therefore, only the values will be used in this selection strategy, which could lead to some wrong decisions.
+
+There are other disadvantages of this strategy as well. First of all, the entire local regression model has to be recomputed whenever there is a new record in the dataset, the model cannot be simply updated like the \textit{simple linear regression}. Secondly, it is much more computationally complex and the model construction takes non-trivial time, so it has a negative impact of the framework overhead, especially when used with short and simple functions. The last downside of \textit{local regression} is its inability to predict further behavior past the minimum and maximum data sample.
+
+\subsubsection{Selection algorithm}
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\INPUT 
+	\Statex Functions $f_1,...,f_n$
+	\Statex Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$
+	\Statex Input descriptor $x$
+	\Statex
+	\For{$i=1$ to $n$}
+	\State $m_i \gets buildRegression(d_i)$
+	\State $p_i \gets predictValue(m_i, x)$
+	\EndFor
+	\State $j \gets argmin(p_i)$
+	\State select $f_j$
+\end{algorithmic}
+
 \subsection{Window-bound t-test}
 
-The t-test methods as described in this section work with all the historical run data collected and use it to make a decision about the function with the best performance. It works under the assumption that the run times of a specific function have a normal distribution. This could be the truth only for the functions with constant complexity - whenever the function run time depends on the input, the distribution of the sample of measurements depends heavily on the distribution of the inputs.
-
-Even if we assumed that the inputs were distributed normally and that the relation was linear, the whole procedure could only decide about the better function overall, which might not be desirable in the cases where we want to select different function for different inputs based on their size or other factors (in the way the predictive strategies work).
+The mean based t-test selection strategy described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} works under the assumption that the run times of a specific function have a normal distribution, and the prediction of run time is simply the mean of all the times measured. This could be the truth only for the functions with constant complexity - whenever the function run time depends on the input, the samples measured have their distribution influenced by the distribution of the inputs.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -392,25 +543,59 @@ The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick
 
 The window sizes can be determined in a similar way as in section \ref{subsec:window_bound_regression}. If we reduce it to a constant 0, we will get a technique in which only the results for inputs with the same descriptor are tested. When there are none, we refuse to select and wait until data is gathered. This might be useful in cases where we know that the function will be called repeatedly on a limited set of input variants, and basically rules out the prediction factor, as we need to have actual observation for each input before making any conclusions. Similar approach is taken in \cite{bulej_performance_2012}.
 
+\subsubsection{Selection algorithm}
+
+The selection algorithm is exactly the same as in section \ref{subsec:window_bound_regression}, only using 
+
+The strategy itself is parametrized by an average record count per window $avg$.
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\INPUT 
+	\Statex Functions $f_1,...,f_n$
+	\Statex Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$
+	\Statex Input descriptor $x$
+	\Statex
+	\For{$i=1$ to $n$}
+	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / l_i$
+	\State $w \gets dist * avg$
+	\State $d'_i \gets [(x_{i,j}, y_{i, j}); \forall j: \abs{x_{i,j} - x} \leq w/2]$
+	\EndFor
+	\State use TTestStrategy with $f_1,...,f_n, d'_1,...,d'_n, x$
+\end{algorithmic}
+
+\subsection{Whitebox model construction}
+
+The methods that were described so far are examples of the blackbox techniques - they do not analyze the function itself, the models are based only on the relation of the run times and the \textit{input descriptors}. 
+
+The techniques used in the research projects focused on formulating accurate predictions about program run times (like \cite{goldsmith_measuring_2007,chun_mantis:_2010,huang_predicting_2010}) often build the model using more detailed information about every run. These extra data can be obtained by examining and instrumenting the function code. Key structures (loops, branches, method invocation, ...) can be identified and an execution counts can be tracked. Then, a model that captures the relation between the input features, the described structure execution counts and the run time. This added dimension might lead to more accurate model and therefore better predictions.
+
+%TODO: Add reference / bibliography
+In \cite{chun_mantis:_2010}, a Mantis framework for high accuracy program performance prediction was implemented. The basic principles are similar to the approach described above. It was tested on a series of data gathered from runs of the ImageJ application, and compared with a blackbox prediction model based on interpolating a polynomial of degree 3. The prediction error of the whitebox approach was 5.5\%, the blackbox approach error rate reached more than 35\%.
+%TODO: Add results?
+
+This approach has, however, a few problems concerning the intended use cases of ScalaAdaptive framework. The model will not improve the predictions if the majority of the execution time is spent waiting on an I/O operation. Specifically, it will not help with any of the cases where we are selecting a database query, remote server to connect to, etc. In addition, it would require the method code to be instrumented at runtime, which would lead, together with the model construction, to a significant overhead.
+
+For these reasons and because of the complexity, the whitebox model was not implemented in the framework, but it represents a potential future work that could be done on the topic.
+
 \section{Strategy comparison}
 \label{sec:strategy_comparison}
 
-In general, the predictive strategies do not handle well more historical results for the same \textit{input descriptor}, and are impossible to use when there is none specified. The following rules should be used to decide between predictive and non-predictive strategies:
+In general, the input based strategies do not handle well more historical results for the same \textit{input descriptor}, and are impossible to use when there is none specified. The following rules should be used to decide between input based and mean based strategies:
 
 \begin{itemize}
 	\item \textbf{Dependency on the input} \\
-	If the function does not have any input, or the input does not affect the expected run time (the complexity is constant), non-predictive strategies should be used.
+	If the function does not have any input, or the input does not affect the expected run time (the complexity is constant), mean based strategies should be used.
 	\item \textbf{Expected input values} \\
-	If the function is expected to be invoked with a discrete and very limited set of inputs, non-predictive strategy is preferred. On the other hand, if the function will be called repeatedly with randomly distributed inputs, the predictive strategies are a better choice.
+	If the function is expected to be invoked with a discrete and very limited set of inputs, mean based strategy is preferred. On the other hand, if the function will be called repeatedly with randomly distributed inputs, the input based strategies are a better choice.
 \end{itemize}
 
-Considering these facts, the framework will contain both a predictive and a non-predictive strategy, and will automatically use the predictive one if the user specified an \textit{input descriptor}, and the non-predictive one otherwise. The user will be able to override this choice if he wants.
+Considering these facts, the framework will contain both a input based and a mean based strategy, and will automatically use the input based one if the user specified an \textit{input descriptor}, and the mean based one otherwise. The user will be able to override this choice if he wants.
 
-The actual strategies used should be easily replaceable, but some have to be chosen as default for the common usages. As we introduced only one non-predictive strategy independent on the input, there is not much of a choice. The situation is more complicated In the field of predictive strategies, and we need to perform a couple of tests.
+The actual strategies used should be easily replaceable, but some have to be chosen as default for the common usages. As we introduced only one mean based strategy independent on the input, there is not much of a choice. The situation is more complicated In the field of input based strategies, and we need to perform a couple of tests.
 
-\subsection{Predictive strategies success rates}
+\subsection{Input based strategies success rates}
 
-To compare the efficiency of the selection strategies, we used an artificial scenario with two functions. One with linear complexity that computes a sum of $n$ random numbers for an input $n$. The other computes a sum of $n * k$ random numbers for an input $n$, where $k$ is an \textit{error factor} determining how much slower the function is. We would expect the selection strategy to always pick the first function for any $k>1$, so we will track the number of wrong decisions (i.e. number of times the strategy selects the second function) for the three predictive strategies and for various \textit{error factor} values.
+To compare the efficiency of the selection strategies, we used an artificial scenario with two functions. One with linear complexity that computes a sum of $n$ random numbers for an input $n$. The other computes a sum of $n * k$ random numbers for an input $n$, where $k$ is an \textit{error factor} determining how much slower the function is. We would expect the selection strategy to always pick the first function for any $k>1$, so we will track the number of wrong decisions (i.e. number of times the strategy selects the second function) for the three input based strategies and for various \textit{error factor} values.
 
 We will use the values 4, 2, 1.5, 1.2 and 1.1 for $k$ and for each of them generate 5 sequences of 200 inputs. Then, we will use all the selection strategies on every sequence, removing all the historical records in between. There is a minimum of 30 records in the function history before the decision process starts, so the actual decision will take place only on 140 inputs in each sequence.
 
@@ -472,7 +657,7 @@ The results are showing that local regression has extremely high run times that 
 
 \section{Invocation policies}
 
-The selection process and all the strategies described in sections \ref{sec:predictive_strategies} and \ref{sec:non_predictive_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data, as discussed in section \ref{subsec:strategy_perf}. In a common scenario where we expect the system to come to a decision about the best function (either overall, or for every group of \textit{input descriptors}), it would be handy if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
+The selection process and all the strategies described in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data, as discussed in section \ref{subsec:strategy_perf}. In a common scenario where we expect the system to come to a decision about the best function (either overall, or for every group of \textit{input descriptors}), it would be handy if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
 
 Similarly, it might be desirable to control the overhead time spent on the selection, or, in general, on invoking the functions using selection (which might lead to a bad decision), either per a specific time period, or per a specific action of the system (user request, processing unit, etc.). All of these decisions are taken at a higher level than the run time history analysis performed by the selection strategies.  
 
@@ -497,7 +682,7 @@ The advantage of the \textit{policy} system over a regular state machine is its 
 \subsection{Statistical data}
 \label{subsec:statistical_data}
 
-The only input that the \textit{policy} receives when making decision is a statistical summary of previous selection results of the \textit{combined function}. The process itself is supposed to be fast and reflect just the trends in the selection, not to replace the whole selection strategy process as described in sections \ref{sec:predictive_strategies} and \ref{sec:non_predictive_strategies}, so the statistical data do not contain the entire run history of all the functions involved.
+The only input that the \textit{policy} receives when making decision is a statistical summary of previous selection results of the \textit{combined function}. The process itself is supposed to be fast and reflect just the trends in the selection, not to replace the whole selection strategy process as described in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies}, so the statistical data do not contain the entire run history of all the functions involved.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
