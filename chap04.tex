@@ -5,77 +5,14 @@ The key purpose of the ScalaAdaptive framework is to always invoke a function th
 
 This thesis is focused on the task of optimizing the function run time or time complexity in general. The core of the framework, however, is designed to be extensible by modules that can analyze the function run in different ways. More on this topic will be covered in chapter \ref{chap:implementation}.
 
-\section{Selection and invocation process}
-\label{sec:selection_and_invocation_process}
+\section{Overview of the selection process}
+\label{sec:selection_overview}
 
+Suppose we have functions $f_1, ..., f_n$, all of them doing the same thing, and an input $in$. We need to decide, which of the functions to select and invoke. To be able to do that, we need to formulate predictions about run times of the functions under given circumstances, and use the function with the lowest prediction. As the internal structure of the functions is unknown to us, the only data we can base the prediction on is the information we collect during the actual execution of the individual functions, stored in a history storage.
 
-\begin{algorithmic}[1] % The number tells where the line numbering should start
-	\State $(result, newPolicy) \gets evaluatePolicy(currentPolicy)$
-	\State $currentPolicy \gets newPolicy$
-	\Switch{$result$}
-		\Case{UseLast}
-			\State $f \gets getLast()$
-			\State \Return{$f()$}
-		\EndCase
-		\Case{UseMost}
-			\State $f \gets getMost()$
-			\State \Return{$f()$}
-		\EndCase
-	\EndSwitch
-	\For{$i = 1$ to $n$}
-		\State $d_i \gets getHistoricalData(d_i)$
-	\EndFor	
-	\If{not $equalityRejected$}
-	\State use secondary selector
-	\EndIf
-	\If {$mean(data_1) < mean(data_2)$}
-	\State select $f_1$
-	\Else 
-	\State select $f_2$
-	\EndIf
-\end{algorithmic}
+\subsection{Problems of the prediction and selection process}
 
-Suppose we have a combined function \inlinecode{f()} created using the API described in chapter \ref{chapter:api} by combining multiple functions \inlinecode{f1()}, ..., \inlinecode{fn()}. \inlinecode{f()} is a new function (or a function-like object) that can be called and we expect it to run one of the implementations \inlinecode{f1()}, ..., \inlinecode{fn()}.
-
-The basic steps required to do so are the following:
-
-\begin{enumerate}
-	\item Locate the history data of \inlinecode{f1()}, ..., \inlinecode{fn()}
-	\item Select the function \inlinecode{fk()} to be invoked
-	\item Invoke \inlinecode{fk()} and evaluate its run time
-	\item Update the history data of \inlinecode{fk()} with the new run time record
-\end{enumerate}
-
-In the following sections, we will go through the steps of the process and discuss the options we have for implementing them.
-
-\subsection{Run time evaluation}
-
-When talking about function run time (or an execution time of a function), there are two types of values that we could be observing:
-
-\begin{itemize}
-	\item \textbf{\textit{Wall clock time}} - time elapsed between entering and leaving the function
-	\item \textbf{\textit{CPU time}} - time that the CPU actually spent executing our function
-\end{itemize}
-
-The \textit{wall clock time} is always higher than the \textit{CPU time}, because it includes not only the time when CPU is executing the function code, but also the time when the executing thread is waiting for its turn in time-sharing multitasking OS or sleeping on a blocking I/O\footnote{Input / Output operation} operation, synchronization primitive, or for some other reason. This means that the \textit{wall clock time} also gets affected by concurrently running processes, network load, and other environment-based factors, and tends to vary much more between multiple invocations.
-
-For the purposes of the ScalaAdaptive framework, it might seem that the \textit{CPU time} would be more appropriate, as it gives clearer results not affected by the state of the executing environment. The truth is, however, that many of the use cases of the framework require the thread sleeping time to be included in the measurement, as the functions run times are determined mainly by the duration of an I/O operation (e.g. database queries, network requests, etc.), so using \textit{CPU time} would not give us the necessary results.
-
-It is also quite difficult to determine the \textit{CPU time} - it requires support from the operating system with tracking the time that every thread has spent in execution. For this reason and for the reason stated above, the selection process in this text is based on the \textit{wall clock time}. It might be, however, interesting as a future extension to implement measuring of both of the times and allowing the user to decide for each combined function which time should be used.
-
-The \textit{wall clock time} is measured by fetching high-precision system time in nanoseconds right before calling the function apply method and right after returning from the call. The result is the run time in nanoseconds. This measurement is precise enough for all the use cases of the framework, because it is targeting mainly functions with non-negligible time complexities.
-
-The evaluation data might potentially contain more information that can help with classifying the function run and make better decisions in the selection process, e.g. the data about execution counts of certain code paths of the function, like in \cite{chun_mantis:_2010}. That would, however, require instrumentation of the executed code, and was not implemented in this work for its complexity.
-
-\subsection{Storing the evaluation data}
-
-After having invoked the function and evaluated its run, the evaluation data have to be stored before passing the return value back to the caller. The history of all the run evaluations is kept together for each function as a vector of values. We suppose that multiple combined function that all include one real function will share its run history. More on that along with different implementation options will be discussed in chapter \ref{chap:implementation}.
-
-\subsection{Selecting a function}
-
-The most complicated task of the entire chain is to select the most appropriate function to run in given case. The case is described by an input $in$ of the function \inlinecode{f()} and by the evaluation data gathered in previous runs. What we basically need to do is to use the historical data to formulate a prediction of the run times of all the functions, and then try to decide, which one is the most optimistic.
-
-This process has three basic complications:
+There are three main factors we should take into account when predicting run times and using them to select a function:
 
 \begin{itemize}
 	\item The run times may depend on the input $in$
@@ -87,22 +24,14 @@ The \textit{input dependency} problem is being solved in many works about the pr
 
 The \textit{environment dependency} is more complicated - there are no factors that we could watch and use to classify the runs or to include in the prediction model. The simplest solution is to give the history records a limited duration after which they expire, as the environment changes are not expected to occur very often, making the most recent data the most suitable for modeling. This technique is suggested among the adaptive framework use-cases in \cite{bulej_performance_2012}.
 
-As for the \textit{uncertainty} problem, the works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of expectations used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision. Such a case should be solved by executing the function with least data to gather more observations.
+As for the \textit{uncertainty} problem, works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of expectations used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision. Such a case should be solved by executing the function with least data to gather more observations.
 
-Based on all of these observations, a couple of supporting techniques as well as strategies for the actual selection were proposed and will be described in the following sections.
-
-\section{Supporting techniques for selection}
-
-These techniques can be used to filter out the historical data in order to improve the selection process. All of them have to be explicitly enabled and configured by the user.
-
-
-
-\subsection{Input in the selection process}
+\subsection{Input in the prediction process}
 \label{subsec:input_in_selection}
 
 The input, as mentioned earlier, can be a complex structure with multiple factors contributing to the run time\footnote{Consider for example a general graph - for most of the algorithms, both number of vertices and edges have to be taken into account}. Common prediction techniques (\cite{chun_mantis:_2010,goldsmith_measuring_2007}) use simplified model of the input $in$ represented by a vector of \textit{features} $f_1, ..., f_n$. 
 
-Based on this approach, we will suppose that for each Scala function \(\exists g\) so that \(\forall in\) modeled by $f_1, ..., f_n$ holds \(t = g(f_1, ..., f_n) + \varepsilon\), where \(t\) is the runtime on input \(in\) of \inlinecode{f()}, and $\varepsilon$ is an error represented by a random variable with normal distribution.
+Based on this approach, we will suppose that for each Scala function \(\exists g\) so that \(\forall in\) modeled by $f_1, ..., f_n$ holds \(t = g(f_1, ..., f_n) + \varepsilon\), where \(t\) is the runtime on input \(in\) of \inlinecode{f()}, and $\varepsilon$ is an error represented by a random variable with certain distribution, which we, for simplicity, assume to be normal. 
 
 Now, the \textit{features} can be divided into 2 basic categories:
 
@@ -113,19 +42,13 @@ Now, the \textit{features} can be divided into 2 basic categories:
 
 If the \textit{feature} has distance metrics, i.e., is comparable (typically sizes of structures), we can construct models that use the it to analyze the trends and make predictions about inputs with feature values that were not processed before. The \textit{features} without the distance (usually enumerations and discrete configuration values) cannot be treated this way, and we need previous observations for given value before making any assumptions. 
 
-To integrate these concepts into the framework with simplicity for the selection strategies, two mechanisms were included. First, to replace the vector of \textit{features} with distance metrics, a single integer called \textit{input descriptor} is used. The user can define a \textit{descriptor function} that extracts the \textit{input descriptor} from the input $in$ for given function. Then, at the beginning of the selection process, the \textit{descriptor function} is used and the resulting values is passed to the selecting strategy. In addition, the \textit{input descriptors} are stored in the run history as well, so a model can be built upon it and used in the selection process. We will suppose that \(\exists h\) so that \(\forall in\) with input descriptor $desc$ holds \(t = h(desc) + \varepsilon\).
+To integrate these concepts into the framework with simplicity for the selection strategies, two mechanisms were included. First, to replace the vector of \textit{features} with distance metrics, a single integer called \textit{input descriptor} is used. The user can define a \textit{descriptor function} that extracts the \textit{input descriptor} from the input $in$ for given function. Then, at the beginning of the selection process, the \textit{descriptor function} is used and the resulting values is passed to the selecting strategy. In addition, the \textit{input descriptors} are stored in the run history as well, so a model can be built upon it and used in the selection process. We will suppose that \(\exists h\) so that \(\forall in\) with \textit{input descriptor} $x$ holds \(t = h(x) + \varepsilon\).
 
-The \textit{input descriptor} should actually be a tuple that includes all the distance-based \textit{features}, but that would lead to more complex models for the purposes of the framework prototype. 
+If we wanted to be more precise in the dependency modeling, we should be using a tuple of all the distance-based features as our \textit{input descriptor}. That would, however, lead to significantly more complex prediction models, and therefore we decided to keep the framework prototype simple by limiting ourselves to one factor. More complex models working with multiple features can be added to the framework in the future.
 
-As for the \textit{features} with no metrics, the simplest way of addressing the issue is to treat different combinations of these \textit{features} the same way as if they were different functions. They should have completely separate historical measurement records, and the strategies can build separate models for them, using the \textit{input descriptor} on top of that. A possibility of grouping the inputs was therefore added and will be discussed in a separate section.
+As for the \textit{features} with no metrics, the simplest way of addressing the issue is to treat different combinations of these \textit{features} the same way as if they were different functions. They should have completely separate historical measurement records, and the strategies can build separate models for them, using the \textit{input descriptor} on top of that. A possibility of \textbf{grouping} the inputs was therefore added and will be discussed in a separate section.
 
-\subsection{Selecting from multiple functions}
-
-The decision goal is obvious when selecting from two functions - compare the expectations and select the one that is better with given significance, or refuse to select when there is not such a function. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better that each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
-
-For simplicity, we will consider only the case where one function is better than all the others, the remaining results will be treated as ambiguous and none will be selected. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance, we are not able to make a decision and we keep cycling through all three functions.
-
-\subsection{Grouping}
+\subsection{Input grouping}
 \label{subsec:grouping}
 
 In \cite{smith_predicting_1998}, an automatic method of clustering the inputs is used before formulating any predictions about the run time. This is done because of the fact that inputs with common factors are in general expected to lead to similar run times, or at least to run times that can be described by the same, simpler model. In addition, it might be necessary to split the inputs using the values of \textit{input features} with no distance metrics, as explained in \ref{subsec:input_in_selection}.
@@ -149,16 +72,89 @@ The groups in general should not be too small, as the selection process relies o
 \subsection{Limiting the history record age}
 \label{subsec:limiting_record_age}
 
-When we expect the run times to fluctuate over time due to environment changes, we should use only the most recent records in the selection process. Not only will this lead to better results of the statistical selection strategies, but it also means that the framework will be able to quickly adapt to a new environment in case that the function performances get dramatically different.
+The $\varepsilon$ in the function $h$ from section \ref{subsec:input_in_selection} technically represents the influence of the execution environment. We suppose that it is a random variable from a normal distribution, whose parameters characterize the environment. If the environment changes, the distribution of the error changes as well. In such a case, we should not be using the observations from before and after the change together in the models that suppose the same distribution for all the observations (which is the majority).
 
-We have the historical run records marked with the timestamps. The user of the framework will provide a maximum age of a record that should be taken into account for a \textit{combined function}. Upon invocation, the records that are older than this limit will be filtered from the history vector of each one of the functions. This should not lead to any significant overhead if the vectors preserve the ordering in which they are build, having the most recent data at the end.
+Therefore, whenever we expect the environment to change often and the run times to fluctuate significantly (e.g. due to network traffic, computation nodes, etc.), we should use only the most recent history records in the selection process, which will limit the probability of model failures. Not only will this lead to more significant results of the statistical selection strategies, but it also means that the framework will be able to quickly adapt to a new environment in case that the function performances get dramatically different.
+
+We have the historical run records marked with the timestamps. The user of the framework will, optionally, provide a maximum age of a record that should be taken into account for a \textit{combined function}. Upon invocation, the records that are older than this limit will be filtered from the history vector of each one of the functions. This should not lead to any significant overhead if the vectors preserve the ordering in which they are build, having the most recent data at the end.
+
+
+\subsection{Selecting from multiple functions}
+
+The decision goal is obvious when selecting from two functions - compare the predictions and select the one that is better with given significance, or refuse to select when there is not such a function. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better that each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
+
+For simplicity, we will consider only the case where one function is better than all the others, the remaining results will be treated as ambiguous and none will be selected. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance, we are not able to make a decision and we keep cycling through all three functions.
+
+\section{The invocation chain}
+\label{sec:selection_and_invocation_process}
+
+We have discussed the selection process using prediction techniques on a theoretical level. Now, we are going to have a look at the actual steps that have to be done upon invocation of a combined function. Suppose we have a combined function $f$ created using the API described in chapter \ref{chapter:api} by marking functions $f_1,...,f_n$ as interchangeable. We hold a new function (or a function-like object) that can be called, passing it an input $in$, and is expected to run one of the implementations $f_1,...,f_n$ with $in$ and to return a result $out$.
+
+The basic steps required to do so are the following:
+
+\begin{enumerate}
+	\item Use the \textit{group selector} to find the group identifier $g$ and the \textit{descriptor function} to find the input descriptor $x$ for $in$ (if either of the functions is not defined, the corresponding variable will have a special \textit{undefined} value)
+	\item Locate the history vectors $d_1,...,d_n$ of functions $f_1,...,f_n$ for group $g$
+	\item Filter out records older than the maximum age (infinite by default) from $d_i$ into $d'_i$ $\forall i$
+	\item Select the function $f_k$ to run based on $d'_1,...,d'_n$ and $x$
+	\item Invoke $f_k$, fetch the result $out$ and evaluate its run time
+	\item Add the new evaluation result to $d_k$ and update it for group $g$
+	\item Return $out$ to the caller
+\end{enumerate}
+
+In the following sections, we will discuss some of the steps of the process in more details.
+
+\subsection{Run time evaluation}
+
+When talking about function run time (or an execution time of a function), there are two types of values that we could be observing:
+
+\begin{itemize}
+	\item \textbf{\textit{Wall clock time}} - time elapsed between entering and leaving the function
+	\item \textbf{\textit{CPU time}} - time that the CPU actually spent executing our function
+\end{itemize}
+
+The \textit{wall clock time} is always higher than the \textit{CPU time}, because it includes not only the time when CPU is executing the function code, but also the time when the executing thread is waiting for its turn in time-sharing multitasking OS or sleeping on a blocking I/O\footnote{Input / Output operation} operation, synchronization primitive, or for some other reason. This means that the \textit{wall clock time} also gets affected by concurrently running processes, network load, and other environment-based factors, and tends to vary much more between multiple invocations.
+
+For the purposes of the ScalaAdaptive framework, it might seem that the \textit{CPU time} would be more appropriate, as it gives clearer results not affected by the state of the executing environment. The truth is, however, that many of the use cases of the framework require the thread sleeping time to be included in the measurement, as the functions run times are determined mainly by the duration of an I/O operation (e.g. database queries, network requests, etc.), so using \textit{CPU time} would not give us the necessary results.
+
+It is also quite difficult to determine the \textit{CPU time} - it requires support from the operating system with tracking the time that every thread has spent in execution. For this reason and for the reason stated above, the selection process in this text is based on the \textit{wall clock time}. It might be, however, interesting as a future extension to implement measuring of both of the times and allowing the user to decide for each combined function which time should be used.
+
+The \textit{wall clock time} is measured by fetching high-precision system time in nanoseconds right before calling the function apply method and right after returning from the call. The result is the run time in nanoseconds. This measurement is precise enough for all the use cases of the framework, because it is targeting mainly functions with non-negligible time complexities.
+
+The evaluation data might potentially contain more information that can help with classifying the function run and make better predictions in the selection process, e.g. the data about execution counts of certain code paths of the function, like in \cite{chun_mantis:_2010}. That would, however, require instrumentation of the executed code, and was not implemented in this work for its complexity.
+
+\subsection{Storing and retrieving the evaluation data}
+
+After having invoked the function and evaluated its run, the evaluation data have to be stored before passing the return value back to the caller. The history of all the run evaluations is kept together for each combination of a function and a group identifier as a vector of records. Each record consists of at least the following:
+
+\begin{enumerate}
+	\item The \textit{input descriptor} of the input for given run
+	\item The evaluation metrics (in our case, the run time) of given run
+	\item The timestamp of given run
+\end{enumerate}
+
+Whenever a new evaluation data is obtained, a record is created and added to the end of the history vector. Some additional metrics might be cached for the whole history record, in such a case, the metrics have to be updated as well.
+
+For simplicity, we suppose that the run histories of the actual implementations will be shared across all the combined functions that use them. More on that along with different implementation options will be discussed in chapter \ref{chap:implementation}.
+
+\subsection{Selecting a function}
+
+The actual selection process, as described in \ref{sec:selection_overview}, can be implemented in many ways. It is basically an isolated algorithm with the following input:
+\begin{enumerate}
+	\item History data vectors $d_1,...,d_n$ of functions $f_1,...,f_n$, where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$ are the \textit{input descriptors} and corresponding run times of historical runs (the \textit{input descriptors} can be \textit{undefined})
+	\item Current input descriptor $x$
+\end{enumerate}
+
+It should return $k \in {1,...,n}$, which will determine the function $f_k$ to run.
+
+These algorithms are called \textit{selection strategies}, and we suggested a few of them based on different approaches to predicting the run times and selecting between various predictions. They will be described in the following two sections, and for each that we included in the framework, a simplified pseudocode implementation will be included at the end of the description.
 
 \section{Mean based selection strategies}
 \label{sec:mean_based_strategies}
 
-In some cases, the function run time does not depend on the input, or the relation is not significant enough. For simplification, we suppose that the function complexity is constant in such a case. Using the same formalism as in \ref{subsec:input_in_selection}, for run time $t$ on input $in$ with \textit{input descriptor} $desc$ holds \(t = h(desc) + \varepsilon\) for a $h$ constant, i.e. $\forall x$ $g(x) = c$. Therefore, $t = c + \varepsilon$, where $\varepsilon$ is the error which we suppose has a normal distribution with a zero mean. Under these assumptions, $t$ is a random variable with normal distribution and mean equal to $c$, which is the expected constant run time of the function.
+In some cases, the function run time does not depend on the input, or the relation is not significant enough. For simplification, we suppose that the function complexity is constant in such a case. Using the same formalism as in \ref{subsec:input_in_selection}, for run time $t$ on input $in$ with \textit{input descriptor} $x$ holds \(t = h(x) + \varepsilon\) for a $h$ constant, i.e. $\forall y$ $g(y) = c$. Therefore, $t = c + \varepsilon$, where $\varepsilon$ is the error which we suppose has a normal distribution with a zero mean. Under these assumptions, $t$ is a random variable with normal distribution and mean equal to $c$, which is the expected constant run time of the function.
 
-The \textit{mean based} strategies will use the sample data to determine the means of the function time distributions with given certainty and use them as the expected run times in the decision process.
+The \textit{mean based} strategies will use the sample data to determine the means of the function time distributions with given certainty and use them as the expected run times in the decision process. The \textit{input descriptor} $x$ will be ignored in the process, both the ones included in the historical measurements and the current one. Therefore, it will not be mentioned in the pseudocode algorithm input.
 
 \subsection{T-test for two functions}
 \label{subsec:t_test_two}
@@ -215,25 +211,18 @@ Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have signi
 
 \subsubsection{Selection algorithm}
 
-\lstset{style=Pseudo}
-\begin{lstlisting}
-select from f1, f2 with data1, data2
-p = tTest(data1, data2)
-if (p > 2 * alpha) use secondary selector
-if (mean(data1) < mean(data2)) select f1
-else select f2
-\end{lstlisting}
+The strategy is parametrized by the selection significance level $\alpha$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT$f1_,f_2,data_1,data_2$
-	\State $equalityRejected \gets twoSidedTTest(data_1, data_2, \alpha)$
+	\INPUT Historical data vectors $d_1,d_2$ where $d_i = [y_{i,1},..., y_{i,l_i}]$
+	\State $equalityRejected \gets$ twoSidedTTest($d_1, d_2, \alpha$)
 	\If{not $equalityRejected$}
-	\State use secondary selector
+	\State \Return{useSecondarySelector($d_1,d_2$)}
 	\EndIf
-	\If {$mean(data_1) < mean(data_2)$}
-	\State select $f_1$
+	\If {$mean(d_1) < mean(d_2)$}
+	\State \Return{1}
 	\Else 
-	\State select $f_2$
+	\State \Return{2}
 	\EndIf
 \end{algorithmic}
 
@@ -283,21 +272,23 @@ Now, we are able to decide about a function whether it is significantly better t
 
 \subsubsection{Selection algorithm}
 
+The strategy is parametrized by the selection significance level $\alpha$.
+
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT$f_1,...,f_n,data_1,...,data_n$
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [y_{i,1},...,y_{i,l_i}]$
 	\For{$i = 1$ to $n$}
 		\State $better \gets true$
 		\For{$j = 1$ to $n$}
-			\State $equalityRejected \gets oneSidedTTest(data_i, data_j, \alpha)$
-			\If{(not $equalityRejected$) or $mean(data_i) > mean(data_j)$}
+			\State $equalityRejected \gets$ oneSidedTTest($d_i, d_j, \alpha$)
+			\If{not $equalityRejected$ or $mean(d_i) > mean(d_j)$}
 				\State $better \gets false$
 			\EndIf
 		\EndFor
 		\If{$better$}
-			\State select $f_i$
+			\State \Return{$i$}
 		\EndIf
 	\EndFor
-	\State use secondary selector
+	\State \Return{useSecondarySelector($d_1,...,d_n$)}
 	
 \end{algorithmic}
 
@@ -327,24 +318,26 @@ The strategy can be extended to three or more functions exactly in the same way 
 
 \subsubsection{Selection algorithm}
 
+
+The strategy is parametrized by the selection significance level $\alpha$.
+
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT$f_1,...,f_n,data_1,...,data_n$
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [y_{i,1},...,y_{i,l_i}]$
 	\For{$i = 1$ to $n$}
 	\State $better \gets true$
 	\For{$j = 1$ to $n$}
-	\State $equalityRejected \gets oneSidedUTest(data_i, data_j, \alpha)$
-	\If{(not $equalityRejected$) or $mean(data_i) > mean(data_j)$}
+	\State $equalityRejected \gets$ oneSidedUTest($d_i, d_j, \alpha$)
+	\If{not $equalityRejected$ or $mean(d_i) > mean(d_j)$}
 	\State $better \gets false$
 	\EndIf
 	\EndFor
 	\If{$better$}
-	\State select $f_i$
+	\State \Return{$i$}
 	\EndIf
 	\EndFor
-	\State use secondary selector
+	\State \Return{useSecondarySelector($d_1,...,d_n$)}
 	
 \end{algorithmic}
-
 
 \section{Input based selection strategies}
 \label{sec:input_based_strategies}
@@ -432,25 +425,27 @@ The strength of this decision is influenced by the fact that we perform multiple
 
 \subsubsection{Selection algorithm}
 
+The strategy is parametrized by the selection significance level $\alpha$.
+
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT functions $f_1,...,f_n$, historical data vectors $d_1,...,d_n$, input descriptor $x$
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
-	\State $r_i \gets createRegression(d_i)$
+	\State $r_i \gets$ createRegression($d_i$) \Comment{Uses the least squares method}
 	\EndFor
 	\For{$i = 1$ to $n$}
 	\State $better \gets$ true
 	\For{$j = 1$ to $n$, $j \ne i$}
-	\State $(k_1, l_1) \gets predictionInterval(r_i, x, \alpha)$
-	\State $(k_2, l_2) \gets predictionInterval(r_j, x, \alpha)$
+	\State $(k_1, l_1) \gets$ predictionInterval($r_i, x, \alpha$)
+	\State $(k_2, l_2) \gets$ predictionInterval($r_j, x, \alpha)$
 	\If{$(k_1, l_1)$ overlaps $(k_2, l_2)$ or $k_1 > k_2$}
 	\State $better \gets$ false
 	\EndIf
 	\EndFor
 	\If{$better$}
-	\State select $f_i$
+	\State \Return{$i$}
 	\EndIf
 	\EndFor
-	\State use secondary selector
+	\State \Return{useSecondarySelector($d_1,...,d_n, x$)}
 \end{algorithmic}
 
 \subsection{Window-bound linear regression}
@@ -475,21 +470,16 @@ The window limitation might seem similar to the grouping described in \ref{subse
 
 \subsubsection{Selection algorithm}
 
-The strategy itself is parametrized by an average record count per window $avg$.
-
+The strategy is parametrized by the selection significance level $\alpha$ and an average record count per window $avg$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT 
-	\Statex Functions $f_1,...,f_n$
-	\Statex Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$
-	\Statex Input descriptor $x$
-	\Statex
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
 	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / l_i$
 	\State $w \gets dist * avg$
 	\State $d'_i \gets [(x_{i,j}, y_{i, j}); \forall j: \abs{x_{i,j} - x} \leq w/2]$
 	\EndFor
-	\State use LinearRegressionStrategy with $f_1,...,f_n, d'_1,...,d'_n, x$
+	\State \Return{useLinearRegressionStrategy($d'_1,...,d'_n, x$)}
 \end{algorithmic}
 
 \subsection{Local regression}
@@ -506,17 +496,12 @@ There are other disadvantages of this strategy as well. First of all, the entire
 \subsubsection{Selection algorithm}
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT 
-	\Statex Functions $f_1,...,f_n$
-	\Statex Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$
-	\Statex Input descriptor $x$
-	\Statex
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
-	\State $m_i \gets buildRegression(d_i)$
-	\State $p_i \gets predictValue(m_i, x)$
+	\State $m_i \gets$ buildRegression($d_i$)
+	\State $p_i \gets$ predictValue($m_i, x$)
 	\EndFor
-	\State $j \gets argmin(p_i)$
-	\State select $f_j$
+	\State\Return{$argmin(p_i)$}
 \end{algorithmic}
 
 \subsection{Window-bound t-test}
@@ -545,22 +530,16 @@ The window sizes can be determined in a similar way as in section \ref{subsec:wi
 
 \subsubsection{Selection algorithm}
 
-The selection algorithm is exactly the same as in section \ref{subsec:window_bound_regression}, only using 
-
-The strategy itself is parametrized by an average record count per window $avg$.
+The strategy is parametrized by the selection significance level $\alpha$ and an average record count per window $avg$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT 
-	\Statex Functions $f_1,...,f_n$
-	\Statex Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$
-	\Statex Input descriptor $x$
-	\Statex
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
 	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / l_i$
 	\State $w \gets dist * avg$
 	\State $d'_i \gets [(x_{i,j}, y_{i, j}); \forall j: \abs{x_{i,j} - x} \leq w/2]$
 	\EndFor
-	\State use TTestStrategy with $f_1,...,f_n, d'_1,...,d'_n, x$
+	\State \Return{useTTestStrategy($d'_1,...,d'_n$)}
 \end{algorithmic}
 
 \subsection{Whitebox model construction}
@@ -839,3 +818,37 @@ Another improvement that might seem useful is to allow the \textit{policies} to 
 With a different approach, we could achieve the same thing by giving selection strategies a state that could involve their decision. The state would be managed by the combined function and it could even be the same state that is used by the \textit{policies}. 
 
 %TODO - when do I need more data?
+
+\section{Summary}
+
+
+\begin{algorithmic}[1] % The number tells where the line numbering should start
+	\State $(result, newPolicy) \gets evaluatePolicy(currentPolicy)$
+	\State $currentPolicy \gets newPolicy$
+	\Switch{$result$}
+	\Case{UseLast}
+	\State $f \gets getLast()$
+	\State \Return{$f()$}
+	\EndCase
+	\Case{UseMost}
+	\State $f \gets getMost()$
+	\State \Return{$f()$}
+	\EndCase
+	\EndSwitch
+	\For{$i = 1$ to $n$}
+	\State $d_i \gets getHistoricalData(d_i)$
+	\EndFor	
+	\Switch{$result$}
+	\Case{GatherData}
+	
+	\EndCase
+	\EndSwitch
+	\If{not $equalityRejected$}
+	\State use secondary selector
+	\EndIf
+	\If {$mean(data_1) < mean(data_2)$}
+	\State select $f_1$
+	\Else 
+	\State select $f_2$
+	\EndIf
+\end{algorithmic}
