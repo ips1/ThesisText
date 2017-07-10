@@ -12,7 +12,7 @@ The first test of the ScalaAdaptive will be motivated by a the example case of a
 
 For our two implementations, we found out experimentally that the selection sort tends to be faster for input of less than 1000 items.
 
-The test consists of randomly generating 500 sequences of 0-5000 random integers. Then, all the sequences are sorted by the quick sort, selection sort and a combined function with logarithmic grouping and PauseSelectionAfterStreakPolicy with each one of the predictive selection strategies. The sorting times of all the sequences were added up and the results can be seen in table \ref{tab:sorting_results}.
+The test consists of randomly generating 500 sequences of 0-5000 random integers. Then, all the sequences are sorted by the quick sort, selection sort and a combined function with logarithmic grouping and PauseSelectionAfterStreakPolicy with each one of the input based selection strategies. The sorting times of all the sequences were added up and the results can be seen in table \ref{tab:sorting_results}.
 
 \begin{table}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -250,7 +250,7 @@ val balancedRequest =
 (
   servers.tail.foldLeft(getRequest(servers.head)) { (f, s) =>
     f.or(getRequest(s)) }
-  selectUsing Selection.NonPredictive
+  selectUsing Selection.MeanBased
   limitedTo Duration.ofSeconds(20)
 )
 \end{lstlisting}
@@ -396,7 +396,7 @@ For the test, we prepared two queries:
 	\item \textbf{Query 2} - generated n records with multiple attributes, filtered by an attribute, grouped by a different attribute, reduced the groups into new records, filtered again and grouped
 \end{itemize}
 
-The results of multiple (50-100 times) execution in various environments can be seen in table \ref{tab:spark_adaptive_rdd_vs_ds_test}, which contains the average execution times of the RDD and the Dataset variants as computed from the analytics data of a combined function. The last column shows the ScalaAdaptive decision after gathering enough data - t-test selection strategy with $\alpha = 0.05$ was used.
+The results of multiple ($50-100$ times) execution in various environments can be seen in table \ref{tab:spark_adaptive_rdd_vs_ds_test}, which contains the average execution times of the RDD and the Dataset variants as computed from the analytics data of a combined function. The last column shows the ScalaAdaptive decision after gathering enough data - t-test selection strategy with $\alpha = 0.05$ was used.
 
 We can see that it is definitely not possible to assume that Datasets are faster than RDDs. The only situation where Dataset got better performance was the Query 1 test with the largest amount of data. It is possible to assume that at least for Query 1, the Datasets perform better for larger data sizes, both locally and in the cluster. For Query 2, it seems that Dataset performance is constantly around 7 times worse.
 
@@ -593,7 +593,7 @@ data.add(i)
 
 \subsubsection{Selection strategies supporting multidimensional input descriptors}
 
-As mentioned in section \ref{sec:input_based_strategies}, algorithm complexities are quite commonly functions of multiple factors of the input. In order to create selection strategies that would be able to correctly decide in case of such algorithms, we would need to add support for \textit{input descriptors} with more factors. The predictive strategies would then have to construct multidimensional regression models and analyze the dependency on multiple factors.
+As mentioned in section \ref{sec:input_based_strategies}, algorithm complexities are quite commonly functions of multiple factors of the input. In order to create selection strategies that would be able to correctly decide in case of such algorithms, we would need to add support for \textit{input descriptors} with more factors. The input based strategies would then have to construct multidimensional regression models and analyze the dependency on multiple factors.
 
 \subsubsection{Detecting the function dependency}
 
