@@ -101,7 +101,7 @@ def processData(data: List[Int]): Int =
   (impl1 _ or impl2 withStorage Storage.Local)(data)
 \end{lstlisting}
 
-Some use cases for this configuration exist, e.g. if we have a class that holds some immutable data and we keep executing some computations on the data, then a combined function defined as a field on this class with local storage will adapt specifically to the data of the class and does not need predictive strategies.
+Some use cases for this configuration exist, e.g. if we have a class that holds some immutable data and we keep executing some computations on the data, then a combined function defined as a field on this class with local storage will adapt specifically to the data of the class and does not need input based strategies.
 
 \subsubsection{Global}
 
@@ -144,7 +144,9 @@ Functions in Scala are instances implementing the \inlinecode{FunctionN} trait. 
 
 Using the type names as unique identifiers is safe and straightforward. A small disadvantage is that they aren't very readable, the compiler uses the name of the type that contained the lambda expression followed by sequential number. 
 
-There is also a subtle danger connected - in case of persisting the run history, the closure classes might get renamed automatically upon recompiling. The compiler usually assigns the closure names sequentially, so this could happen by just inserting another lambda expression into the enclosing class code before the current one. Run history data might even get mixed up as the newly added lambda expression could have the former name of the original closure (by taking its position in the sequence).
+There is also a subtle danger connected - if we try to combine two different function that originated from the same lambda expression (the difference might be determined by the closure arguments), they will have the same identifier, thus sharing the same history, which is usually not desirable.
+
+The next problem is that in case of persisting the run history, the closure classes might get renamed automatically upon recompiling. The compiler usually assigns the closure names sequentially, so this could happen by just inserting another lambda expression into the enclosing class code before the current one. Run history data might even get mixed up as the newly added lambda expression could have the former name of the original closure (by taking its position in the sequence).
 
 If the \inlinecode{FunctionN} trait has a different than default implementation, the type name identification might fail - the trait can be implemented by a single class wrapping other values. In this case, all functions implemented by that class would share the run history.
 
@@ -513,7 +515,7 @@ The \inlinecode{AdaptiveSelector} is accessed either through the \inlinecode{Com
 
 A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used.
 
-The implementation \inlinecode{HistoryBasedAdaptiveSelector} uses a \inlinecode{HistoryStorage} to store and retrieve the run data of individual functions. In addition, it holds two \inlinecode{SelectionStrategy} instances, one for the predictive selection, the other for the non-predictive selection. One of these two instances is used to select the function to run, which is then executed using an \inlinecode{EvaluationProvider}. The measurement retrieved is added to the history and the result is returned, along with a performance benchmark including execution and overhead times (independent on the actual measurement, always based on wall-clock times) for the function statistics update. Figure \ref{fig:history_based_selector} shows the entire process.
+The implementation \inlinecode{HistoryBasedAdaptiveSelector} uses a \inlinecode{HistoryStorage} to store and retrieve the run data of individual functions. In addition, it holds two \inlinecode{SelectionStrategy} instances, one for the input based selection, the other for the mean based selection. One of these two instances is used to select the function to run, which is then executed using an \inlinecode{EvaluationProvider}. The measurement retrieved is added to the history and the result is returned, along with a performance benchmark including execution and overhead times (independent on the actual measurement, always based on wall-clock times) for the function statistics update. Figure \ref{fig:history_based_selector} shows the entire process.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -567,7 +569,7 @@ Implemented strategies are:
 	\item \inlinecode{LoessInterpolationSelectionStrategy} - implements the local regression strategy from section \ref{subsec:local_regression}, uses the \inlinecode{org.apache.commons.math3} library
 \end{itemize}
 
-The common composition pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost one, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual predictive or non-predictive strategies in the middle.
+The common composition pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost one, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual input based or mean based strategies in the middle.
 
 \subsubsection{EvaluationProvider}
 
@@ -583,7 +585,7 @@ The basic behavior of the combined functions can be changed in two ways:
 
 \subsection{Composed function configuration}
 
-There is a fluent and simple way to configure the most basic behavior as part of the function composition API (see section \ref{subsec:api_function_configuration}). It is based mostly on selecting which one of multiple implementation options should be used with given function. In the \inlinecode{AdaptiveInternal} singleton, we hold two implementations of \inlinecode{AdaptiveSelector}, one with persistent history storage, the other without. Each of these two implementations then includes two instances of  \inlinecode{SelectionStrategy}, one for predictive and one for non-predictive selection.
+There is a fluent and simple way to configure the most basic behavior as part of the function composition API (see section \ref{subsec:api_function_configuration}). It is based mostly on selecting which one of multiple implementation options should be used with given function. In the \inlinecode{AdaptiveInternal} singleton, we hold two implementations of \inlinecode{AdaptiveSelector}, one with persistent history storage, the other without. Each of these two implementations then includes two instances of  \inlinecode{SelectionStrategy}, one for input based and one for mean based selection.
 
 The function configuration methods and possible values are the following:
 
@@ -596,8 +598,8 @@ The function configuration methods and possible values are the following:
 	\end{itemize}
 \item \inlinecode{selectUsing}
 \begin{itemize}
-	\item \inlinecode{Predictive} - uses the predictive strategy from the \inlinecode{AdaptiveSelector}
-	\item \inlinecode{NonPredictive} - uses the non-predictive strategy from the \inlinecode{AdaptiveSelector}
+	\item \inlinecode{InputBased} - uses the input based strategy from the \inlinecode{AdaptiveSelector}
+	\item \inlinecode{MeanBased} - uses the mean based strategy from the \inlinecode{AdaptiveSelector}
 \end{itemize}
 \item \inlinecode{limitedTo} - allows to specify the maximum age of the history records to be used in the selection process
 \item \inlinecode{asClosures} - represents the history storage identifier choice as described in section \ref{subsec:function_identifiers}
@@ -608,7 +610,7 @@ The function configuration methods and possible values are the following:
 \item \inlinecode{withPolicy} - allows to specify the starting policy for the function
 \end{itemize}
 
-The user of the library is expected to specify this configuration with most of the combined functions. Especially the choice between the predictive and non-predictive strategy is very important.
+The user of the library is expected to specify this configuration with most of the combined functions. Especially the choice between the input based and mean based strategy is very important.
 
 \subsection{Framework configuration}
 \label{subsec:framework_config}
@@ -633,28 +635,38 @@ These traits can be extended and customized by overriding some of the functions.
 \subsubsection{Configuration blocks}
  To simplify the configuration process when working with existing implementations and to hide the initialization details from the user, a concept called \textit{configuration blocks} was introduced. 
  
- \textit{Configuration blocks} are traits that provide implementation for just one (or a few) functions from the \inlinecode{Configuration} trait, setting up part of the framework in given way. The user of the framework can then create the configuration by creating an anonymous class extending the base configuration along with the \textit{configuration blocks} that specify the requirements. Thanks to the fluent and simple syntax of Scala, this concept is very expressive and easy to use
+ \textit{Configuration blocks} are traits that provide implementation for just one (or a few) functions from the \inlinecode{Configuration} trait, setting up part of the framework in given way. The user of the framework can then define the configuration by creating an anonymous class extending the base configuration along with desired \textit{configuration blocks}. Thanks to the fluent and simple syntax of Scala, this concept is very expressive and easy to use. The compile-time check will automatically alert the user if the combination of block does not cover some required method.
+ 
+ In addition, some blocks can be parametrized. The parameters are always protected read-only attributes of the block trait that usually have default implementation (i.e. value), but can be overridden. It fits easily into the anonymous class usage pattern, as the new parameter values for all the blocks can simply be stated in the body of the class. Blocks can share a parameter by inheriting it from the same base trait - in such a case, it is impossible to set different values for different blocks.
  
  The whole configuration can look the following way:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 val config = new BaseLongConfiguration
-  with RunTimeMeasurement
-  with TTestNonPredictiveStrategy
-  with LimitedRegressionPredictiveStrategy
   with DefaultHistoryPath
-  with BufferedSerialization
-  with NoLogging
+  with RunTimeMeasurement
+  with WindowBoundRegressionInputBasedStrategy
+  with UTestMeanBasedStrategy
+  with CachedRegressionAndStatisticsStorage
+  with FileLogging {
+  override val maximumNumberOfRecords = 20000
+  override val alpha = 0.25
+  override val logFilePath = "./adaptive/log.txt"
+}
 
 Adaptive.initialize(config)
 \end{lstlisting}
+
+List of all the configuration blocks available along with their parameters can be found in appendix REF.
+
+%TODO: Update blocks AND add block params!
 
 \subsubsection{Default configuration}
 
 A special class for the default configuration was created, which is used to initialize the ScalaAdaptive framework at the beginning of the application run and which provides the implementations that are used if the user does not provide his configuration.
 
-Based on the results observer in section \ref{sec:strategy_comparison}, we decided to include the t-test selection strategy with cached statistics as the non-predictive strategy, and the window-bound linear regression as the predictive strategy.
+Based on the results observer in section \ref{sec:strategy_comparison}, we decided to include the t-test selection strategy with cached statistics as the mean based strategy, and the window-bound linear regression as the input based strategy.
 
 The default configuration can be extended with any of the configuration blocks as well:
 
@@ -671,7 +683,7 @@ An overview of the areas that are the simplest and most useful to extend will fo
 
 \subsubsection{Selection strategies}
 
-A new selection strategy can be created by implementing the \inlinecode{SelectionStrategy} trait and by providing the implementation as either predictive or non-predictive selection strategy. The trait itself is technically a single function which is given a sequence of function run histories and an input descriptor and is supposed to return the run history of the function with best expected performance:
+A new selection strategy can be created by implementing the \inlinecode{SelectionStrategy} trait and by providing the implementation as either input based or mean based selection strategy. The trait itself is technically a single function which is given a sequence of function run histories and an input descriptor and is supposed to return the run history of the function with best expected performance:
 
 \lstset{style=Scala}
 \begin{lstlisting}
