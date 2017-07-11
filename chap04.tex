@@ -8,7 +8,7 @@ This thesis is focused on the task of optimizing the function run time or time c
 \section{Overview of the selection process}
 \label{sec:selection_overview}
 
-Suppose we have functions $f_1, ..., f_n$, all of them doing the same thing, and an input $in$. We need to decide, which of the functions to select and invoke. To be able to do that, we need to formulate predictions about run times of the functions under given circumstances, and use the function with the lowest prediction. As the internal structure of the functions is unknown to us, the only data we can base the prediction on is the information we collect during the actual execution of the individual functions, stored in a history storage.
+Suppose we have functions $f_1,\dots, f_n$, all of them interchangeable, and an input $in$\footnote{If the original Scala function has multiple arguments \inlinecode{arg1, ..., argN}, we will consider them to be a tuple \inlinecode{(arg1, ..., argN)} to get a single input object.}. We need to decide which of the functions to select and invoke. To be able to do that, we need to formulate predictions about run times of the functions under given circumstances, and then use the function with the lowest prediction. As the internal structure of the functions is unknown to us, the only data we can base the prediction on is the information we collect during previous executions of the individual functions.
 
 \subsection{Problems of the prediction and selection process}
 
@@ -20,40 +20,40 @@ There are three main factors we should take into account when predicting run tim
 	\item The predictions are never precise, they have certain probability based on the amount and the character of the historical data
 \end{itemize}
 
-The \textit{input dependency} problem is being solved in many works about the program execution time predictions. Certain features of the input are analyzed and a model is constructed describing the relation to the run time. The model then can be used to predict the times for new inputs. This approach was used in \cite{chun_mantis:_2010,goldsmith_measuring_2007}. The authors of \cite{smith_predicting_1998} propose clustering the inputs prior to creating any models.
+The \textit{input dependency} problem is being solved in many works about the program execution time predictions. Certain features of the input are usually analyzed and a model is constructed describing the relation to the run time. The model can then be used to predict the times for new inputs. This approach was used in \cite{chun_mantis:_2010,goldsmith_measuring_2007}. The authors of \cite{smith_predicting_1998} propose clustering the inputs prior to creating any models.
 
-The \textit{environment dependency} is more complicated - there are no factors that we could watch and use to classify the runs or to include in the prediction model. The simplest solution is to give the history records a limited duration after which they expire, as the environment changes are not expected to occur very often, making the most recent data the most suitable for modeling. This technique is suggested among the adaptive framework use-cases in \cite{bulej_performance_2012}.
+The \textit{environment dependency} is more complicated - there are no factors that we could watch and use to classify the runs or to include in the prediction model. The simplest solution is to give the history records a limited duration after which they expire, as the environment changes are not expected to occur very often, making the most recent data the most suitable for modeling and predicting. This technique is suggested among the adaptive framework use-cases in \cite{bulej_performance_2012}.
 
-As for the \textit{uncertainty} problem, works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of expectations used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision. Such a case should be solved by executing the function with least data to gather more observations.
+As for the \textit{uncertainty} problem, works in this field tend to use statistical methods to express the confidence of the prediction. In \cite{smith_predicting_1998}, confidence intervals are used for this purpose. The comparison of predictions used for selection should aways take these information into account and reject to select any function in case of uncertainty to prevent potentially wrong decision. Such a case should be solved by executing the function with least data to gather more observations.
 
 \subsection{Input in the prediction process}
 \label{subsec:input_in_selection}
 
-The input, as mentioned earlier, can be a complex structure with multiple factors contributing to the run time\footnote{Consider for example a general graph - for most of the algorithms, both number of vertices and edges have to be taken into account}. Common prediction techniques (\cite{chun_mantis:_2010,goldsmith_measuring_2007}) use simplified model of the input $in$ represented by a vector of \textit{features} $f_1, ..., f_n$. 
+The input of the function can be a complex structure with multiple factors contributing to the run time\footnote{Consider for example a general graph - for most of the algorithms, both number of vertices and edges have to be taken into account}. Common prediction techniques (\cite{chun_mantis:_2010,goldsmith_measuring_2007}) use simplified model of the input $in$ represented by a vector of \textit{features} $t_1, \dots, t_n$. 
 
-Based on this approach, we will suppose that for each Scala function \(\exists g\) so that \(\forall in\) modeled by $f_1, ..., f_n$ holds \(t = g(f_1, ..., f_n) + \varepsilon\), where \(t\) is the runtime on input \(in\) of \inlinecode{f()}, and $\varepsilon$ is an error represented by a random variable with certain distribution, which we, for simplicity, assume to be normal. 
+Based on this approach, we will suppose that for each Scala function \(\exists g\) so that \(\forall in\) modeled by $t_1, \dots, t_n$ holds \(t = g(t_1, \dots, t_n) + \varepsilon\), where \(t\) is the runtime of the function on input \(in\), and $\varepsilon$ is an error represented by a random variable with certain distribution, which we, for simplicity, assume to be normal. 
 
 Now, the \textit{features} can be divided into 2 basic categories:
 
 \begin{itemize}
-	\item \textit{Features} with distance metrics
-	\item \textit{Features} without distance metrics
+	\item \textit{Features} with distance metric
+	\item \textit{Features} without distance metric
 \end{itemize}
 
-If the \textit{feature} has distance metrics, i.e., is comparable (typically sizes of structures), we can construct models that use the it to analyze the trends and make predictions about inputs with feature values that were not processed before. The \textit{features} without the distance (usually enumerations and discrete configuration values) cannot be treated this way, and we need previous observations for given value before making any assumptions. 
+If the \textit{feature} has distance metric, i.e., is comparable (typically sizes of structures), we can construct models that use the it to analyze the trends and make predictions about inputs with feature values that were not processed before. The \textit{features} without the distance metric (usually enumerations and discrete configuration values) cannot be treated this way, and we need previous observations for given value before making any assumptions. 
 
-To integrate these concepts into the framework with simplicity for the selection strategies, two mechanisms were included. First, to replace the vector of \textit{features} with distance metrics, a single integer called \textit{input descriptor} is used. The user can define a \textit{descriptor function} that extracts the \textit{input descriptor} from the input $in$ for given function. Then, at the beginning of the selection process, the \textit{descriptor function} is used and the resulting values is passed to the selecting strategy. In addition, the \textit{input descriptors} are stored in the run history as well, so a model can be built upon it and used in the selection process. We will suppose that \(\exists h\) so that \(\forall in\) with \textit{input descriptor} $x$ holds \(t = h(x) + \varepsilon\).
+To integrate these concepts into the framework, two mechanisms were included. First, to replace the vector of \textit{features} with distance metric, a single integer called \textit{input descriptor} is used. The user can define a \textit{descriptor function} that extracts the \textit{input descriptor} from the input $in$ for given function. Then, at the beginning of the selection process, the \textit{descriptor function} is used and the resulting value is used by the predicting model. In addition, the \textit{input descriptors} are stored in the run history as well, so a model can be built upon it and used in the selection process. We will suppose that \(\exists h\) so that \(\forall in\) with \textit{input descriptor} $x$ holds \(t = h(x) + \varepsilon\).
 
 If we wanted to be more precise in the dependency modeling, we should be using a tuple of all the distance-based features as our \textit{input descriptor}. That would, however, lead to significantly more complex prediction models, and therefore we decided to keep the framework prototype simple by limiting ourselves to one factor. More complex models working with multiple features can be added to the framework in the future.
 
-As for the \textit{features} with no metrics, the simplest way of addressing the issue is to treat different combinations of these \textit{features} the same way as if they were different functions. They should have completely separate historical measurement records, and the strategies can build separate models for them, using the \textit{input descriptor} on top of that. A possibility of \textbf{grouping} the inputs was therefore added and will be discussed in a separate section.
+As for the \textit{features} with no metric, the simplest way of addressing the issue is to treat different combinations of these \textit{features} the same way as if they were different functions. They should have completely separate historical measurement records, and the strategies can build separate models for them, using the \textit{input descriptor} on top of that. A possibility of \textbf{grouping} the inputs was therefore added and will be discussed in a separate section.
 
 \subsection{Input grouping}
 \label{subsec:grouping}
 
-In \cite{smith_predicting_1998}, an automatic method of clustering the inputs is used before formulating any predictions about the run time. This is done because of the fact that inputs with common factors are in general expected to lead to similar run times, or at least to run times that can be described by the same, simpler model. In addition, it might be necessary to split the inputs using the values of \textit{input features} with no distance metrics, as explained in \ref{subsec:input_in_selection}.
+In \cite{smith_predicting_1998}, an automatic method of clustering the inputs is used before formulating any predictions about the run time. This is done because of the fact that inputs with common factors are in general expected to lead to similar run times, or at least to run times that can be described by the same, simpler model. In addition, it might be necessary to split the inputs using the values of \textit{input features} with no distance metric, as explained in \ref{subsec:input_in_selection}.
 
-Due to the performance limitations and the overall complexity of the solution, we will not include the algorithmic clustering. The user will, however, be able to specify a method of assigning the inputs to \textit{groups}. Upon selection, only the historical records from the corresponding group will be used.
+Due to the performance limitations and the overall complexity of the solution, we will not include the algorithmic clustering. The user will, however, be able to specify a method of assigning the inputs to groups. The historical records for inputs from different groups will be held separately, and upon selection, only the ones from the corresponding group will be used.
 
 \subsubsection{Group selection}
 \label{subsubsec:group_selection}
@@ -67,36 +67,44 @@ The grouping should be primarily based on the discrete values that affect the fu
 	\item Fixed - predefined finite number of groups
 \end{itemize}
 
-The groups in general should not be too small, as the selection process relies on only the data from the group. The advantage of groups with growing size (e.g. the logarithmic grouping) is that there is a lot of groups in the areas where the functions tend to compete in the performance (smaller inputs).
+The groups in general should not be too small, as the selection process relies only on the data from the group. The advantage of groups with growing size (e.g. the logarithmic grouping) is that there is a lot of groups in the areas where the functions tend to compete in the performance (smaller inputs).
 
 \subsection{Limiting the history record age}
 \label{subsec:limiting_record_age}
 
-The $\varepsilon$ in the function $h$ from section \ref{subsec:input_in_selection} technically represents the influence of the execution environment. We suppose that it is a random variable from a normal distribution, whose parameters characterize the environment. If the environment changes, the distribution of the error changes as well. In such a case, we should not be using the observations from before and after the change together in the models that suppose the same distribution for all the observations (which is the majority).
+The $\varepsilon$ in the function $h$ from section \ref{subsec:input_in_selection} technically represents the influence of the execution environment. We suppose that it is a random variable from a normal distribution, whose parameters are determined among other factors by the environment state. If it changes, the distribution of the error changes as well. In such a case, we should not be using the observations from before and after the change together in the models that suppose the same distribution for all the observations (which is a common assumption).
 
-Therefore, whenever we expect the environment to change often and the run times to fluctuate significantly (e.g. due to network traffic, computation nodes, etc.), we should use only the most recent history records in the selection process, which will limit the probability of model failures. Not only will this lead to more significant results of the statistical selection strategies, but it also means that the framework will be able to quickly adapt to a new environment in case that the function performances get dramatically different.
+Therefore, whenever we expect the environment to change often and the run times to fluctuate significantly (e.g. due to network traffic, computation nodes, etc.), we limit the history to the most recent records in the selection process, which will reduce the probability of model failures. Not only can this lead to more significant results of the statistical selection strategies, but it also means that the framework will be able to quickly adapt to a new environment in case that the function performances get dramatically different.
 
-We have the historical run records marked with the timestamps. The user of the framework will, optionally, provide a maximum age of a record that should be taken into account for a \textit{combined function}. Upon invocation, the records that are older than this limit will be filtered from the history vector of each one of the functions. This should not lead to any significant overhead if the vectors preserve the ordering in which they are build, having the most recent data at the end.
+Limiting the history record age can also help with recovering from errors caused by bad models, because the historical records will be cycled through and the model will always be based on a new set of data. No long lasting errors can therefore be introduced in the system.
 
+For these reasons, we need to have the historical run records marked with timestamps. The user of the framework will, optionally, provide a maximum age of a record that should be taken into account for a \textit{combined function}. Upon invocation, the records that are older than this limit will be filtered from the history vector of each one of the functions. This should not lead to any significant overhead if the vectors preserve the ordering in which they are build, having the most recent data at the end. The time period itself is up to the user to configure and should depend on the expected frequency of the function runs and on the environment behavior.
+
+\subsection{Solving the decision failures}
+\label{subsec:solving_decision_failures}
+
+As mentioned before, we would like the decision process to take into account the certainty of the decisions, i.e., refuse to give a decision when the possibility of committing an error is too high. If this happens, it can mean either that the run times of the functions involved are very close to each other, or that the models are very inaccurate. The first situation does not mean any problem for us, as using any of the functions is equally good. In the second case, we would need to increase the precision of the model, ideally by adding more data. Therefore, the most useful action is to select a function with least historical data. 
 
 \subsection{Selecting from multiple functions}
 
-The decision goal is obvious when selecting from two functions - compare the predictions and select the one that is better with given significance, or refuse to select when there is not such a function. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better that each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
+The goal of the decision process is obvious when selecting from two functions - compare the predictions and select the one that is better (taking into account the confidence of the predictions), or refuse to select when the decision cannot be done. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better than each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
 
-For simplicity, we will consider only the case where one function is better than all the others, the remaining results will be treated as ambiguous and none will be selected. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance, we are not able to make a decision and we keep cycling through all three functions.
+This could theoretically be solved by performing tests between subsets of functions - if we found out that all functions in certain subset are better than all the other functions with given certainty, we could limit the selection to the subset, or even chose from it randomly. The problem is that such a procedure would lead to an extremely high number of comparisons, which would increase both the chance of an error in some of them and the selection overhead.
+
+Therefore, we will consider only the simplest variant where one function has to be significantly better than all the others, and the remaining results will be treated as ambiguous with none will be selected. This can, unfortunately, lead to a situation where we have two functions with equally good performance and one with worse performance, we are not able to make a decision and we keep cycling through all three functions.
 
 \section{The invocation chain}
 \label{sec:selection_and_invocation_process}
 
-We have discussed the selection process using prediction techniques on a theoretical level. Now, we are going to have a look at the actual steps that have to be done upon invocation of a combined function. Suppose we have a combined function $f$ created using the API described in chapter \ref{chapter:api} by marking functions $f_1,...,f_n$ as interchangeable. We hold a new function (or a function-like object) that can be called, passing it an input $in$, and is expected to run one of the implementations $f_1,...,f_n$ with $in$ and to return a result $out$.
+We have discussed the selection process using prediction techniques on a theoretical level. Now, we are going to have a look at the actual steps that have to be done upon invocation of a combined function. Suppose we have a combined function $f$ created using the API described in chapter \ref{chapter:api} by marking functions $f_1,\dots,f_n$ as interchangeable. We hold a new function (or a function-like object) that can be called, passing it an input $in$, and is expected to run one of the implementations $f_1,\dots,f_n$ with $in$ and to return a result $out$.
 
 The basic steps required to do so are the following:
 
 \begin{enumerate}
 	\item Use the \textit{group selector} to find the group identifier $g$ and the \textit{descriptor function} to find the input descriptor $x$ for $in$ (if either of the functions is not defined, the corresponding variable will have a special \textit{undefined} value)
-	\item Locate the history vectors $d_1,...,d_n$ of functions $f_1,...,f_n$ for group $g$
+	\item Locate the history vectors $d_1,\dots,d_n$ of functions $f_1,\dots,f_n$ for group $g$
 	\item Filter out records older than the maximum age (infinite by default) from $d_i$ into $d'_i$ $\forall i$
-	\item Select the function $f_k$ to run based on $d'_1,...,d'_n$ and $x$
+	\item Select the function $f_k$ to run based on $d'_1,\dots,d'_n$ and $x$
 	\item Invoke $f_k$, fetch the result $out$ and evaluate its run time
 	\item Add the new evaluation result to $d_k$ and update it for group $g$
 	\item Return $out$ to the caller
@@ -105,6 +113,10 @@ The basic steps required to do so are the following:
 In the following sections, we will discuss some of the steps of the process in more details.
 
 \subsection{Run time evaluation}
+
+The evaluation consist of gathering useful data from the function run. In this text, the data will be represented only by the function run time, but in the future, it might be replaced and might potentially contain more information that can help with classifying the function run and make better predictions in the selection process. An example of such a data might be the execution counts of certain code paths of the function, like in \cite{chun_mantis:_2010}. The collection would, however, require a non-trivial instrumentation of the executed code.
+
+\subsubsection{Wall clock time and CPU time}
 
 When talking about function run time (or an execution time of a function), there are two types of values that we could be observing:
 
@@ -121,15 +133,13 @@ It is also quite difficult to determine the \textit{CPU time} - it requires supp
 
 The \textit{wall clock time} is measured by fetching high-precision system time in nanoseconds right before calling the function apply method and right after returning from the call. The result is the run time in nanoseconds. This measurement is precise enough for all the use cases of the framework, because it is targeting mainly functions with non-negligible time complexities.
 
-The evaluation data might potentially contain more information that can help with classifying the function run and make better predictions in the selection process, e.g. the data about execution counts of certain code paths of the function, like in \cite{chun_mantis:_2010}. That would, however, require instrumentation of the executed code, and was not implemented in this work for its complexity.
-
 \subsection{Storing and retrieving the evaluation data}
 
 After having invoked the function and evaluated its run, the evaluation data have to be stored before passing the return value back to the caller. The history of all the run evaluations is kept together for each combination of a function and a group identifier as a vector of records. Each record consists of at least the following:
 
 \begin{enumerate}
 	\item The \textit{input descriptor} of the input for given run
-	\item The evaluation metrics (in our case, the run time) of given run
+	\item The evaluation data (in our case, the wall clock run time) of given run
 	\item The timestamp of given run
 \end{enumerate}
 
@@ -139,31 +149,31 @@ For simplicity, we suppose that the run histories of the actual implementations 
 
 \subsection{Selecting a function}
 
-The actual selection process, as described in \ref{sec:selection_overview}, can be implemented in many ways. It is basically an isolated algorithm with the following input:
+The actual selection process, as described in \ref{sec:selection_overview}, can be implemented in many ways using many different models. It is basically an isolated algorithm with the following input:
 \begin{enumerate}
-	\item History data vectors $d_1,...,d_n$ of functions $f_1,...,f_n$, where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$ are the \textit{input descriptors} and corresponding run times of historical runs (the \textit{input descriptors} can be \textit{undefined})
+	\item History data vectors $d_1,\dots,d_n$ corresponding to functions $f_1,\dots,f_n$, where $d_i = [(x_{i,1}, y_{i,1}),\dots,(x_{i,l_i}, y_{i,l_i})]$, $x_{i,j}$ being the \textit{input descriptors} and $y_{i,j}$ being the corresponding run times of historical runs (the \textit{input descriptors} can be \textit{undefined})
 	\item Current input descriptor $x$
 \end{enumerate}
 
-It should return $k \in {1,...,n}$, which will determine the function $f_k$ to run.
+It should return $k \in {1,\dots,n}$, which will determine the function $f_k$ to run.
 
-These algorithms are called \textit{selection strategies}, and we suggested a few of them based on different approaches to predicting the run times and selecting between various predictions. They will be described in the following two sections, and for each that we included in the framework, a simplified pseudocode implementation will be included at the end of the description.
+These algorithms are called \textit{selection strategies}, and we suggested a few of them based on different approaches to predicting the run times and selecting between various predictions. They will be described in the following two sections, and for each that we included in the framework, a simplified pseudocode implementation will be presented at the end of the description.
 
 \section{Mean based selection strategies}
 \label{sec:mean_based_strategies}
 
 In some cases, the function run time does not depend on the input, or the relation is not significant enough. For simplification, we suppose that the function complexity is constant in such a case. Using the same formalism as in \ref{subsec:input_in_selection}, for run time $t$ on input $in$ with \textit{input descriptor} $x$ holds \(t = h(x) + \varepsilon\) for a $h$ constant, i.e. $\forall y$ $g(y) = c$. Therefore, $t = c + \varepsilon$, where $\varepsilon$ is the error which we suppose has a normal distribution with a zero mean. Under these assumptions, $t$ is a random variable with normal distribution and mean equal to $c$, which is the expected constant run time of the function.
 
-The \textit{mean based} strategies will use the sample data to determine the means of the function time distributions with given certainty and use them as the expected run times in the decision process. The \textit{input descriptor} $x$ will be ignored in the process, both the ones included in the historical measurements and the current one. Therefore, it will not be mentioned in the pseudocode algorithm input.
+The \textit{mean based} strategies will use the sample data to determine the means of the function time distributions with given certainty and use them as the expected run times in the decision process. The current \textit{input descriptor} $x$, as well as the ones included in the history measurements, will be ignored in the process. They will not be therefore mentioned in the pseudocode algorithm input.
 
 \subsection{T-test for two functions}
 \label{subsec:t_test_two}
 
 To compare means of two samples from certain distribution and make conclusion about their equality, statistical tests are commonly used.
 
-Suppose we have two samples of run times for the two functions involved, $X_1, ..., X_n$ and $Y_1, ..., Y_m$. Next, suppose that these samples come from normal distributions with means $\mu_1$ and $\mu_2$, respectively. These means are unknown for us, just like the variances, which we suppose to be different. The goal is to test the means of the two samples against each other.
+Suppose we have two samples of run times for the two functions involved, $X_1,\dots, X_n$ and $Y_1,\dots, Y_m$. Next, suppose that these samples come from normal distributions with means $\mu_1$ and $\mu_2$, respectively. These means are unknown for us, just like the variances, which we suppose to be different. The goal is to test the means of the two samples against each other.
 
-Based on these requirements, we will use a \textit{two-sample t-test}. Standard Student's t-test works only under the assumption that the sample variances are equal, so it cannot be used in this case. We are going to use the generalized version, the Welch's (nonpooled) t-test \cite{welch_generalisation_1947}, which is not as strong, but can work with samples with different variances. More detailed reasoning about the test selection can be found in \cite{weiss_introductory_2010}.
+Based on these requirements, we will use a \textit{two-sample t-test}. Standard Student's t-test works only under the assumption that the sample variances are equal, so it cannot be used in this case. A generalized version can be applied, namely the Welch's (nonpooled) t-test \cite{welch_generalisation_1947}, which is not as strong, but can work with samples with different variances. More detailed reasoning about the test selection can be found in \cite{weiss_introductory_2010}.
 
 The default hypotheses for the test are:
 
@@ -214,7 +224,7 @@ Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have signi
 The strategy is parametrized by the selection significance level $\alpha$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT Historical data vectors $d_1,d_2$ where $d_i = [y_{i,1},..., y_{i,l_i}]$
+	\INPUT Historical data vectors $d_1,d_2$ where $d_i = [y_{i,1},\dots, y_{i,l_i}]$
 	\State $equalityRejected \gets$ twoSidedTTest($d_1, d_2, \alpha$)
 	\If{not $equalityRejected$}
 	\State \Return{useSecondarySelector($d_1,d_2$)}
@@ -231,37 +241,37 @@ The strategy is parametrized by the selection significance level $\alpha$.
 
 The selection strategy that was described in \ref{subsec:t_test_two} works only with two functions. If we want to select from three or more, we need to modify the strategy.
 
-Suppose we have $k$ samples $X_{1,1}, ..., X_{1, n_1}, ..., X_{k,1}, ..., X_{k, n_k}$ from normal distributions with unknown expectations $\mu_1, ..., \mu_k$ and unknown variances. We would like to compare the expectations and find out whether there is a sample with mean significantly different from the others.
+Suppose we have $k$ samples $X_{1,1}, \dots, X_{1, n_1}, \dots, X_{k,1}, \dots, X_{k, n_k}$ from normal distributions with unknown means $\mu_1, \dots, \mu_k$ and unknown variances. We would like to compare the expectations and find out whether there is a sample whose mean is significantly different from the others.
 
-Common techniques for testing hypotheses about the expectations of multiple samples involve \textit{ANOVA}\footnote{Analysis of variance} or its modified version, the \textit{Kruskal-Wallis test} (both described in \cite{weiss_introductory_2010}). The tests are based on variance comparison, assume that the samples have similar standard deviations, and can decide about the following hypotheses:
+Common techniques for testing hypotheses about the means of multiple samples involve \textit{ANOVA}\footnote{Analysis of variance} or its modified version, the \textit{Kruskal-Wallis test} (both described in \cite{weiss_introductory_2010}). The tests are based on variance comparison, assume that the samples have similar standard deviations, and can decide about the following hypotheses:
 
 %TODO: Add references to the tests
 
 \[
-H_0: \mu_1 = \mu_2 = ... = \mu_k
+H_0: \mu_1 = \mu_2 = \dots = \mu_k
 \]
 \[
 H_1: \exists i, j: \mu_i \neq \mu_j
 \]
 
-These multiple-sample tests are usually preferred over performing multiple t-tests, because in case of the t-tests, it is necessary to correct the significance level by artificially lowering the $\alpha$ of each of the tests, which leads to lower test strengths. In our case, however, this approach would have a few problems. Firstly, we want to actually find out which of the samples is the deviating one, or, if there are more, which one is the most deviating one. Secondly, we need the one-sided alternative (to find out the lowest expectation). 
+These multiple-sample tests are usually preferred over performing multiple t-tests, because it usually offers higher strength of the test for the same significance. In our case, however, this approach would have a few problems. Firstly, we want to actually find out which of the samples is the deviating one, or, if there are more, which one is the most deviating one. Secondly, we need the one-sided alternative (to find out the lowest expectation). 
 
 Based on these observations, it is necessary to come up with different hypotheses. We will consider a simpler task first - suppose we want to test $\mu_1$ against all the other expectations:
 
 \[
-H_0: \mu_1 = \mu_2 \vee ... \vee \mu_1 = \mu_k
+H_0: \mu_1 = \mu_2 \vee \dots \vee \mu_1 = \mu_k
 \]
 \[
-H_1: \mu_1 < \mu_2 \wedge ... \wedge \mu_1 < \mu_k
+H_1: \mu_1 < \mu_2 \wedge \dots \wedge \mu_1 < \mu_k
 \]
 
 $H_0$ is basically saying that there is at least one other sample with the same mean, and the one-sided alternative $H_1$ puts $\mu_1$ as the lowest of all the means.
 
-We can perform a simple t-test of $H_{j,0}: \mu_1 = \mu_j$ against $H_{j,1}: \mu_1 < \mu_j$ $\forall j = 2, ..., k$. It is clear that the $H_0$ can be rejected in favor of $H_1$ only if all of the $H_{j,0}$ were rejected in favor of $H_{j,1}$. Note that the $H_{j,1}$ is an alternative hypothesis of a one-sided test - we need to take it into account when performing the test and modify the critical values.
+We can perform a simple t-test of $H_{j,0}: \mu_1 = \mu_j$ against $H_{j,1}: \mu_1 < \mu_j$ $\forall j = 2, \dots, k$. It is clear that the $H_0$ can be rejected in favor of $H_1$ only if all of the $H_{j,0}$ were rejected in favor of $H_{j,1}$. Note that the $H_{j,1}$ is an alternative hypothesis of a one-sided test - we need to take it into account when performing the test and modify the critical values.
 
-As mentioned before, the procedure of combining statistical tests usually requires artificially lowering the significance level of the individual tests with the goal of keeping the significance level of the whole set of tests reasonably low. These methods are based on the assumption that committing a type-I error in any of the individual tests leads to a type-I error overall, and the probability of committing at least one gets higher with the number of tests.
+The procedure of combining statistical tests usually requires artificially lowering the significance level of the individual tests with the goal of keeping the significance level of the whole set of tests reasonably low. These methods are based on the assumption that committing a type-I error in any of the individual tests leads to a type-I error overall, and the probability of committing at least one gets higher with the number of tests.
 
-In our case, however, a type-I error in one of the individual tests does not necessarily lead to a type-I error in the whole test. Suppose that $H_0$ is true, so for an $l \geq 1$ $\exists i_1,...,i_l: \mu_1 = \mu_{i_1} \wedge ... \wedge \mu_1 = \mu_{i_l}$. In order to commit a type-I error, we need to reject $H_{i_j,0}$ $\forall j = 1, ..., l$, by committing the type-I error on the individual tests $l$-times. At the same time, we need to decide correctly about the remaining $k-l$ tests. So the probability of committing a type-I error overall is $\alpha^l(1-\alpha)^{k-l}$, and consequentially, the significance level of the entire test gets even lower than $\alpha$.
+In our case, however, a type-I error in one of the individual tests does not necessarily lead to a type-I error in the whole test. Suppose that $H_0$ is true, so for an $l \geq 1$ $\exists i_1,\dots,i_l: \mu_1 = \mu_{i_1} \wedge \dots \wedge \mu_1 = \mu_{i_l}$. In order to commit a type-I error, we need to reject $H_{i_j,0}$ $\forall j = 1, \dots, l$, by committing the type-I error on the individual tests $l$-times. At the same time, we need to decide correctly about the remaining $k-l$ tests. So the probability of committing a type-I error overall is $\alpha^l(1-\alpha)^{k-l}$, and consequentially, the significance level of the entire test gets even lower than $\alpha$.
 
 As the $\alpha$ decreases with growing $k$, the test gets more pessimistic - it will require more data and more certainty in order to reject the $H_0$. If we wanted to keep the significance level at exactly $\alpha$, we would need to apply a reverse correction - artificially increase $\alpha$. The exact method how to do so would, however, be quite difficult to derive, as there are a lot of cases to consider with unknown probabilities. The assumption is that the number $k$ of the functions involved will be low enough not to affect the significance too much. 
 
@@ -276,10 +286,11 @@ The strategy is parametrized by the selection significance level $\alpha$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [y_{i,1},...,y_{i,l_i}]$
+	\State$\alpha' \gets \alpha / n$\Comment{Bonferroni correction}
 	\For{$i = 1$ to $n$}
 		\State $better \gets true$
 		\For{$j = 1$ to $n$}
-			\State $equalityRejected \gets$ oneSidedTTest($d_i, d_j, \alpha$)
+			\State $equalityRejected \gets$ oneSidedTTest($d_i, d_j, \alpha'$)
 			\If{not $equalityRejected$ or $mean(d_i) > mean(d_j)$}
 				\State $better \gets false$
 			\EndIf
@@ -296,7 +307,7 @@ The strategy is parametrized by the selection significance level $\alpha$.
 
 The t-tests used in strategies from sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} requires the historical measurement data to come from a normal distribution. Even though it was one of our assumptions at the beginning, it does not necessarily hold in reality, as the fluctuations in the run time depend on many factors of the environment. We might try to use a test that is nonparametric, i.e., does not require any standardized and parametrized distribution of the data. One of these tests is the Mann–Whitney U test (for details see \cite{weiss_introductory_2010}), which only requires the sample observations to be independent.
 
-Supposing we have the samples $X_1, ..., X_n$ and $Y_1, ..., Y_m$ from distributions with respective means $\mu_1$ and $\mu_2$, the hypotheses are going to be exactly the same as for the t-test:
+Supposing we have the samples $X_1, \dots, X_n$ and $Y_1, \dots, Y_m$ from distributions with respective means $\mu_1$ and $\mu_2$, the hypotheses are going to be exactly the same as for the t-test:
 
 \[
 H_0: \mu_1 = \mu_2
@@ -305,16 +316,16 @@ H_0: \mu_1 = \mu_2
 H_1: \mu_1 \ne \mu_2
 \]
 
-The test itself is based on ranking all the observation from both samples together by their values, and then adding up the ranks in the first sample ($R_1$) and in the second sample ($R_2$). The test statistics is the following:
+The test itself is based on ranking all the observation from both samples together by their values (from 1 to $m+n$), and then adding up the ranks in the first sample ($R_1$) and in the second sample ($R_2$). The test statistics is the following:
 
 \[U = min(U_1, U_2)\]
 
 \[U_1 = R_1 - \frac{n(n+1)}{2}\]
 \[U_2 = R_2 - \frac{m(m+1)}{2}\]
 
-Now, U has, in case of valid $H_0$, a known distribution whose critical values can be either looked up for small fixed values, or approximated using a normal distribution for higher values. Therefore, we can reject the $H_0$ for $U < U(\alpha, n, m)$, where $U(\alpha, n, m)$ is the tabulated or approximated critical value for the significance level $\alpha$ and given sample sizes.
+Now, U has, in case of valid $H_0$, a known distribution with critical values that can be either looked up for small fixed values, or approximated using a normal distribution for higher values. Therefore, we can reject the $H_0$ for $U < U(\alpha, n, m)$, where $U(\alpha, n, m)$ is the tabulated or approximated critical value for the significance level $\alpha$ and given sample sizes.
 
-The strategy can be extended to three or more functions exactly in the same way as the t-test (see section \ref{subsec:t_test_multiple}), the individual tests involved will have to be changed to one-tailed (by using doubled $\alpha$) and an overall $\alpha$ correction should be used.
+The strategy can be extended to three or more functions exactly in the same way as the t-test (see section \ref{subsec:t_test_multiple}), the individual tests involved will have to be changed to one-tailed (by using doubled $\alpha$ when looking up or approximating the critical value of U) and an overall $\alpha$ correction should be used.
 
 \subsubsection{Selection algorithm}
 
@@ -323,10 +334,11 @@ The strategy is parametrized by the selection significance level $\alpha$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [y_{i,1},...,y_{i,l_i}]$
+	\State$\alpha' \gets \alpha / n$\Comment{Bonferroni correction}
 	\For{$i = 1$ to $n$}
 	\State $better \gets true$
 	\For{$j = 1$ to $n$}
-	\State $equalityRejected \gets$ oneSidedUTest($d_i, d_j, \alpha$)
+	\State $equalityRejected \gets$ oneSidedUTest($d_i, d_j, \alpha'$)
 	\If{not $equalityRejected$ or $mean(d_i) > mean(d_j)$}
 	\State $better \gets false$
 	\EndIf
@@ -342,7 +354,9 @@ The strategy is parametrized by the selection significance level $\alpha$.
 \section{Input based selection strategies}
 \label{sec:input_based_strategies}
 
-\textit{Input based strategies} are the strategies that use the historical measurements along with corresponding \textit{input descriptor} to construct a model that approximates the function $h$ (see \ref{subsec:input_in_selection}). A prediction for a new \textit{input descriptor} can be derived from the model and used to decide which of the functions will have better performance on given input.
+\textit{Input based strategies} are the strategies that use the historical measurements along with corresponding \textit{input descriptor} to construct a model that approximates the non-constant function $h$ (see \ref{subsec:input_in_selection}). A prediction for a new \textit{input descriptor} can be derived from the model and used to decide which of the functions will have better performance on given input.
+
+These strategies rely on the existence of \textit{input descriptors} and cannot be used when the \textit{descriptor function} is not specified.
 
 \subsection{Simple linear regression}
 \label{subsec:simple_linear_regression}
@@ -350,27 +364,27 @@ The strategy is parametrized by the selection significance level $\alpha$.
 The first strategy supposes that the function \(h\) can be approximated precisely enough using a linear function \(h'\) in the following form:
 \[h'(x) = a' x + b'\]
 
-This approximation is a \textit{simple linear regression model}. The slope \(a'\) and intercept \(b'\) of the linear function can be determined using a least squares method, which minimizes the squares of the distances of the actual function values from the ones predicted by the model.
+This approximation is a \textit{simple linear regression model}. The slope \(a'\) and intercept \(b'\) of the linear function can be determined using the least-squares criterion, which minimizes the squares of the distances of the actual observations from values predicted by the model (for detailed description see \cite{weiss_introductory_2010}).
 
-A big advantage of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. In addition, the model can be easily cached for fixed set of samples and updated when adding new data without having to construct it all over again.
+The major of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. In addition, the model can be easily cached for fixed set of samples and updated when adding new data without having to construct it all over again.
 
-The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph marked with the green color. The red line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
+The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph. The straight line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
 	\centerline{\mbox{\includegraphics[width=90mm]{./img/selection_sort_linear_trendline.png}}}
-	\caption{Linear regression line (red) of a selection sort runtime samples.}
+	\caption{Linear regression line of a selection sort runtime samples.}
 	\label{fig:selection_sort_linear_trendline}
 \end{figure}
 
-Next, we need to find a way how to select the best function with given certainty using a set of these models.
+The model can then be used to formulate simple predictions, $a'x + b'$ being the prediction for \textit{input descriptor} $x$. Next, we need to find a way how to determine the certainty of the prediction to be able to select the best function with given certainty using a set of these models.
 
 \subsubsection{Confidence interval based selection from two functions}
 \label{subsubsec:confidence_interval_selection}
 
-Suppose we have a linear regression model \(h'(x) = a' x + b'\) of a function $h(x) = ax + b$ constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\varepsilon = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation on the model.
+Suppose we have a linear regression model \(h'(x) = a' x + b'\) that approximates a function $h(x) = ax + b$ constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\varepsilon_i = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation about the model.
 
-Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with $n-2$ degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests with $a$ and $b$. The default tests hypotheses have the following form:
+Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with $n-2$ degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests for $a$ and $b$. The default tests hypotheses have the following form:
 
 \[H_0: a = a_0\]
 \[H_1: a \neq a_0 \]
@@ -379,7 +393,7 @@ We basically test equality of $a$ (or $b$) and a fixed value $a_0$ (or $b_0$) - 
 
 None of these tests and statistics, however, allows us to test the certainty of the prediction - we need to consider both the intercept and the slope estimation certainty, and, in addition, the distance of the $x$ we want the prediction for from the mean $\bar{x}$, because if we commit an error in the slope estimation $a'$, the corresponding error in predictions increases with the distance from $\bar{x}$. 
 
-With these facts, a confidence interval on level $1 - \alpha$ for $h'(x)$ can be constructed (specifically for each point $x$). According to \cite{weiss_introductory_2010}, the width of the interval is the following:
+With these facts, a confidence interval on level $1 - \alpha$ for the mean of the actual values ($y$) for $x$ can be constructed. According to \cite{weiss_introductory_2010}, the width of the interval is the following:
 
 %TODO: Change the text to "mean prediction interval"
 
@@ -397,7 +411,7 @@ And:
 
 for \(y_i' = h'(x_i)\).
 
-It now holds that for any $x$, the corresponding $y \in [a'x + b' \pm w_{x, \alpha}]$ with probability $(1-\alpha)$.
+It now holds that for any $x$, the mean of $y = h(x)$ lies in $[a'x + b' \pm w_{x, \alpha}]$ with probability $(1-\alpha)$.
 
 Now in the situation where we have two regression models and we want to find the best prediction of $x$, we can construct these confidence intervals for both models and:
 
@@ -410,7 +424,7 @@ In the first case, we can decide that one function is significantly better and s
 
 \subsubsection{Confidence interval based selection from multiple functions}
 
-The described method allows us to decide between two functions with given certainty. Now, when choosing among $n$ functions with regressions $h'_1, ..., h'_n$ for given $x$, we are looking for the $k$ for which the following holds:
+The described method allows us to decide between two functions with given certainty. Now, when choosing among $n$ functions with regressions $h'_1, \dots, h'_n$ for given $x$, we are looking for the $k$ for which the following holds:
 
 \begin{itemize}
 	\item The confidence interval on level $(1-\alpha)$ for prediction $h'_k(x)$ does not overlap with any other of the confidence interval for prediction.
@@ -445,13 +459,13 @@ The strategy is parametrized by the selection significance level $\alpha$.
 	\State \Return{$i$}
 	\EndIf
 	\EndFor
-	\State \Return{useSecondarySelector($d_1,...,d_n, x$)}
+	\State \Return{useSecondarySelector($d_1,\dots,d_n, x$)}
 \end{algorithmic}
 
 \subsection{Window-bound linear regression}
 \label{subsec:window_bound_regression}
 
-To be able to apply the strategy described in section \ref{subsec:simple_linear_regression} on a wider range of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of historical measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000 - 10000$, $10000-15000$ and $15000-20000$ of the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on the model in a smaller subset.
+To be able to apply the strategy described in section \ref{subsec:simple_linear_regression} on a wider variety of functions, a simple approach to lower the approximation errors can be taken. Instead of creating a regression model for the entire set of historical measurements at once, we can split it into more subsets and create different regressions for them. Figure \ref{fig:window_examples} shows ranges $5000$ to $10000$, $10000$ to $15000$ and $15000$ to $20000$ of the input sizes of the data from \ref{fig:selection_sort_linear_trendline}. As we can observe from the second and third range, the data tend to be much closer to the linear regression line. The first range shows that a less significant fluctuation in the entire set has a lot bigger impact on the model in a smaller subset.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -460,11 +474,11 @@ To be able to apply the strategy described in section \ref{subsec:simple_linear_
 	\label{fig:window_examples}
 \end{figure}
 
-When selecting a function for a specific \textit{input descriptor} $d$, a window around its value of specific width $w$ can be created and the regression model built using the data from said window. We do it by selecting only the historical samples $x_k, y_k$ where $\abs{x_k - d} < w$ when constructing the regression.
+When selecting a function for a specific \textit{input descriptor} $x$, a window around its value of specific width $w$ can be created and the regression model built using the data from said window. We do it by selecting only the historical samples $(x_k, y_k)$ where $\abs{x_k - x} < w$ when constructing the regression.
 
 There are multiple ways how to decide on the window width $w$. Using a fixed number across all the functions and all the data samples would not be recommendable, as the functions can vary in their \textit{input descriptors} by orders of magnitude. The width could be derived as a fraction of the width of the whole data set: $w = \frac{max(x_i) - min(x_i)}{p}$, where $p$ would represent in how many parts we basically want it to be split. 
 
-More flexible approach is to dynamically determine the $p$. Suppose we want the average window to contain $r$ records. We find out what is the average distance between two neighboring records as $d =  \frac{max(x_i) - min(x_i)}{n - 1}$ and then set the $p = r * d$. This way, the window size will always be adapted to the density of the dataset.
+More flexible approach is to dynamically determine the $p$. Suppose we want the average window to contain $r$ records. We find out what is the average distance between two neighboring records as $d =  \frac{max(x_i) - min(x_i)}{n - 1}$ and then set the $w = r * d$. This way, the window size will always be adapted to the density of the dataset.
 
 The window limitation might seem similar to the grouping described in \ref{subsec:grouping}, but there are two major differences. First, the windows are based on the \textit{input descriptor}, whereas the \textit{group selector} might use different features of the input. And second, the groups are deterministic and do not move with the \textit{input descriptor} and change their size based on historical data. Both these concept can be used at the same time.
 
@@ -475,7 +489,7 @@ The strategy is parametrized by the selection significance level $\alpha$ and an
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
-	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / l_i$
+	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / (l_i-1)$
 	\State $w \gets dist * avg$
 	\State $d'_i \gets [(x_{i,j}, y_{i, j}); \forall j: \abs{x_{i,j} - x} \leq w/2]$
 	\EndFor
@@ -487,7 +501,7 @@ The strategy is parametrized by the selection significance level $\alpha$ and an
 
 The approach explained in \ref{subsec:window_bound_regression} can be extended further - the locally constructed linear regression models might be used to build up a model for the entire data set. This leads to a model that is non-linear, i.e., the function that approximates the original data relation is not a linear function.
 
-One possible regression method that behaves this way is \textit{LOESS} (Local Regression, \cite{cleveland_locally_1988,cleveland_regression_1988,cleveland_computational_1991}). It uses methods similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The output is a \textit{Loess Curve}, an artificially constructed function that does not necessarily have to be expressed by a formula. This is one of the advantages of the model - the original relation between \textit{input descriptors} and the run times did not have to be expressed by a nice simple function in order to be captured correctly.
+One possible regression method that behaves this way is \textit{LOESS} (Local Regression, \cite{cleveland_locally_1988,cleveland_regression_1988,cleveland_computational_1991}). It uses techniques similar to the least-square regression on local subsets of the data set, and then smooths up the resulting curve. The output is a \textit{Loess Curve}, an artificially constructed function that does not necessarily have to be expressed by a formula. This is one of the advantages of the model - the original relation between \textit{input descriptors} and the run times did not have to be expressed by a simple function in order to be captured correctly.
 
 The \textit{LOESS} model can be used to predict the function run times. It is, however, a lot more complicated to derive the prediction confidence intervals. Therefore, only the values will be used in this selection strategy, which could lead to some wrong decisions.
 
@@ -500,6 +514,9 @@ There are other disadvantages of this strategy as well. First of all, the entire
 	\For{$i=1$ to $n$}
 	\State $m_i \gets$ buildRegression($d_i$)
 	\State $p_i \gets$ predictValue($m_i, x$)
+	\If{$p_i = NaN$}\Comment{The prediction can fail}
+	\State$p_i \gets -1$\Comment{We select the function on which it failed}
+	\EndIf
 	\EndFor
 	\State\Return{$argmin(p_i)$}
 \end{algorithmic}
@@ -522,11 +539,11 @@ The mean based t-test selection strategy described in sections \ref{subsec:t_tes
 	\label{fig:window_t_test_examples}
 \end{figure}
 
-If we wanted to use the t-test strategy on the functions with non-constant complexity, the same approach as with the \textit{simple linear regression} can be taken - we can perform the t-test just for a subset of the historical data with very similar \textit{input descriptors}. Instead of assuming that the relation in the small window is linear, we want it to be constant and normally distributed. Consequently, even smaller window sizes should be selected, so that these assumptions held at least approximately. The t-test significance levels and strengths will be approximate as well, but our goal is to get reasonable results, we do not need to be precise.
+If we wanted to use the t-test strategy on the functions with non-constant complexity, the same approach as with the \textit{simple linear regression} can be taken. Instead of assuming that the relation in the small window is linear, we want it to be constant and normally distributed. We can then predict the run time using the mean of the measurements from within a very small range of \textit{input descriptor} values. Consequently, it is extremely important to keep the window size limited, so that these assumptions held at least approximately. The t-test significance levels and strengths will be approximate as well, but our goal is to get reasonable results, we do not need to be precise.
 
-The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms on random arrays of sizes $0-30000$. Obviously, there is a relation to the input size, so the simple t-test would not help us in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - $0-3000$, $7000-10000$ and $17000-20000$. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
+The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms on random arrays of sizes between $0$ and $30000$. Obviously, there is a relation to the input size, so the simple t-test should not be applied in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - $0$ to $3000$, $7000$ to $10000$ and $17000$ to $20000$. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
 
-The window sizes can be determined in a similar way as in section \ref{subsec:window_bound_regression}. If we reduce it to a constant 0, we will get a technique in which only the results for inputs with the same descriptor are tested. When there are none, we refuse to select and wait until data is gathered. This might be useful in cases where we know that the function will be called repeatedly on a limited set of input variants, and basically rules out the prediction factor, as we need to have actual observation for each input before making any conclusions. Similar approach is taken in \cite{bulej_performance_2012}.
+The window sizes can be determined in a similar way as in section \ref{subsec:window_bound_regression}. If we reduce it to a constant 0, we will get a technique in which only the results for inputs with the same descriptor are tested. When there are none, we refuse to select and wait until data is gathered. This might be useful in cases where we know that the function will be called repeatedly on a limited set of input variants, and basically rules out the prediction factor, as we need to have actual observation for each input before making any conclusions. Similar approach is taken in \cite{bulej_performance_2012}. The same goal, however, can be achieved more efficiently using the grouping mechanism (see \ref{subsec:grouping}).
 
 \subsubsection{Selection algorithm}
 
@@ -535,7 +552,7 @@ The strategy is parametrized by the selection significance level $\alpha$ and an
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
-	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / l_i$
+	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / (l_i-1)$
 	\State $w \gets dist * avg$
 	\State $d'_i \gets [(x_{i,j}, y_{i, j}); \forall j: \abs{x_{i,j} - x} \leq w/2]$
 	\EndFor
@@ -573,37 +590,144 @@ Considering these facts, the framework will contain both a input based and a mea
 The actual strategies used should be easily replaceable, but some have to be chosen as default for the common usages. As we introduced only one mean based strategy independent on the input, there is not much of a choice. The situation is more complicated In the field of input based strategies, and we need to perform a couple of tests.
 
 \subsection{Input based strategies success rates}
+\label{subsec:input_based_strategies_success}
 
-To compare the efficiency of the selection strategies, we used an artificial scenario with two functions. One with linear complexity that computes a sum of $n$ random numbers for an input $n$. The other computes a sum of $n * k$ random numbers for an input $n$, where $k$ is an \textit{error factor} determining how much slower the function is. We would expect the selection strategy to always pick the first function for any $k>1$, so we will track the number of wrong decisions (i.e. number of times the strategy selects the second function) for the three input based strategies and for various \textit{error factor} values.
+To compare the efficiency of the selection strategies, we will perform two tests. The first one will be based on an artificial function with linear complexity defined by the following lambda expression:
 
-We will use the values 4, 2, 1.5, 1.2 and 1.1 for $k$ and for each of them generate 5 sequences of 200 inputs. Then, we will use all the selection strategies on every sequence, removing all the historical records in between. There is a minimum of 30 records in the function history before the decision process starts, so the actual decision will take place only on 140 inputs in each sequence.
+\lstset{style=Scala}
+\begin{lstlisting}
+i => {
+  val j = (i * k).toInt
+  var acc = 0
+  Seq.range(0, j).foreach(l => {
+    acc = acc + (l * Random.nextInt(1000))
+  })
+  acc
+}
+\end{lstlisting}
 
-The results for the described text after adding up the wrong decision numbers for all 5 sequences can be found in table \ref{tab:strategy_comparison}. The numbers shown are the numbers of times the slower function was selected out of 700 in total, along with corresponding percentage. The strategies used are the linear regression (LR) with $\alpha = 0.05$, window-bound linear regression with $\alpha = 0.05$ and the local regression (LOESS).
+Where \inlinecode{i} is the input of the function and \inlinecode{k} is a constant factor which can be used to slow the function down.
+
+Analogically, we will define a quadratic function (using a similar lambda, only with second line replaced by \inlinecode{val j = (i * i * k).toInt}).
+
+Now, the test will be based in combining two instances of the same function\footnote{Note that the actual implementation requires either using two different lambdas, or using custom identifiers, more on that topic in section \ref{subsec:function_identifiers}}, one with $k=1$ and the other with some $k>1$, perform a series of runs and track how many times will the selection strategy choose the worse one (i.e. the $k>1$ one).
+
+For each test, we will generate 100 sequences, each one containing 200 integers between 100000 and 500000 in case of the linear function, or 100 and 500 for the quadratic function. One sequence will represent one test run - the measurement history will be flushed and the function will be invoked on the members of the sequence one by one. The strategies are set in the way that the first 60 runs will use a round-robin selection to gather 30 data samples for each function before starting the actual selection. It means that the strategy should perform 140 selections for each test run. We are going to count how many times the worse function is be selected. The baseline solution in this case would be to keep using the round-robin technique, which would lead to the worse function being selected 50\% of the time, 70 times out of 140.
+
+Now, we will use the following values for $k$: 4, 2, 1.5, 1.2, 1.1, 1.01, and the following selectors:
+\begin{enumerate}
+	\item Window-bound t-test (WBTT) with $\alpha$ set to 0.05 and 0.25
+	\item Linear regression (LR) with $\alpha$ set to 0.05 and 0.25
+	\item Window-bound linear regression (WBLR) with $\alpha$ set to 0.05 and 0.25
+	\item Local regression (LOESS)
+\end{enumerate}
+
+For each combination, all 100 test runs were performed and an average percentage of the worse function selection was computed, the results for the linear function can be seen in table \ref{tab:strategy_comparison} and for the quadratic function in table \ref{tab:strategy_comparison_quadratic}. A surprising fact might be the overall better results for the non-linear case, which should be more difficult to model. The reason for this fact is that there is a dramatically lower range of inputs (100 to 500 instead of 100000 to 500000) in order to keep the test run time realistic. In addition, the run time differences between individual inputs grows much faster, so the error factor involved does less damage to the model. In general, it seems that functions with faster-growing complexities get more precise predictions.
+
 
 \begin{table}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
 	\centering
 	\bgroup
 	\def\arraystretch{1.5}%
-	\begin{tabular}{|r|r|r|r|}
+	\begin{tabular}{|l|r|r|r|r|r|r|r|}
 		\hline
-		\multicolumn{1}{|l|}{} & \multicolumn{1}{c|}{\textbf{LR}} & \multicolumn{1}{c|}{\textbf{Window-bound LR}} & \multicolumn{1}{c|}{\textbf{LOESS}} \\ \hline
-		\textbf{4x}            & 107 (15.3\%)                     & 35 (5.0\%)                                    & 156 (22.3\%)                        \\ \hline
-		\textbf{2x}            & 207 (29.6\%)                     & 97 (13.9\%)                                   & 20 (2.9\%)                          \\ \hline
-		\textbf{1.5x}          & 254 (36.3\%)                     & 127 (18.1\%)                                  & 24 (3.4\%)                          \\ \hline
-		\textbf{1.2x}          & 256 (36.6\%)                     & 251 (35.9\%)                                  & 77 (11.0\%)                         \\ \hline
-		\textbf{1.1x}          & 321 (45.9\%)                     & 351 (50.1\%)                                  & 160 (22.9\%)                        \\ \hline
+		\textbf{}      & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBTT\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}LR\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBLR\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBTT\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}LR\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBLR\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{LOESS}} \\ \hline
+		\textbf{1.01x} & 52.4\%                                                                              & 49.6\%                                                                            & 51.5\%                                                                              & 47.1\%                                                                              & 49.6\%                                                                            & 50.1\%                                                                              & 43.6\%                              \\ \hline
+		\textbf{1.1x}  & 49.4\%                                                                              & 48.5\%                                                                            & 37.2\%                                                                              & 33.7\%                                                                              & 44.6\%                                                                            & 33.5\%                                                                              & 6.2\%                               \\ \hline
+		\textbf{1.2x}  & 40.1\%                                                                              & 46.0\%                                                                            & 29.0\%                                                                              & 26.3\%                                                                              & 41.6\%                                                                            & 27.8\%                                                                              & 3.5\%                               \\ \hline
+		\textbf{1.5x}  & 30.2\%                                                                              & 38.9\%                                                                            & 13.9\%                                                                              & 13.7\%                                                                              & 25.6\%                                                                            & 9.9\%                                                                               & 2.9\%                               \\ \hline
+		\textbf{2x}    & 17.6\%                                                                              & 25.4\%                                                                            & 7.8\%                                                                               & 4.3\%                                                                               & 14.4\%                                                                            & 4.7\%                                                                               & 2.4\%                               \\ \hline
+		\textbf{4x}    & 2.9\%                                                                               & 15.7\%                                                                            & 5.0\%                                                                               & 0.1\%                                                                               & 9.7\%                                                                             & 2.7\%                                                                               & 2.5\%                               \\ \hline
 	\end{tabular}
 	\egroup
-	\caption{Number of times each selection strategy selected the slower function (out of 700 counted selections).}
+	\caption{Percentage of times the strategy selected the worse one out of two linear functions (average from 100 test runs, each containing 140 selections).}
 	\label{tab:strategy_comparison}
 \end{table}
 
-The baseline solution for this test would be a round-robin strategy that would run the wrong function 350 times out of 700 times, having a success rate of 50\%. 
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centering
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{tabular}{|l|r|r|r|r|r|r|r|}
+		\hline
+		\multicolumn{1}{|c|}{\textbf{}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBTT\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}LR\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBLR\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBTT\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}LR\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}WBLR\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{LOESS}} \\ \hline
+		\textbf{1.01x}                  & 52.3\%                                                                              & 49.4\%                                                                            & 44.6\%                                                                              & 50.5\%                                                                              & 50.3\%                                                                            & 49.5\%                                                                              & 44.6\%                              \\ \hline
+		\textbf{1.1x}                   & 44.9\%                                                                              & 43.1\%                                                                            & 28.9\%                                                                              & 33.3\%                                                                              & 37.8\%                                                                            & 26.2\%                                                                              & 7.4\%                               \\ \hline
+		\textbf{1.2x}                   & 38.2\%                                                                              & 38.1\%                                                                            & 16.3\%                                                                              & 17.8\%                                                                              & 31.2\%                                                                            & 15.7\%                                                                              & 4.0\%                               \\ \hline
+		\textbf{1.5x}                   & 16.6\%                                                                              & 28.7\%                                                                            & 8.4\%                                                                               & 7.9\%                                                                               & 18.5\%                                                                            & 6.4\%                                                                               & 2.5\%                               \\ \hline
+		\textbf{2x}                     & 8.8\%                                                                               & 20.0\%                                                                            & 4.1\%                                                                               & 2.7\%                                                                               & 13.4\%                                                                            & 2.4\%                                                                               & 2.3\%                               \\ \hline
+		\textbf{4x}                     & 3.5\%                                                                               & 19.6\%                                                                            & 3.0\%                                                                               & 0.1\%                                                                               & 14.6\%                                                                            & 1.5\%                                                                               & 2.3\%                               \\ \hline
+	\end{tabular}
+	\egroup
+	\caption{Percentage of times the strategy selected the worse one out of two quadratic functions (average from 100 test runs, each containing 140 selections).}
+	\label{tab:strategy_comparison_quadratic}
+\end{table}
 
-As we can see, even though the function complexity is linear, the linear regression has a 15\% error rate on a 4 times slower function. The window-bound linear regression has a lot better results on a significantly slower function (the $k=2$ and $k=4$ cases). Both the linear regression and the window-bound linear regression fail on the function with smallest difference, most likely because of the significance level interval testing. Adjusting $\alpha$ might increase the success rate in these cases. The local regression is the clear winner in all the cases except for the first one, where the model on one of the 5 sequences made 139 wrong decisions out of 140 calls in total. This demonstrates a complete failure of the model and a problem caused by not having any tests for certainty incorporated in the strategy.
+As to the individual strategies, it might be unexpected that the linear regression has quite poor results, even in the case where the original function complexities were linear. Almost $16\%$ of selections of a function that is four times slower in the $\alpha = 0.05$ case. This is caused by the fact that eventual measurements with extreme deviations influence the whole model, not just a local part of it, which might lead to an eventual series of wrong decisions. Therefore, linear regression strategy is not recommended to be used in general.
 
-In conclusion, the overall best results are provided by the local regression strategy, although it is a little error-prone. The window-bound linear regression is worse, but still usable, especially in case of more significant differences between the functions.
+The absolute winner, on the other hand, is the local regression, which is able to maintain extremely low error rates ($6.2\%$ for the linear functions, $7.4\%$ for the quadratic functions) for the second-minimal case $k=1.1$, and push it even lower with growing $k$. Neither one of the other strategies got below $15\%$ not only for $k=1.1$, but even for $k=1.2$.
+
+The window-bound strategies are somewhere in the middle - they perform very well for higher $k$ ($2, 4$), which is the main concern, and reasonably for the other sizes. The main difference between them being that the window-bound linear regression improves steadily with growing $k$, whereas the window-bound t-test reaches better results for the largest $k=4$, but improves dramatically at the end and has worse results for lower $k$.
+
+In all cases, we can see that lowering the selection significance by increasing $\alpha$ can lead to slightly better results overall (especially for larger $k$). The success of local regression, which does not employ certainty in the decision making process, supports this observation. It seems that the assumption of selection errors having a bad influence on the model and leading to chains of bad decisions was not confirmed by this test. It might be, however, different for real-life scenarios with more variable run times, environment changes, etc., and we should keep that in mind and be careful when lowering the $\alpha$ for better selection results.
+
+\subsection{Mean based strategies success rates}
+
+Similarly as for the input based strategies, we are going to perform a selection success rate test for the mean based strategies. As we need only a function with fixed non-trivial execution time with a possibility to slow it down a little, we are going to reuse the linear function from section \ref{subsec:input_based_strategies_success}, calling it with a constant input of 200000. Again, we are going to combine an instance of the non-slowed function with the instances of function slowed by a factor $k$. 
+
+The values 2, 1.5, 1.2, 1.1, 1.01 will be used for $k$, along with the following selectors:
+\begin{enumerate}
+	\item T-test (TT) with $\alpha$ set to 0.05 and 0.25
+	\item U-test (UT) with $\alpha$ set to 0.05 and 0.25
+\end{enumerate}
+
+For each combination of $k$ and a selector, 100 test runs will be performed, each one consisting of invoking the described combined function 200 times and removing all the history records afterwards.
+
+The results can be seen in table \ref{tab:strategy_comparison_mean_based}. It might seem obvious that the u-tests deliver better results, and again, lowering the $\alpha$ improves the result as well. In order to get more insight into the results, we should take into account another factor - the number of test runs, where the overall success rate was worse than the baseline success rate, i.e. the $50\%$ of the round-robin selection. This is shown in the table \ref{tab:strategy_comparison_mean_based_worse_runs}.
+
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centering
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{tabular}{|l|r|r|r|r|}
+		\hline
+		& \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}TT\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}UT\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}TT\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}UT\\ (0.25)\end{tabular}}} \\ \hline
+		\textbf{1.01x} & 49.8\%                                                                            & 49.5\%                                                                            & 49.8\%                                                                            & 47.1\%                                                                            \\ \hline
+		\textbf{1.1x}  & 46.6\%                                                                            & 27.0\%                                                                            & 39.1\%                                                                            & 25.5\%                                                                            \\ \hline
+		\textbf{1.2x}  & 42.2\%                                                                            & 18.5\%                                                                            & 25.6\%                                                                            & 14.3\%                                                                            \\ \hline
+		\textbf{1.5x}  & 11.6\%                                                                            & 0.0\%                                                                             & 2.6\%                                                                             & 0.2\%                                                                             \\ \hline
+		\textbf{2x}    & 1.9\%                                                                             & 0.0\%                                                                             & 0.0\%                                                                             & 0.0\%                                                                             \\ \hline
+	\end{tabular}
+\egroup
+\caption{Percentage of times the strategy selected the worse one out of two constant functions (average from 100 test runs, each containing 140 selections).}
+\label{tab:strategy_comparison_mean_based}
+\end{table}
+
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\centering
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{tabular}{|l|r|r|r|r|}
+		\hline
+		& \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}TT\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}UT\\ (0.05)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}TT\\ (0.25)\end{tabular}}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}UT\\ (0.25)\end{tabular}}} \\ \hline
+		\textbf{1.01x} & 0                                                                                 & 1                                                                                 & 19                                                                                & 7                                                                                 \\ \hline
+		\textbf{1.1x}  & 0                                                                                 & 15                                                                                & 5                                                                                 & 20                                                                                \\ \hline
+		\textbf{1.2x}  & 0                                                                                 & 15                                                                                & 4                                                                                 & 13                                                                                \\ \hline
+		\textbf{1.5x}  & 0                                                                                 & 0                                                                                 & 0                                                                                 & 0                                                                                 \\ \hline
+		\textbf{2x}    & 0                                                                                 & 0                                                                                 & 0                                                                                 & 0                                                                                 \\ \hline
+	\end{tabular}
+\egroup
+\caption{The number of test runs (out of 100) where the strategy had a worse success rate than 50\%.}
+\label{tab:strategy_comparison_mean_based_worse_runs}
+\end{table}
+
+It looks like the t-test is more conservative, it refuses to make the decision more often, which leads to switching the functions in the round-robin fashion. On the other hand, the u-test risks more, which leads to better results overall, but there are some runs that are very bad - for $k=1.2$, $15$ runs out of $100$ were worse than $50\%$, and $10$ out of these $15$ runs had a $0\%$ success rate, which means that the model selected the worse function every time.
+
+The conclusion from the observations is that employing u-test (or increasing the $\alpha$) increases the expected success rate in a common case, but brings a non-trivial risk of constructing a wrong model which leads to a sequence of errors that might last very long.
 
 \subsection{Strategy performance}
 \label{subsec:strategy_perf}
@@ -612,7 +736,7 @@ When deciding for one of the strategies, there is another concern that we should
 
 For some of the strategies, it is possible to compute and cache the statistical data in advance, at the moment of storing newly measured data, allowing them to avoid processing all the records again during the selection. From our strategy list, this is possible to be done for the linear regression and the t-tests. Unfortunately, neither the window-bound strategies, nor the local regression support this approach.
 
-To compare the practical overheads, we ran the selection using each of the strategies 20000 times in a row (while evaluating the runs and adding new data in the process). The window-bound strategies had the window size calculated to contain 25 records in average. The resulting average selection strategy run times from samples collected every 50 runs are in table \ref{tab:strategy_execution_comparison}.
+To compare the practical overheads, we ran the selection using each of the strategies 20000 times in a row (while evaluating the runs and adding new data in the process) for the task of deciding between quick sort and selection sort algorithm on sequences of 0 to 2000 numbers. The window-bound strategies had the window size calculated to contain 25 records in average. The resulting averages of selection strategy run times are in table \ref{tab:strategy_execution_comparison}.
 
 \begin{table}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -621,26 +745,31 @@ To compare the practical overheads, we ran the selection using each of the strat
 	\def\arraystretch{1.5}%
 	\begin{tabular}{|l|r|r|}
 		\hline
-		& \multicolumn{1}{l|}{\textbf{Not cached}} & \multicolumn{1}{l|}{\textbf{Cached}} \\ \hline
-		\textbf{Linear regression} & 3.31                                   & 0.35                                 \\ \hline
-		\textbf{Window-bound LR}   & 1.29                                   & N/A                                  \\ \hline
-		\textbf{LOESS}             & 136.43                                 & N/A                                  \\ \hline
-		\textbf{T-test}            & 2.25                                   & 0.21                                 \\ \hline
+		\textbf{}                  & \multicolumn{1}{l|}{\textbf{Not cached}} & \multicolumn{1}{l|}{\textbf{Cached}} \\ \hline
+		\textbf{Linear regression} & 1.68                                     & 0.15                                 \\ \hline
+		\textbf{Window-bound LR}   & 0.91                                     & N/A                                  \\ \hline
+		\textbf{Window-bound TT}   & 0.72                                     & N/A                                  \\ \hline
+		\textbf{LOESS}             & 57.47                                    & N/A                                  \\ \hline
+		\textbf{T-test}            & 1.32                                     & 0.10                                 \\ \hline
+		\textbf{U-test}            & 5.91                                     & N/A                                  \\ \hline
 	\end{tabular}
 \egroup
 \caption{Average strategy selection time (in ms) in a sequence of 20000 consecutive selections.}
 \label{tab:strategy_execution_comparison}
 \end{table}
 
-The results are showing that local regression has extremely high run times that can grow above 100ms with larger numbers of run history records. An overhead of around 100ms on every selection would be too high for most common usages, so the local regression strategy, even though it has the best success rate, should be used with extreme caution and only in cases where it is clear that overhead this high cannot damage the system performance. As for the remaining strategies, it seems that caching speeds up the selection about 10 times. The window-bound linear regression cannot be improved by the caching (as the regression done for each input is potentially different), but has the lowest execution time of all the not cached strategies, and therefore is quite usable.
+
+The results are showing that local regression has extremely high run times that can grow above 50 milliseconds with larger numbers of run history records. An overhead of this size on every selection would be too high for most common usages, so the local regression strategy, even though it has the best success rate, should be used with extreme caution and only in cases where it is clear that overhead this high cannot damage the system performance. 
+
+As for the remaining strategies, it seems that caching speeds up the selection a little more than 10 times for this number of runs. The window-bound strategies cannot be improved by the caching (as the relevant statistics are different for every window), but they have lowest execution time of all the strategies without cache, and therefore are very usable for the input based case. Regarding the mean based strategies, the t-test is almost 5 times faster than the u-test in the non-cached version, and more than 50 times faster when using the cache, so it is clearly a better choice if performance is the main concern.
 
 \section{Invocation policies}
 
-The selection process and all the strategies described in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data, as discussed in section \ref{subsec:strategy_perf}. In a common scenario where we expect the system to come to a decision about the best function (either overall, or for every group of \textit{input descriptors}), it would be handy if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
+The selection process and all the strategies described in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data, as discussed in section \ref{subsec:strategy_perf}. In a common scenario where we expect the system to come to a decision about the best function (either overall, or separately for every group), it would be suitable if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
 
-Similarly, it might be desirable to control the overhead time spent on the selection, or, in general, on invoking the functions using selection (which might lead to a bad decision), either per a specific time period, or per a specific action of the system (user request, processing unit, etc.). All of these decisions are taken at a higher level than the run time history analysis performed by the selection strategies.  
+Similarly, it might be desirable to control the overhead time spent on the selection, or, in general, on invoking the functions using selection (which might lead to a bad decision), either per a specific time period, or with respect to a specific action of the system (user request, processing unit, etc.). All of these decisions should be taken at a higher level than the run time history analysis performed by the selection strategies.  
 
-\textit{Invocation policies} are a concept introduced into the ScalaAdaptive framework that tries to address these cases, with the main purpose of lowering its execution overhead. Every \textit{combined function} has an \textit{invocation policy} associated with it. In the function selection chain, the \textit{policy} gets evaluated right after invoking the \textit{combined function} and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
+\textit{Invocation policies} are a concept introduced into the ScalaAdaptive framework that tries to address these cases, with the main purpose of lowering its invocation overhead. Every \textit{combined function} has an \textit{invocation policy} associated with it. In the function selection chain, the \textit{policy} gets evaluated right after invoking the \textit{combined function} and is supposed to quickly decide how to proceed with the invocation. There might be scenarios where a faster ways could be taken without even using any of the strategies and analyzing the historical data.
 
 The possible results of the \textit{policy} evaluation are the following:
 
@@ -651,7 +780,7 @@ The possible results of the \textit{policy} evaluation are the following:
 	\item \textbf{UseMost} - Use the most selected function (without measuring run time and storing it to the history)
 \end{itemize}
 
-We can notice that these results require only the basic statistical data about previous selection processes. This is the key idea of the \textit{policies} - the decision and the execution should depend only on these simple statistics, except for the case where selection strategy is required.
+We can notice that these results require only the basic statistical data about previous selection processes. This is the key idea of the \textit{policies} - the decision and the execution should depend only on such a simple statistics.
 
 The \textit{policy} evaluation process also replaces the current \textit{policy} with a new one. This technically creates a state machine - the state of the function is represented by the active \textit{policy}, and whenever the function is invoked, a result is produced and new \textit{policy} becomes active. This corresponds to producing output and moving to a new state in a state machine.
 
@@ -661,7 +790,7 @@ The advantage of the \textit{policy} system over a regular state machine is its 
 \subsection{Statistical data}
 \label{subsec:statistical_data}
 
-The only input that the \textit{policy} receives when making decision is a statistical summary of previous selection results of the \textit{combined function}. The process itself is supposed to be fast and reflect just the trends in the selection, not to replace the whole selection strategy process as described in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies}, so the statistical data do not contain the entire run history of all the functions involved.
+The only input that the \textit{policy} receives when making decision is a statistical summary of previous selection results of the \textit{combined function}. The process itself is supposed to be fast and reflect just the trends in the selection, not to replace the whole selection strategy decision making as described in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies}, so the statistical data do not contain the entire run history of all the functions involved.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -670,7 +799,7 @@ The only input that the \textit{policy} receives when making decision is a stati
 	\label{fig:run_schema}
 \end{figure}
 
-On the other hand, the \textit{policies} are a suitable tool to limit the potential damage of the selection process on the system. For this, it is necessary to observe and to store various times connected with the selection and execution. Figure \ref{fig:run_schema} shows the whole process with policy being evaluated with the SelectNew result, split into individual parts. Upon every invocation, the following is tracked:
+The \textit{policies} are a suitable tool to limit the potential damage of the selection process on the system. For this, it is necessary to observe and to store various times connected with the selection and execution. Figure \ref{fig:run_schema} shows the whole process with policy being evaluated with the SelectNew result, split into individual parts. Upon every invocation, the following is tracked:
 
 \begin{itemize}
 	\item Selection and run history storage time (2 and 4)
@@ -679,9 +808,9 @@ On the other hand, the \textit{policies} are a suitable tool to limit the potent
 	\item Total time spent on the GatherData result (3 and 4, 2 is skipped in such a case)
 \end{itemize}
 
-Sums of these times are kept in every \textit{combined function}. The policy can work with these totals and analyze the changes that happen to them overtime. The policies are designed to be immutable, but contain state themselves, and the state changes when switching to a new policy.
+Sums of these times are kept in every \textit{combined function}. The policy can work with these numbers and analyze the changes that happen to them over time. In addition, the number of times each function was selected, the total number of times we received the SelectNew and GatherData result and the total number of times the combined function was invoked have to be tracked. 
 
-In addition, number of times each function was selected, total number of times we received the SelectNew and GatherData result and the total number of times the combined function was invoked has to be tracked. The user-implemented policy has the following data available to decide:
+In general the policy has the following data available to decide:
 
 \begin{itemize}
 	\item Total run count of the combined function
@@ -693,13 +822,14 @@ In addition, number of times each function was selected, total number of times w
 	\item Total time spent on selection and storage overhead (after SelectNew result)
 	\item Total time spent on processing the SelectNew result
 	\item Total time spent on processing the GatherData result
+	\item Number of times the last selected function was selected in a row (the \textit{function streak})
 \end{itemize}
 
 \subsection{Implemented policies}
 
-As mentioned earlier, \textit{policies} are designed to be reusable as a building-blocks. The immutable \textit{policy} itself is the only holder of the state and change of state can be performed only by transitioning to a different \textit{policy}. Its functionality and very simple decision-making process can be visualized using a transition diagram, which shows the \textit{policy} itself as a red square, all the other \textit{policies} as a gray square and green arrows as state transitions. The transitions might be conditional, in such a case, the condition splits the arrow into two. The transition can produce a result which is shown next to the transition arrow. If a result is produced, the \textit{policy} makes a decision and next \textit{policy} will be evaluated during the following invocation. If a result isn't produced, the \textit{policy} just delegates the decision to the next \textit{policy} which is evaluated immediately. The chain of evaluation stops when a result is produced.
+As mentioned earlier, \textit{policies} are designed to be reusable as building-blocks. The immutable \textit{policy} itself is the only holder of the state and change of state can be performed only by transitioning to a different \textit{policy}. Its functionality and very simple decision-making process can be visualized using a transition diagram, which shows the \textit{policy} itself as a red square, all the other \textit{policies} as a gray square and green arrows as state transitions. The transitions might be conditional, in such a case, the condition splits the arrow into two. The transition can produce a result which is shown next to the transition arrow. If a result is produced, the \textit{policy} makes a decision and next \textit{policy} will be evaluated during the following invocation. If a result isn't produced, the \textit{policy} just delegates the decision to the next \textit{policy} which is evaluated immediately. The chain of evaluation stops when first result is produced.
 
-The transition conditions use \textit{policy} parameters, which are passed to a \textit{policy} in the constructor, and the current statistic data explained in section \ref{subsec:statistical_data}. It can also use static data and methods that it has access to. The parameters of the top-level (starting) \textit{policy} are passed in by the user creating it, the parameters of the other policies in the chain are fixed when the \textit{policies} are created, usually during the decision of the top-level \textit{policy}, which typically builds the entire policy chain (that can be cyclic and lead back to it).
+The transition conditions use \textit{policy} parameters, which are passed to a \textit{policy} in the constructor, and the current statistical data explained in section \ref{subsec:statistical_data}. It can also use static fields and methods that it has access to. The parameters of the top-level (starting) \textit{policy} are passed in by the user creating it, the parameters of the other policies in the chain are fixed when the \textit{policies} are created, usually during the decision of the top-level \textit{policy}, which typically builds the entire policy chain (that can be cyclic and lead back to it).
 
 The transition diagrams and short descriptions of some \textit{policies} will follow.
 
@@ -721,7 +851,7 @@ Figure \ref{fig:helper_policies} shows the main policies that serve as a buildin
 	\label{fig:start_policy}
 \end{figure}
 
-Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accepts the gather frequency \textit{GF}, number of invocation times before moving to a next policy \textit{N}, and the policy itself \textit{P}. It is a little more complicated and specialized version of the \textbf{Repeat until} policy - it keeps producing the SelectNew result, and every \textit{GF}-th invocation, it produces the GatherData result. It might be useful at the beginning, when it is necessary to gather data for all of the functions and perform some selections so that the following policies had statistical data to base their decision on.
+Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accepts the gather frequency \textit{GF}, number of invocation times \textit{N} before moving to a next policy \textit{P}. It is a little more complicated and specialized version of the \textbf{Repeat until} policy - it keeps producing the SelectNew result, and every \textit{GF}-th invocation, it produces the GatherData result. It might be useful at the beginning, when it is necessary to gather data for all of the functions and perform some selections so that the following policies had statistical data to base their decision on.
 
 \subsubsection{Stop selecting when decided}
 
@@ -732,7 +862,7 @@ Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accept
 	\label{fig:stop_selecting_when_decided}
 \end{figure}
 
-In order to limit the overhead, it might be useful to completely stop selecting when we are sure that one of the functions gets selected a lot more often. The \textbf{Stop selecting when decided} policy shown in figure \ref{fig:stop_selecting_when_decided} keeps selecting new function until both the total number of invocations exceeds minimum run count \textit{MR} and the rate of the number of times that the last selected function was selected and the total number of invocations exceeds the minimum percentage \textit{MP}. After that, it will keep using the last function forever. 
+In order to limit the overhead, it might be useful to completely stop selecting when we are sure that one of the functions gets selected a lot more often. The \textbf{Stop selecting when decided} policy shown in figure \ref{fig:stop_selecting_when_decided} keeps selecting new function until both the total number of invocations exceeds minimum run count \textit{MR} and the ratio of the number of times that the last selected function was selected and the total number of invocations exceeds the minimum percentage \textit{MP}. After that, it will keep using the last function forever. 
 
 The advantage of falling back to the infinite \textbf{Always use last} policy is its basically zero overhead - no condition is evaluated in the decision process. So this policy is useful for the fast functions where keeping low overhead for the long-term is critical. It cannot however, undo a wrong decision, reflect a change in conditions, or anything else.
 
@@ -747,7 +877,7 @@ The advantage of falling back to the infinite \textbf{Always use last} policy is
 
 To lower the number of selections, an approach based on the streak lengths can be used as well. It is implemented by the \textbf{Pause selection after streak} policy in figure \ref{fig:pause_selection_after_streak}. Its functionality is defined by the \textit{SL} (streak length) and \textit{RE} (retry every) arguments. Whenever one function is selected \textit{SL} times in a row, the selection process stops and the UseLast result is being produced. Once every \textit{RE} times, a new selection attempt is done, looping back to the original policy. If the same function is selected once again, the streak gets longer by one and the selection process stops again. If, however, a different function is selected this time, the streak becomes zero and we start selecting again.
 
-The described behavior is the preferred way of limiting the selection overhead. By setting the streak length to a reasonable number (20-100, based on the data, situation, etc.), we can assure that if one function is significantly better than the others, it will be used without the need to select it. The retry that happens every once in a while makes sure that eventual wrong decision will be detected and will reset the system back to the beginning.
+The described behavior is the preferred way of limiting the selection overhead. By setting the streak length to a reasonable number (e.g. between 10 and 100, based on the data, situation, etc.), we can assure that if one function is significantly better than the others, it will be used without the need to select it. The retry that happens every once in a while makes sure that eventual wrong decision will be detected and will reset the system back to the beginning.
 
 \subsubsection{Limited overhead, gather time and selection time}
 
@@ -758,7 +888,7 @@ The described behavior is the preferred way of limiting the selection overhead. 
 	\label{fig:limited_overhead}
 \end{figure}
 
-Policies can be used to limit the framework involvement per a real-time period, so that the selection overhead, or overhead generated by gathering data or wrongly selecting the slower function doesn't damage the system more than a specified limit. The \textbf{Limited overhead} policy in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it cannot select anymore and keeps using the most selected function until the end of the period.
+Policies can be used to limit the framework involvement per a real-time period, so that the selection overhead or the time spent on gathering data does not damage the system more than a specified limit. The \textbf{Limited overhead} policy in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it cannot select anymore and keeps using the most selected function until the end of the period.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -784,9 +914,9 @@ Figure \ref{fig:policy_builder_chart} shows the syntax diagram of \textit{policy
 	\label{fig:policy_builder_chart}
 \end{figure}
 
-The policy built with \textit{policy builder} has always one main loop. Its definition starts with the first result that it emits: \textit{selectNew}, \textit{gatherData}, \textit{useMost} or \textit{useLast}. A result is always followed by a duration specifier, and another result. When we specify the sequence of results and their durations, we can end it by either closing the loop (using \textit{andThenRepeat}), by transitioning to an external policy (using \textit{andThenGoTo}, leads to a non-looped policy), or by using \textit{forever} as a duration for the last policy, which limits the loop to it. In addition, it is possible to put a conditional transition to a third party policy anywhere in between two results (using \textit{andThenIf}).
+The policy built with \textit{policy builder} has always one main loop. Its definition starts with the first result that it emits: \textit{selectNew}, \textit{gatherData}, \textit{useMost} or \textit{useLast}. A result is always followed by a duration specifier, and another result. When we specify the sequence of results and their durations, we can end it by either closing the main loop (using \textit{andThenRepeat}), by transitioning to an external policy (using \textit{andThenGoTo}, leads to a policy out of the loop), or by using \textit{forever} as a duration for the last result, which limits the loop just the one result. In addition, it is possible to put a conditional transition to a policy out of tho loop anywhere in between two results (using \textit{andThenIf}).
 
-The conditions can be either simple functions accepting statistical data and returning a boolean value, or a \textit{growsBy} condition with a value extractor (a function that extracts a value of some type from the statistical data) and an amount. A simple condition is evaluated only once against current statistical data. In case of the \textit{growsBy} condition, the extractor is executed once at the beginning of the policy loop and its result is stored, and the condition evaluation consist in executing it and comparing current result to the stored one.
+The conditions can be either simple functions accepting statistical data and returning a boolean value, or a \textit{growsBy} condition with a value extractor\footnote{A function that extracts a value of some type from the statistical data, default implementations are provided for the basic fields.} and an amount. A simple condition is evaluated only once against current statistical data. In case of the \textit{growsBy} condition, the extractor is executed once at the beginning of the policy loop and its result is stored, and the condition evaluation consist of executing it and comparing current result to the stored one.
 
 An example of a simple policy described using the \textit{policy builder} follows. It produces GatherData 50 times, then SelectNew 50 times, and then either loops forever on UseLast, if the streak is larger than 20, or repeats the whole process otherwise.
 
@@ -810,45 +940,11 @@ The main advantage is the possibility to take faster decisions in some groups, u
 \subsection{Possible improvements}
 \label{subsec:policy_improvements}
 
-Part of the statistical data could be a factor of combined certainty of all the selections of a specific function. This factor could be aggregated from the selection results of the strategies that would support it (in the statistical test based strategies, it could be a p-value, strength of the test, or similar) and would serve as a decision factor for more complex policies with a statistical approach as well.
-
 The \textit{policies} were designed as a concept that is completely independent from the actual selection strategies and history analysis, to be faster and reusable. One of the improvements that would require closer tying would be to allow the \textit{policies} to choose the selection strategy, or to influence it somehow, by limiting it to a subset of data, etc. 
 
 Another improvement that might seem useful is to allow the \textit{policies} to analyze the whole history data. This would, however, mean a lot of additional overhead time when evaluating the \textit{policy} and is not desirable.
 With a different approach, we could achieve the same thing by giving selection strategies a state that could involve their decision. The state would be managed by the combined function and it could even be the same state that is used by the \textit{policies}. 
 
+Next, a factor of combined certainty of all the selections of a specific function could be included in the statistical data. This factor could be aggregated from the selection results of the strategies that would support it (in the statistical test based strategies, it could be a p-value, strength of the test, or similar) and would serve as a decision factor for more complex policies.
+
 %TODO - when do I need more data?
-
-\section{Summary}
-
-
-\begin{algorithmic}[1] % The number tells where the line numbering should start
-	\State $(result, newPolicy) \gets evaluatePolicy(currentPolicy)$
-	\State $currentPolicy \gets newPolicy$
-	\Switch{$result$}
-	\Case{UseLast}
-	\State $f \gets getLast()$
-	\State \Return{$f()$}
-	\EndCase
-	\Case{UseMost}
-	\State $f \gets getMost()$
-	\State \Return{$f()$}
-	\EndCase
-	\EndSwitch
-	\For{$i = 1$ to $n$}
-	\State $d_i \gets getHistoricalData(d_i)$
-	\EndFor	
-	\Switch{$result$}
-	\Case{GatherData}
-	
-	\EndCase
-	\EndSwitch
-	\If{not $equalityRejected$}
-	\State use secondary selector
-	\EndIf
-	\If {$mean(data_1) < mean(data_2)$}
-	\State select $f_1$
-	\Else 
-	\State select $f_2$
-	\EndIf
-\end{algorithmic}
