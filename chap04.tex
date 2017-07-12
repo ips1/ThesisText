@@ -134,6 +134,7 @@ It is also quite difficult to determine the \textit{CPU time} - it requires supp
 The \textit{wall clock time} is measured by fetching high-precision system time in nanoseconds right before calling the function apply method and right after returning from the call. The result is the run time in nanoseconds. This measurement is precise enough for all the use cases of the framework, because it is targeting mainly functions with non-negligible time complexities.
 
 \subsection{Storing and retrieving the evaluation data}
+\label{subsec:storing_evaluation_data}
 
 After having invoked the function and evaluated its run, the evaluation data have to be stored before passing the return value back to the caller. The history of all the run evaluations is kept together for each combination of a function and a group identifier as a vector of records. Each record consists of at least the following:
 
@@ -148,6 +149,7 @@ Whenever a new evaluation data is obtained, a record is created and added to the
 For simplicity, we suppose that the run histories of the actual implementations will be shared across all the combined functions that use them. More on that along with different implementation options will be discussed in chapter \ref{chap:implementation}.
 
 \subsection{Selecting a function}
+\label{subsec:selecting_function}
 
 The actual selection process, as described in \ref{sec:selection_overview}, can be implemented in many ways using many different models. It is basically an isolated algorithm with the following input:
 \begin{enumerate}
@@ -304,6 +306,7 @@ The strategy is parametrized by the selection significance level $\alpha$.
 \end{algorithmic}
 
 \subsection{Mann–Whitney U test}
+\label{subsec:u_test}
 
 The t-tests used in strategies from sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} requires the historical measurement data to come from a normal distribution. Even though it was one of our assumptions at the beginning, it does not necessarily hold in reality, as the fluctuations in the run time depend on many factors of the environment. We might try to use a test that is nonparametric, i.e., does not require any standardized and parametrized distribution of the data. One of these tests is the Mann–Whitney U test (for details see \cite{weiss_introductory_2010}), which only requires the sample observations to be independent.
 
@@ -522,6 +525,7 @@ There are other disadvantages of this strategy as well. First of all, the entire
 \end{algorithmic}
 
 \subsection{Window-bound t-test}
+\label{subsec:window_bound_t_test}
 
 The mean based t-test selection strategy described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} works under the assumption that the run times of a specific function have a normal distribution, and the prediction of run time is simply the mean of all the times measured. This could be the truth only for the functions with constant complexity - whenever the function run time depends on the input, the samples measured have their distribution influenced by the distribution of the inputs.
 
@@ -764,6 +768,7 @@ The results are showing that local regression has extremely high run times that 
 As for the remaining strategies, it seems that caching speeds up the selection a little more than 10 times for this number of runs. The window-bound strategies cannot be improved by the caching (as the relevant statistics are different for every window), but they have lowest execution time of all the strategies without cache, and therefore are very usable for the input based case. Regarding the mean based strategies, the t-test is almost 5 times faster than the u-test in the non-cached version, and more than 50 times faster when using the cache, so it is clearly a better choice if performance is the main concern.
 
 \section{Invocation policies}
+\label{sec:policies}
 
 The selection process and all the strategies described in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies} are quite complex and have non-trivial overhead, especially after collecting a large amount of historical data, as discussed in section \ref{subsec:strategy_perf}. In a common scenario where we expect the system to come to a decision about the best function (either overall, or separately for every group), it would be suitable if we could stop the selection process at a certain point and keep using only the most favored function with no extra overhead. Or, to use it most of the time, with only occasional attempts at the selection in order to detect possible changes in the system (response times, I/O operation duration, etc.).
 
