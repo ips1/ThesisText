@@ -54,7 +54,7 @@ In this case, the class contains an immutable field \inlinecode{print} containin
 
 The first-class value functions have to be anchored somewhere in the Scala type system in order for the type inference, type checking and other mechanisms to work correctly. The type of a function is unambiguously determined by its signature, i.e. the number and types of arguments and the type of the return type. Consequentially, the function types have to be generic and able to accept different numbers of type arguments.
 
-Scala as a language does not support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments\footnote{In the code snippets, the type and argument lists will be shortened using the ... notation. The code would have to be expanded in order to be compilable.}:
+Scala as a language does not support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments\footnote{In the code snippets, the type and argument lists will be shortened using the ... notation. The code would have to be expanded in order to be compilable. Analogically, an N will be used in place of a number in the type or type argument names.}:
 
 \lstset{style=Scala}
 \begin{lstlisting}
