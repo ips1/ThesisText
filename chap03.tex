@@ -1,9 +1,9 @@
-\chapter{API and the basic design}
+\chapter{Adaptive development API}
 \label{chapter:api}
 
-API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even entire running application) interacts with its environment. This includes the possible calls / requests, format of the data that is passed in as arguments and the data that is received as a result of the action. In our case, the API will be used to access functionality of our library from the user's own code.
+API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even an entire running application) interacts with its environment. This includes the possible calls or requests, format of the data that is passed in as arguments and the data that is received as a result of the action. In our case, the API will be used to access functionality of our library from the user's own code.
 
-One of the key tasks of this thesis is to research the potential possibilities of API for the adaptation framework, to design it to be as fluent and expressive as possible using the Scala programming language features described in chapter \ref{chap:scala} and to analyze the problems and limitations that it has. 
+One of the key tasks of this thesis is to research the potential possibilities of adaptive development in the user code using the . API for the adaptation framework, to design it to be as fluent and expressive as possible using the Scala programming language features described in chapter \ref{chap:scala} and to analyze the problems and limitations that it has. 
 Some key design decisions about the functionality of the entire framework that are tightly connected to the API design have to be discussed as well.
 
 \section{Design of the API}
@@ -14,7 +14,7 @@ The library itself should not require much interaction from the programmer. The 
 
 \textit{User has a class with two methods, \inlinecode{method1()} and \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.}
 
-The important point is that we want the result of combining the methods to behave exactly like a normal function or method. The caller shouldn't know and shouldn't have to know that he is calling an object that is somehow special. This allows us to limit the adaptation framework interaction in our system to one place which could be hidden inside a separate module behind an interface, and gives us the possibility to quickly replace it or remove it completely.
+The important point is that we want the result of combining the methods to behave exactly like a normal function or method. The caller should not know and should not have to know that he is calling an object that is somehow special. This allows us to limit the adaptation framework interaction in our system to one place which could be hidden inside a separate module behind an interface, and gives us the possibility to quickly replace it or remove it completely.
 
 We can make a list of the \textbf{basic requirements}:
 \begin{enumerate}
@@ -218,7 +218,7 @@ This is expected to be the most common use-case - we have multiple methods and w
 val combinedFunc = obj.method1 _ or obj.method2
 \end{lstlisting}
 
-Note that if the \inlinecode{or} method accepted the \inlinecode{FunctionN} argument and rely on the implicit conversion of the argument as well (just like the call target does), its implicit \textit{eta-expansion} would get blocked and an operator \inlinecode{\_} would be needed as well:
+Note that if the \inlinecode{or} method accepted the \inlinecode{FunctionN} argument and relied on the implicit conversion of the argument as well (just like the call target does), its implicit \textit{eta-expansion} would get blocked and an operator \inlinecode{\_} would be needed as well:
 
 \lstset{style=Scala}
 \begin{lstlisting}
