@@ -3,7 +3,7 @@
 
 API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even an entire running application) interacts with its environment. This includes the possible calls or requests, format of the data that is passed in as arguments and the data that is received as a result of the action. In our case, the API will be used to access functionality of our library from the user's own code.
 
-One of the key tasks of this thesis is to research the potential possibilities of adaptive development in the user code using the . API for the adaptation framework, to design it to be as fluent and expressive as possible using the Scala programming language features described in chapter \ref{chap:scala} and to analyze the problems and limitations that it has. 
+One of the key tasks of this thesis is to research the potential possibilities of adaptive development in the user code using the API of the adaptation framework, to design it to be as fluent and expressive as possible using the Scala programming language features described in chapter \ref{chap:scala} and to analyze the problems and limitations that it has. 
 Some key design decisions about the functionality of the entire framework that are tightly connected to the API design have to be discussed as well.
 
 \section{Design of the API}
@@ -12,9 +12,11 @@ Some key design decisions about the functionality of the entire framework that a
 
 The library itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations. The typical use-case of our API could be described in the following way:
 
+\blockquote{
 \textit{User has a class with two methods, \inlinecode{method1()} and \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.}
+}
 
-The important point is that we want the result of combining the methods to behave exactly like a normal function or method. The caller should not know and should not have to know that he is calling an object that is somehow special. This allows us to limit the adaptation framework interaction in our system to one place which could be hidden inside a separate module behind an interface, and gives us the possibility to quickly replace it or remove it completely.
+The important point is that we want the result of combining the methods to behave exactly like a normal function or method. The caller should not know and should not have to know that he is using an object that is somehow special. This allows introducing adaptivity to existing project just by changing the method implementation, and no new dependency will be introduced in the majority of the code.
 
 We can make a list of the \textbf{basic requirements}:
 \begin{enumerate}
@@ -24,14 +26,15 @@ We can make a list of the \textbf{basic requirements}:
 \end{enumerate}
 
 \subsection{Possible API drafts}
+\label{subsec:api_drafts}
 
-The core part of the whole API and the mechanism that will define the usability of the framework is the method combination definition. JVM classes in general have the limitation that once they are loaded by a \textit{classloader}, they cannot be modified, and neither do their methods. Generating new methods at runtime is therefore extremely difficult. An alternative to that would be to create functions instead, which behave like normal Java objects\footnote{the difference between methods and functions in explained in section \ref{sec:metandfun}}. From the point of view of the potential caller, a function can be used almost identically as a method. 
+The core part of the whole API and the mechanism that will determine the usability of the framework is the method combination definition. JVM classes in general have the limitation that once they are loaded by a \textit{classloader}, they cannot be modified, and neither do their methods. Generating new methods at runtime is therefore extremely difficult. An alternative to that would be to create functions instead, which behave like normal Java objects (see section \ref{sec:metandfun}). From the point of view of the potential caller, a function can be used almost identically as a method. 
 
 This leaves us with two basic approaches to the API.
 
 \subsubsection{API based on methods}
 
-This variant would have to be at least partially based on compile-time actions and would have to work with annotations (in case that we do not want to create custom language extensions).
+This variant would have to rely at least partially on compile-time actions and would have to work with annotations (in case we do not want to create custom language extensions).
 
 The combination definition could work roughly in the following way:
 \lstset{style=Scala}
@@ -53,7 +56,7 @@ There are multiple ways of implementing such an API, we are going to discuss the
 	\item Using aspect weaving
 \end{enumerate}
 
-Scala macros would be able to modify the AST of the \inlinecode{Functions} class to contain three methods (\inlinecode{method1}, \inlinecode{method2} and \inlinecode{combinedMethod}) with the same signature. The typecheck would be done during compile time in the macro execution. Notice a few problems and limitation that this solution has:
+Scala macros would be able to modify the AST of the \inlinecode{Functions} class to contain three methods (\inlinecode{method1}, \inlinecode{method2} and \inlinecode{combinedMethod}) with the same signature. The typecheck would be done at compile time in the macro execution. Notice a few problems and limitation that this solution has:
 
 \begin{itemize}
 	\item The \inlinecode{@ClassWithCombinations} annotation would be necessary for each class that would contain the combined function, because the AST modification of the class can be done only when processing an annotation of the entire class
@@ -62,11 +65,11 @@ Scala macros would be able to modify the AST of the \inlinecode{Functions} class
 	\item The string-based name of the combined method is error prone - methods could be excluded from the combination due to typos in the name, or an existing method could be overwritten by mistake
 \end{itemize}
 
-The second option of using an aspect weaver would lead to a very similar API with different limitations. The weaver does not allow us to modify the class and to generate a method, but can intercept calls of annotated methods using an annotation pointcut. We could either intercept all calls on the methods combined into the same group and use the selection mechanism every time (which would not allow the user to invoke any of the combined methods without the selection process), or have a dummy method with empty implementation, just like in the previous case, and intercept its calls. Looking for other methods with annotation from the pointcut would require us to use reflection.
+The second option of using an aspect weaver\footnote{For more information about JVM aspect weaving see e.g. the AspectJ project \cite{here_aspectj_nodate}.} would lead to a very similar API with different limitations. The weaver does not allow us to modify the class and to generate a method, but can intercept calls of annotated methods using an annotation pointcut. We could either intercept all calls on the methods combined into the same group and use the selection mechanism every time (which would not allow the user to invoke any of the combined methods without the selection process), or have a dummy method with empty implementation and intercept its calls. Looking for other methods with annotation from the pointcut would require us to use reflection.
 
 \subsubsection{API based on functions}
 
-This option would work with functions as first-class values (and the runtime objects representing them). It might look the following way:
+This option would work with functions as first-class values (and the objects representing them) entirely at runtime\footnote{With a small exception - a compile-time macro is actually used to fetch the method names, as will be explained in \ref{sec:extracting_method_name}}. It might look the following way:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -76,13 +79,13 @@ val combinedFunction = /* Expression to combine function1 and function2 */
 val result = combinedFunction(data)
 \end{lstlisting}
 
-The \inlinecode{combinedFunction} would be an object that would confirm to the \inlinecode{Function1} trait (see \ref{subsec:functiontypes}) and thus could be used as a normal function.
+The \inlinecode{combinedFunction} would be an object extending the \inlinecode{Function1} trait (see \ref{subsec:functiontypes}) and thus usable as a normal function.
 
-The main inconvenience of the design is that it works only with functions. Existing methods can be treated as functions using \textit{eta-expansion}(see section \ref{subsec:etaexpansion}), so methods can be combined as well almost with no effort. The other way around, creating a new method, is a little bit more complicated. Both will be discussed later.
+The main inconvenience of the design is that it works only with functions. Existing methods can be treated as functions using \textit{eta-expansion} (see section \ref{subsec:etaexpansion}), so methods can be combined as well with almost no effort. The other way around, creating a new method, is a little more complicated. Both will be discussed later.
 
-Apart from these complications, this approach a lot of advantages. It can be used at runtime in any method to create a temporary function, the type checking and IDE tools work on it, it can be fluent and flexible. The combinations can be created anywhere in the code. And, in general, this approach fits the functional concept of Scala.
+Apart from these complications, this approach a lot of advantages. It can be used at runtime in any context to create a temporary function, the type checking and IDE tooling work on it, it can be fluent and flexible. And, in general, this approach fits the functional concept of Scala.
 
-The function combination expression technically has to be a higher-order function (or method) . We would like it to conform to the functional Scala design patterns. As an inspiration, lets have a look at a different case where we generate one function from two different ones - function composition. This can be done in Scala using a \inlinecode{andThen} method defined on the function type traits (see \ref{subsec:functiontypes}):
+The function combination expression technically has to be a higher-order function (or method). We would like it to conform to the functional Scala design patterns. As an inspiration, lets have a look at a different case where we generate one function from two different ones - function composition. This can be done in Scala using \inlinecode{andThen} method defined on the function type traits (see \ref{subsec:functiontypes}):
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -105,27 +108,30 @@ Chaining of the methods / operators is possible as well:
 val manyOperations = timesTwo andThen plusOne andThen plusOne andThen timesTwo
 \end{lstlisting}
 
-Inspired by this readable and very simple syntax to compose functions which relies on only the basic syntactic features of Scala, we can try to design the combination expression exactly in the same way:
+Inspired by this readable and very simple syntax to compose functions which relies on only the basic syntactic features of Scala, we can try to design the combining expression exactly in the same way:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 val combinedFunction = function1 or function2
 \end{lstlisting}
 
-\subsection{Consequences of the choice}
+\subsection{Choosing the draft}
 
-The \inlinecode{or} method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case a function. More specifically, all of the function types mentioned in \ref{subsec:functiontypes}. Because Scala doesn't support extension methods, we need to introduce a new type for functions containing this behavior, and an implicit conversion from the normal function type. We will use the same type as the type of a combined function - a \inlinecode{MultiFunctionN} type\footnote{Actually a set of types, one for each $N$, in this thesis only from $0$ to $5$}. The following is required:
+From the two basic drafts presented in section \ref{subsec:api_drafts}, the function-based API will be implemented in this work, the reason being primarily a more fluent integration into the Scala programming style and functional development in general. Based on this decision, we can make the basic outlines of the ScalaAdaptive API to be able to examine its usage patterns and possibilities.
+
+The \inlinecode{or} method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case a function. More specifically, all of the function types mentioned in \ref{subsec:functiontypes}. Because Scala does not support extension methods, we need to introduce a new custom type for functions containing this behavior, and an implicit conversion from the function traits. We will use the same type as for the resulting combined function - a \inlinecode{MultiFunctionN} type\footnote{Actually a set of types, one for each $N$, in this thesis only from $0$ to $5$}. The following is required:
 
 \begin{itemize}
 	\item \inlinecode{FunctionN} is implicitly convertible into \inlinecode{MultiFunctionN}, creating a default with just one function
 	\item \inlinecode{MultiFunctionN} has an operator \inlinecode{or} that will combine it with a different \inlinecode{MultiFunctionN}, creating a new object with concatenation of the functions combined
 	\item \inlinecode{MultiFunctionN} will initiate the selection process upon calling \inlinecode{apply()}
+	\item \inlinecode{MultiFunctionN} is a subtype of \inlinecode{FunctionN}
 \end{itemize}
 
 \subsection{Implementation}
 \label{subsec:api_implementation}
 
-The type \inlinecode{MultiFunctionN}, which will be the main part of the interface for the user, will be just a trait hiding a concrete implementation. The user should never come in contact with the actual implementation, as we do not want him to create instances of it manually. The implementation itself should wrap a list of functions from which to chose, along with some basic configuration, which will be discussed later.
+The type \inlinecode{MultiFunctionN}, which will be the main part of the interface for the user, will be just a trait hiding a concrete implementation. The user should never come in contact with the actual class, as we do not want him to create instances of it manually or interact with its API. The implementation itself should wrap a list of functions from which to chose, along with some basic configuration, which will be discussed later.
 
 There are two ways for the user how to get a new \inlinecode{MultiFunctionN} instance:
 
@@ -135,23 +141,20 @@ There are two ways for the user how to get a new \inlinecode{MultiFunctionN} ins
 	\begin{lstlisting}
 implicit def toMultiFunction1[T1, R](fun: (T1) => R): MultiFunction1[T1, R]
 \end{lstlisting}
-	\item By calling the \inlinecode{or} method
+	\item By calling the \inlinecode{or} method defined on \inlinecode{MultiFunctionN}
 		\lstset{style=Scala}
 	\begin{lstlisting}
 def or(fun: (T1) => R): MultiFunction1[T1, R]
 	\end{lstlisting}
 \end{itemize}
 
-The implicit conversions have to be defined for all the function types separately as publicly accessible methods on an object\footnote{A Scala concept for singleton.}. For this purpose, a special object \inlinecode{Implicits} was introduced - it can be imported into any other Scala source file and the implicit conversions become active in this file (for more details see \ref{sec:implicits}).
+The implicit conversions have to be defined for all the function types separately as publicly accessible methods on an object\footnote{A Scala concept for singleton.}. For this purpose, a special object \inlinecode{Implicits} was introduced - it can be imported into any other Scala source file and the implicit conversions become active in the scope (for more details see \ref{sec:implicits}).
 
-The conversion of \inlinecode{FunctionN} to \inlinecode{MultiFunctionN} should always check whether the \inlinecode{FunctionN} instance is not already a \inlinecode{MultiFunctionN} instance as well, and if so, just cast it instead of creating a new wrapper. The same should be done by the \inlinecode{or} function, which can just manually call the conversion on its argument.
-
-Note that declaring the \inlinecode{or} method with \inlinecode{MultiFunctionN} argument directly instead of using the \inlinecode{FunctioN} argument (or its alias) and then manually converting it would effectively block the implicit \textit{eta-expansion} of the argument.
-
-%TODO: Def macros?
-%TODO: Move to a different section
+The conversion of \inlinecode{FunctionN} to \inlinecode{MultiFunctionN} should check every time, whether the \inlinecode{FunctionN} instance is not already a \inlinecode{MultiFunctionN} instance as well, and if so, just cast it instead of creating a new wrapper. The same should be done by the \inlinecode{or} function, which can just manually call the conversion on its argument.
 
 \section{Usage of the API}
+
+After having designed the basic look of our API, we can examine the usage patterns and go through strengths and weaknesses of the solution.
 
 \subsection{Basic use cases}
 
@@ -167,11 +170,11 @@ val combinedFunc = function1 or function2
 
 \textit{Note that the import of the \inlinecode{Implicits} object is necessary every time and will be omitted in the code examples from now on.}
 
-The \inlinecode{function1} and \inlinecode{function2} have to have exactly the same type of \inlinecode{FunctionN}. The \inlinecode{combinedFunc} variable will have a type of \inlinecode{MultiFunctionN}. When exposing the resulting function in a public API, it might be better to enforce the \inlinecode{FunctionN} type for the variable or attribute:
+We suppose that \inlinecode{function1} and \inlinecode{function2} have the same type \inlinecode{FunctionN} with the same type arguments. The \inlinecode{combinedFunc} variable will have a type of \inlinecode{MultiFunctionN}. When exposing the resulting function in a public API, it might be better to enforce the \inlinecode{FunctionN} type for the variable or attribute:
 
 \lstset{style=Scala}
 \begin{lstlisting}
-val combinedFunc: Function1[Int, Int] = function1 or function2
+val combinedFunc: (Int) => Int = function1 or function2
 \end{lstlisting}
 
 This will ensure that the \inlinecode{MultiFunctioN} specific API will remain hidden unless having the \inlinecode{Implicits} explicitly imported again.
@@ -182,13 +185,12 @@ The \inlinecode{or} calls can be chained and used to combine more than two funct
 
 \lstset{style=Scala}
 \begin{lstlisting}
-import scalaadaptive.api.Implicits._
 val combinedFunc = function1 or function2 or function3 or function4
 \end{lstlisting}
 
 \subsubsection{Combining function twice}
 
-A combined function can be combined again, no matter whether treated as \inlinecode{FunctionN} or \inlinecode{MultiFunctionN} in the meantime. The resulting combination will be the same as if the combination was done in one expression\footnote{Actually, the \inlinecode{or} call chain is exactly the same case, the \inlinecode{MultiFunctionN} instances are created one by one}.
+A combined function can be combined again, no matter whether treated as \inlinecode{FunctionN} or \inlinecode{MultiFunctionN} in the meantime. The resulting combination will be the same as if the combination was done in one expression\footnote{Actually, the \inlinecode{or} call chain is exactly the same case, the \inlinecode{MultiFunctionN} instances are created one by one.}.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -235,9 +237,9 @@ Even though functions are so common in Scala, there might be situations where we
 def combinedMethod(arg: T) = (function1 or function2)(arg)
 \end{lstlisting}
 
-The method body consists of creating the combined function object and then immediately applying it. Although this does look elegant, it has a major problem - the \inlinecode{MultiFunctionN} instance is created upon every invocation, which leads to an unnecessary overhead and to loss of all the data locally stored in the instance. In addition, there is no way to access the \inlinecode{MultiFunctionN} internal API (which will be described later).
+The method body consists of creating the combined function object and then immediately applying it. Although this does look elegant, it has a major problem - the \inlinecode{MultiFunctionN} instance is created upon every invocation, which leads to an unnecessary overhead and to loss of all the data locally stored in the instance. In addition, there is no way to access the \inlinecode{MultiFunctionN} internal API.
 
-The preferred, a little less convenient way is to create a private field containing the combined function initialized in constructor and to delegate the method calls to it\footnote{It can be thought of as an analogy to the concept of \textit{property} and its \textit{backing field}}.
+The preferred, a little less convenient way is to create a private field containing the combined function initialized in constructor and to delegate the method calls to it\footnote{It can be thought of as an analogy to the concept of \textit{property} and its \textit{backing field}.}.
  
  \lstset{style=Scala}
  \begin{lstlisting}
@@ -248,15 +250,15 @@ The preferred, a little less convenient way is to create a private field contain
 \subsection{Covariance and contravariance}
 \label{subsec:covariance_contravariance}
 
-So far, all mentioned usages of the \inlinecode{or} method were limited to functions with the same signatures. Quite common case, however, might be combining multiple functions with slightly different argument and return value types, typically one being a specialized version of the other. 
+So far, all mentioned usages of the \inlinecode{or} method were limited to functions with the same signatures. Quite common case, however, might be combining multiple functions with slightly different argument and return value types, typically one being a specialized version of the other, for example:
 
 \lstset{style=Scala}
 \begin{lstlisting}
-def processData1(data: Iterable[Int]): Int = ???
-def processData2(data: List[Int]): Int = ???
+def sort1(data: Iterable[Int]): Iterable[Int] = ???
+def sort2(data: List[Int]): List[Int] = ???
 \end{lstlisting}
 
-Let's examine how this can be done on a simplified case with more combinations:
+We will examine how this can be done on a simplified case with more combinations:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -283,7 +285,7 @@ The function types in Scala are defined in the following way:
 trait Function1[-T1, +R] extends AnyRef
 \end{lstlisting}
 
-The type arguments representing the function arguments are defined as contravariant and the type argument representing the return value of the function is defined as covariant. This leads to \inlinecode{(String) => String} being a subtype of \inlinecode{(String) => Any} and to \inlinecode{(Any) => String} being a subtype of \inlinecode{(String) => String}. So the \inlinecode{or} method is working flawlessly for the \inlinecode{fun5} and \inlinecode{fun6}.
+The type arguments representing the function arguments are defined as contravariant and the type argument representing the return value of the function is defined as covariant. This leads to \inlinecode{(String) => String} being a subtype of \inlinecode{(String) => Any} and to \inlinecode{(Any) => String} being a subtype of \inlinecode{(String) => String}. So the \inlinecode{or} method is working flawlessly for the \inlinecode{fun5} and \inlinecode{fun6}, as implicit conversions from subtype to supertype exist for the functions.
 
 In general, the target of the \inlinecode{or} call (i.e. the \inlinecode{MultiFunctionN} instance created by the implicit conversion) determines the type of the resulting function, and only its subtypes can be passed in as arguments. This can solve majority of the cases where it would be enough to put the more general function on the left side of the \inlinecode{or} method. In the case where we wanted the combined function to have more general signature, we can perform the typecast on the first function passed in:
 
@@ -299,7 +301,7 @@ Potentially, this problem could be solved by having the \inlinecode{or} function
 \begin{lstlisting}
 def or[J1 <: T1, S >: R](fun: (J1) => S): MultiFunction1[J1, S]
 \end{lstlisting}
-This, however, lead to problems when being invoked as macro, so this solution was not used in the final version.
+This, however, lead to problems when being invoked as a macro, so this solution was not used in the final version.
 
 \subsection{Generic methods}
 \label{subsec:generics}
@@ -326,7 +328,7 @@ val fun = defaultCount _
 // fun: (List[Any], Any) => Int
 \end{lstlisting}
 
-As the \inlinecode{or} method performs combination of functions into another function, the \textit{eta-expansion} has to be done at the point of combination, and the arguments should be specified at that point too prevent the described effects. This effectively prevents us from achieving genericity of the combined function in the same way as with methods. 
+As the \inlinecode{or} method performs combination of functions into another function, the \textit{eta-expansion} has to be done at the point of combination, and the arguments should be specified at that point to prevent the described effects. This effectively prevents us from achieving genericity of the combined function in the same way as with methods. 
 
 We can, however, take advantage of the fact that the type arguments being explicitly set in the process of eta-expansion can be generic type parameters of an enclosing structure (generic class or generic method). With this approach, there are two possible patterns for the workaround:
 
@@ -351,9 +353,9 @@ class ListTools[A] {
 
 \subsection{Implicit arguments}
 
-As with a lot of other features, the implicit arguments (described in detail in section \ref{subsec:implicit_args})are supported only by methods, not by functions. Therefore, all of them have to be resolved and fixed when performing \textit{eta-expansion}, along with all the type arguments. 
+As with a lot of other features, the implicit arguments (described in detail in section \ref{subsec:implicit_args}) are supported only by methods, not by functions. Therefore, all of them have to be resolved and fixed when performing \textit{eta-expansion}, along with all the type arguments. 
 
-Lets consider the case where the implicit arguments depend on the value of a type argument. The implicit arguments can be provided manually, or using an implicit variable from the scope where they are being expanded. If the type arguments are being fixed to concrete types, we usually have the implicit implementations at our disposal.
+Lets consider the case where the implicit arguments depend on the value of a type argument. The implicit arguments can be provided manually, or using an implicit variable from the scope where they are being expanded. If the type arguments are being fixed to concrete types, we usually have the implicit implementations at our disposal:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -370,7 +372,7 @@ def sort1[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 def sort2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 \end{lstlisting}
 
-In this case, we would need to expand the type argument to a type argument of an enclosing scope (following the solutions from section \ref{subsec:generics}) in order to preserve the genericity. Consequentially, we need to receive the implicit arguments from the enclosing scope as well. Ideally, we would like to propagate the implicit argument all the way to the level where the type arguments are set, because that is the first point where an actual implementation can be provided. The most straightforward solution to this is just repeating the implicit argument of the type in each of the enclosing scopes where the type argument still exists. This can be done, again, at the level of methods:
+As explained in \ref{subsec:implicit_args}, the goal is to propagate the implicit arguments through several different scopes to the point where the type argument is fixed and the implicit value can be provided. The solution from section \ref{subsec:generics} to expand the type argument to a type argument of an enclosing scope can be extended to the implicit arguments, as the principle is exactly the same - the implicit argument can just be repeated in either the method scope:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -399,7 +401,7 @@ trait TestTrait {
 }
 \end{lstlisting}
 
-If we design our own traits for the use in the application, we can intentionally expose the logic using only functions. In that case, implementing the trait using combined functions does not represent any problem. In case that we need to use an existing trait that contains methods, we need to implement them and delegate the call to the combined function using the techniques described in section \ref{subsubsec:method_from_combined_func}.
+If we design our own traits for the use in the application, we can intentionally expose the logic using only functions. In that case, implementing the trait using combined functions does not represent any problem. In case that we need to use an existing trait that contains methods, we have to implement them and delegate the call to the combined function using the techniques described in section \ref{subsubsec:method_from_combined_func}.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -420,14 +422,14 @@ In this section, we will introduce the rest of the API of the \inlinecode{MultiF
 \subsection{Combined function configuration}
 \label{subsec:api_function_configuration}
 
-When creating a \inlinecode{MultiFunctionN} instance using the implicit conversion and the \inlinecode{or} method, there is no way how to introduce some additional configuration. In compliance with the DSL-like fluent \inlinecode{or} chaining, the configuration was made possible via special methods on the \inlinecode{MultiFunctionN} type that allow chaining as well\footnote{In the \textit{builder}-style pattern, by returning the same type.} and are also meant to be used like operators. The combined function definition including the configuration can be very fluent and natural:
+When creating a \inlinecode{MultiFunctionN} instance using the implicit conversion and the \inlinecode{or} method, there is no way how to introduce some additional configuration. In compliance with the DSL-like \inlinecode{or} chaining, the configuration was made possible via special methods on the \inlinecode{MultiFunctionN} type that allow chaining as well\footnote{In the \textit{builder}-style pattern, by returning the same type.} and are also meant to be used like operators. The combined function definition including the configuration can be very fluent and natural:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 val sort = standardSort _ or selectionSort by (_.size) selectUsing Selection.Predictive storeUsing Storage.Global
 \end{lstlisting}
 
-The most important part of the configuration API is the \inlinecode{by} method. It allow the user to specify how to create an \textit{input descriptor}, integer that describes the input from the perspective of expected complexity, from the function arguments upon invocation. A function of type \textit{(T1, ..., TN) => Long} is used for that, where \inlinecode{T1, ..., TN} are the arguments of the \inlinecode{MultiFunctionN}.
+The most important part of the configuration API is the \inlinecode{by} method. It allow the user to specify how to create an \textit{input descriptor}, integer that describes the input from the perspective of expected complexity, from the function arguments upon invocation. A function of type \inlinecode{(T1, ..., TN) => Long} is used for that, where \inlinecode{T1, ..., TN} are the arguments of the \inlinecode{MultiFunctionN}.
 
 The rest of the configuration options will be described in later chapters and in the documentation to the framework.
 
@@ -447,7 +449,7 @@ Analytics data allow the user to observe and analyze the decisions of the combin
 \subsection{Delayed measuring}
 \label{subsec:delayed_measuring}
 
-In some specific cases it might be useful to delay the measurement, or, in general, to measure invocation of a different function than the one that has multiple implementation. The implementations can affect something else than their own runtime. Some example use cases might be:
+In some specific cases it might be useful to delay the measurement, or, in general, to measure invocation of a different function than the one that has multiple implementation, as they can affect something else than their own runtime. Some example use cases might be:
 
 \begin{itemize}
 	\item Configuration, or generation of configuration
@@ -456,15 +458,15 @@ In some specific cases it might be useful to delay the measurement, or, in gener
 	\item Method chain building with lazy evaluation
 \end{itemize}
 
-It is obvious that our API, which was designed to remain as simple as possible, doesn't support this case. We need to slightly extend it.
+It is obvious that our API, which was designed to remain as simple as possible, does not support this case. We need to slightly extend it.
 
 \subsubsection{Decision context}
 
 Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the library has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
 
-The contexts can interleave and we can't match the decision with the invocation by time or location. It is impossible to decide to which decision which invocation belongs automatically - we need support from the library user. The user will have to explicitly state the context whenever invoking the measured function. By doing this, he will pinpoint the moment of decision that affected the invocation.
+The contexts can interleave and we cannot match the decision with the invocation by time or location. It is impossible to decide which invocation belongs to which decision automatically - we need support from the library user. The user will have to explicitly state the context whenever invoking the measured function. By doing this, he will pinpoint the moment of decision that affected the invocation.
 
-Practically, we need to introduce a special object - the \textbf{measurement token} - which will represent the context. The \inlinecode{MultiFunction} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate a measurement token, that will be used to measure future function runs.
+Practically, we need to introduce a special object - the \textit{measurement token} - which will represent the context. The \inlinecode{MultiFunctionN} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate a measurement token that will be used to measure future function runs. We chose to make it accessible using the \inlinecode{\textasciicircum()} operator, to simulate the fluent application.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -477,5 +479,3 @@ measure(() => run(config))
 This approach has one main disadvantage compared to the rest of the API - it breaks the transparency. The user has to know that he is working with the \inlinecode{MultiFunctionN}, not just normal function. His assistance is, however, required by the nature of the problem.
 
 %TODO: Use cases - configuration generation, expression tree building, query building...
-
-%TODO: Problems - matching decision with measurement

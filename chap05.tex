@@ -30,7 +30,7 @@ This approach is known from the functional programming and takes advantage of mo
 \section{Architecture overview}
 \label{sec:architecture_overview}
 
-This section will provide brief overview of the entire framework architecture and related decisions. More detailed description at the level of individual classes can be found in the documentation (see \hyperref[attachments]{attachments}).
+This section will provide brief overview of the entire framework architecture and related decisions. More detailed description at the level of individual classes can be found in the documentation (see  \hyperref[attach:scaladoc]{attachments}).
 %TODO: Documentation reference
 
 \subsection{API architecture}
@@ -188,6 +188,8 @@ In order to handle the specific cases where type name and method name identifier
 \end{enumerate}
 
 \section{Extracting method name from eta-expansion AST}
+\label{sec:extracting_method_name}
+
 
 In the description of the API in section \ref{subsec:api_implementation}, we introduced an implicit method that will perform the conversion from \inlinecode{FunctionN} to \inlinecode{MultiFunctionN}. In order to extract the method name from potential uses of eta-expanded methods in this conversion, we will have to implement it in the following way:
 
