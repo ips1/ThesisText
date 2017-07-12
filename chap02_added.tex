@@ -4,7 +4,7 @@ This chapter will provide a basic overview of the solution presented and of the 
 
 %TODO: Maybe add references to future chapters
 
-\section{Goals revisited}
+\section{Detailed goals}
 \label{sec:goals_revisited}
 
 In the introduction, the basic goal of the thesis was mentioned in a very general manner - as a simple-to-use framework that allows the user to introduce variants into his program. Now, we will go a little deeper and present more detailed goals and the consequences they have for the implementation.
@@ -26,12 +26,12 @@ This means that we are going to have to work with implicit typecasts from functi
 
 \subsubsection{Transparent usage}
 
-The function that was created by the combining process should behave just like a normal function - the caller should not have to perform any special action and he should not be able to recognize that multiple implementations are involved.
+The function that was created by the combining process (in the rest of the text referred to as \textit{combined function}) should behave just like a normal function - the caller should not have to perform any special action and he should not be able to recognize that multiple implementations are involved.
 
 \lstset{style=Scala}
 \begin{lstlisting}
-val result1 = impl1(arg)
-val result2 = function(arg)
+val result1: U = impl1(arg)
+val result2: U = function(arg)
 \end{lstlisting}
 
 If the user, however, decides to combine the function that is already combined from $n$ simple functions one more time, the result should be a combination of $n+1$ functions, not a combination of $2$ functions where one of them is the original.
@@ -61,7 +61,7 @@ The selection would be based on historical measurements of each function. We sho
 \begin{itemize}
 	\item Functions whose run time does not depend significantly on the input - we expect that if one function has better performance than the other, it will not change with different input or environment
 	\item Functions whose run time depends on some characteristics of the input (e.g. if the sequence is sorted)
-	\item Functions whose run time is expected to be a function of the input (i.e. with non-constant complexity)
+	\item Functions whose run time is expected to be a function of the input size or some similar measurable feature of the input (e.g. length of the sequence to sort)
 	\item Functions whose run time depends on the execution environment and is expected to change over time
 \end{itemize}
 
@@ -69,7 +69,7 @@ This leads to a few requirements. Multiple selection strategies meeting the requ
 
 \subsubsection{Controlling the invocation behavior}
 
-The invocation behavior should change in some cases - when we are sure enough that one option is better than the other in general, when we need to gather more data, when we need to save time and cannot perform the selection, or in other cases. Every combined function should have its state and some behavior plan, which would reflect some basic statistics and events on the functions.
+The invocation behavior should change in some situations - when we are sure enough that one option is better than the other in general, when we need to gather more data, when we need to save time and cannot perform the selection, or in other cases. Every combined function should have its state and some behavior plan, which would reflect some basic statistics and events on the functions.
 
 We can achieve this by introducing a simple state machine logic and a language in form of a Scala DSL to create simple state machines.
 
@@ -83,7 +83,6 @@ The following extensions should be possible without changing the code of the fra
 	\item Change the metrics that is measured for the functions
 	\item Change the history storage
 	\item Add, replace or extend the selection strategies
-	\item Implement custom policies
 \end{itemize}
 
 For this to work, the framework runtime will be created by composition with no close-coupling between modules. All of the runtime parts will communicate using trait interfaces. A simple form of IoC\footnote{Inversion of Control} configuration will be used for the composition.
@@ -93,9 +92,9 @@ For this to work, the framework runtime will be created by composition with no c
 Based on the extended goals presented in section \ref{sec:goals_revisited}, key parts of the solution can be identified and will be described in detail in the rest of the text.
 
 \begin{itemize}
-	\item \textbf{API and CombinedFunction} - a set of classes and methods that the user will be directly interacting with in order to create combined functions, and that will represent the combined functions and handle the invocation process
-	\item \textbf{Invocation policies} - a system of simple state machines to manage the invocation process with almost no overhead, handled directly in the CombinedFunction
+	\item \textbf{API and \inlinecode{CombinedFunction}} - a set of classes and methods that the user will be directly interacting with in order to and invoke the combined functions
+	\item \textbf{Invocation policies} - a system of simple state machines to manage the invocation process with almost no overhead, handled directly in the \textit{CombinedFunction}
 	\item \textbf{Selection strategies} - simple, stateless and isolated strategies that can decide about the most appropriate function to run given a historical measurements of all the functions
-	\item \textbf{Function selector and invoker} - module that will be responsible for selecting the method using a given strategy, invoking it, measuring the performance metrics and storing and retrieving the history data; it will be called by the CombinedFunction
-	\item \textbf{Configuration} - a static description of the Function selector and invoker, can be changed by the user
+	\item \textbf{Function selector and invoker with the history storage} - module that will be responsible for selecting the method using a given strategy, invoking it, measuring the performance metrics and storing and retrieving the history data; it will be called by the \textit{CombinedFunction}
+	\item \textbf{Configuration} - a static description of the function selector and invoker, can be changed by the user
 \end{itemize}
