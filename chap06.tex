@@ -1,18 +1,37 @@
 \chapter{Framework evaluation}
 
-In this chapter, we will evaluate the ScalaAdaptive framework implemented as a part of this work. We will do it practically, by using it in some test scenarios. We will also point out some of the problems that the framework has, and suggest some future improvements.
+This chapter will present some application and practical usages of the ScalaAdaptive framework, and evaluate the benefits and problems that it brings. Practical areas where the adaptivity could be utilized in larger projects were selected.
 
 \section{Real problem application}
 
-In this section, we will try to suggest a couple of problems where the ScalaAdaptive library could be used to improve the overall performance. The problems will be described and an example usage of the library will be provided, along with evaluation of its effects.
+In this section, we will try to suggest a couple of situations where the ScalaAdaptive library could be used to improve the overall performance. The problems will be described and an example usage of the library will be provided, along with evaluation of its effects.
 
 \subsection{Sorting algorithms}
 
-The first test of the ScalaAdaptive will be motivated by a the example case of almost every lecture about algorithm complexity - sorting. We are going to try combining an implementation of a selection sort with theoretical complexity $O(N^2)$ with an implementation of quick sort, which belongs to a category of algorithms with complexity $O(N logN)$. From the theoretical point of view, the quick sort should be a better choice for every input. In practice, however, it is faster to use selection sort for shorter inputs, as the quick sort has an overhead connected to the recursive nature of the algorithm.
+The first test of the ScalaAdaptive will be motivated by the example case of almost every lecture about algorithm complexity - sorting. We are going to try combining an implementation of a selection sort with complexity $O(N^2)$ with an implementation of quick sort, which belongs to a category of algorithms with complexity $O(N logN)$. From the theoretical point of view, the quick sort should be a better choice for every input. In practice, however, it is faster to use selection sort for shorter inputs, as the quick sort has an overhead connected to the recursive nature of the algorithm.
 
 For our two implementations, we found out experimentally that the selection sort tends to be faster for input of less than 1000 items.
 
-The test consists of randomly generating 500 sequences of 0-5000 random integers. Then, all the sequences are sorted by the quick sort, selection sort and a combined function with logarithmic grouping and PauseSelectionAfterStreakPolicy with each one of the input based selection strategies. The sorting times of all the sequences were added up and the results can be seen in table \ref{tab:sorting_results}.
+We are going to combine the two sorting algorithms using the following code:
+\lstset{style=Scala}
+\begin{lstlisting}
+val customSort = (
+  quickSort _ or selectionSort
+  by (_.length) 
+  groupBy (d => GroupId(Math.log(d.length.toDouble).toInt))
+  selectUsing Selection.Predictive 
+  withPolicy new PauseSelectionAfterStreakPolicy(20, 20)
+)
+\end{lstlisting}
+
+The test consists of randomly generating 500 sequences of 0-5000 random integers. All the sequences are then sorted using the quick sort, selection sort and the custom sort with the following selection strategies:
+\begin{itemize}
+	\item Linear regression (LR)
+	\item Window-bound linear regression (WBLR)
+	\item Local regression (LOESS)
+\end{itemize}
+
+The sorting times of all the sequences were added up and the results can be seen in table \ref{tab:sorting_results}. As we can see, using combined function was worse than using quick sort in all cases in this scenario.
 
 \begin{table}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -25,8 +44,8 @@ The test consists of randomly generating 500 sequences of 0-5000 random integers
 		\textbf{Quick sort}                  & 1203.93                                       \\ \hline
 		\textbf{Selection sort}              & 3493.43                                       \\ \hline
 		\textbf{Combined (LR)}               & 1763.58                                       \\ \hline
-		\textbf{Combined (Window-bound LR)}  & 1605.37                                       \\ \hline
-		\textbf{Combined (Local regression)} & 1675.65                                       \\ \hline
+		\textbf{Combined (WBLR)}  & 1605.37                                       \\ \hline
+		\textbf{Combined (LOESS)} & 1675.65                                       \\ \hline
 	\end{tabular}
 \end{center}
 \egroup
@@ -34,9 +53,7 @@ The test consists of randomly generating 500 sequences of 0-5000 random integers
 \label{tab:sorting_results}
 \end{table}
 
-As we can see, using combined function was worse than using quick sort all the time in this scenario. It is most likely caused by the fact that all the cases with smaller inputs where selection sort is faster than quick sort are in general so fast that having better results there has almost no impact in comparison with larger inputs.
-
-In figure \ref{fig:sorting_graph_all}, we can see the execution times of quick sort, selection sort and combined function (using the window-bound linear regression strategy) for different input sizes from this test. As we can see, the combined function times are mostly similar to the quick sort times. The figure \ref{fig:sorting_graph_start} shows only the interval 0-1200, where selection sort tends to be better. The combined function, however, has the worst performance, which is caused by the invocation overhead.
+In figure \ref{fig:sorting_graph_all}, we can see the execution times of quick sort, selection sort and combined function (using the window-bound linear regression strategy) for different input sizes from this test. As we can see, the combined function times are mostly similar to the quick sort times. The figure \ref{fig:sorting_graph_start} shows only the interval 0-1200, where selection sort tends to be better. The combined function, however, has the worst performance, which is caused by the selection overhead (see section \ref{subsec:strategy_perf}).
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -84,11 +101,13 @@ In conclusion, ScalaAdaptive is not suitable for performing optimization for ver
 
 \subsection{Matrix multiplication}
 
-Another example of an algorithmic problem where ScalaAdaptive could be used is matrix multiplication. The basic multiplication algorithm has complexity of $O(N^3)$ and tends to get quite slow for larger matrices. A lot of more complex algorithms with slightly better complexities were invented and are still being improved. The best achieved complexity so far is $O(N^2.373)$ in \cite{williams_multiplying_2012}.
+Another example of an algorithmic problem where ScalaAdaptive could be used is matrix multiplication. The basic multiplication algorithm has complexity of $O(N^3)$ and tends to get quite slow for larger matrices. A lot of more complex algorithms with slightly better complexities were invented and are still being improved. The best achieved complexity so far is $O(N^{2.373})$ in \cite{williams_multiplying_2012}.
 
-The practical problem with most of these fast algorithms is that they have quite high constants and therefore are not suitable for smaller matrices. In this test, we will use the ScalaAdaptive with the Strassen algorithm (complexity $O(N^2.807)$, \cite{strassen_gaussian_1969}), and with the basic multiplication algorithm. We will use a simple implementation of both algorithms from \cite{noauthor_jlinalg_nodate}. The goal of this test is not to find the fastest way to multiply matrices, but to simply demonstrate that adaptation can improve the performance of this class of algorithms.
+The practical problem with most of these fast algorithms is that they have high constants and therefore are not suitable for smaller matrices. In this test, we will use the ScalaAdaptive with the Strassen algorithm (complexity $O(N^{2.807})$, \cite{strassen_gaussian_1969}), and with the basic multiplication algorithm. We will use a simple implementation of both algorithms from \cite{noauthor_jlinalg_nodate}. The goal of this test is not to find the fastest way to multiply matrices, but to simply demonstrate that adaptation can be used with this class of algorithms to reach optimal results with almost no effort.
 
-We tried generating 200 pairs of square matrices with random sizes between 50 and 900, filled with random integers. Then, we multiplied each pair using the basic algorithm, the Strassen algorithm, and the combined function with the window-bound linear regression strategy. Because the run times are quite high in this case, the minimal number of observation before selection was lowered to 5. The results can be seen in table \ref{tab:matrix_results}. As we can see, the overall results are in favor of the combined version. If we examine the relation between the run time and the size of the matrices in figure \ref{fig:matrix_mul_graph}, we can see the unusual character of the Strassen algorithm, caused by it rounding up the matrix to the size corresponding to a power of two. This kind of an input dependency does not work well with linear regression, especially on the edges. Nevertheless, the selection process worked fine enough, except for a few individual mistakes caused by not having enough data available.
+We tried generating 200 pairs of square matrices with random sizes between 50 and 900, filled with random integers. Then, we multiplied each pair using the basic algorithm, the Strassen algorithm, and the combined function with the window-bound linear regression strategy. Because the run times are quite high in this case, the minimal number of observations before selection was lowered to 5 (using the \inlinecode{LowRunAwareSelectionStrategy}, see section \ref{subsubsec:selection_strategy_impl}). 
+
+The results can be found in table \ref{tab:matrix_results}. As we can see, the overall results are in favor of the combined version. If we examine the relation between the run time and the size of the matrices in figure \ref{fig:matrix_mul_graph}, we can see the unusual character of the Strassen algorithm, caused by it rounding up the matrix to the size corresponding to a power of two. This kind of an input dependency does not work well with linear regression, especially on the edges, and should optimally be used with logarithmic grouping and a mean based strategy. Nevertheless, the selection process worked fine enough, except for a few individual mistakes caused by not having enough data available.
 
 \begin{table}[]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -130,23 +149,23 @@ We tried generating 200 pairs of square matrices with random sizes between 50 an
 	\label{fig:matrix_mul_graph}
 \end{figure}
 
-The matrix multiplication algorithms represent an ideal problem for the adaptive execution. Current approach to designing a fast library method for multiplying matrices would consist of measuring the matrix size limit where the Strassen algorithm becomes faster than the basic one  and then putting a fixed branching in the method, deciding, which one to take. With ScalaAdaptive framework, this whole process can be skipped.
+The matrix multiplication algorithms represent an ideal problem for the adaptive execution. Current approach to designing a fast library method for multiplying matrices would consist of measuring the matrix size limit where the more complex algorithm becomes faster than the basic one and then putting a fixed branching in the method, deciding which one to take. With ScalaAdaptive framework, this whole process can be skipped, and if the faster algorithm changes, the system will adapt, finding the new limit by itself.
 
 \subsection{JSON parsing}
 \label{subsec:json_parsing}
 
-JSON\footnote{JavaScript Object Notation} is a data-exchange format that can hold serialized object trees and collections based on the notation for object (technically key-value dictionaries) literals in JavaScript. The format has recently become extremely popular due to its simplicity, data efficiency and readability, and as of today, is basically a standard for communication HTTP REST APIs. Most of the systems with distributed architecture that communicate over such an API (typically client-server applications) need to serialize and deserialize JSON upon sending a request or receiving a response, which might occur quite often.
+JSON\footnote{JavaScript Object Notation} is a data-exchange format that can hold serialized object trees and collections based on the notation for object (technically key-value dictionaries) literals in JavaScript. The format has recently become extremely popular due to its simplicity, data efficiency and readability, and as of today, is basically a standard for HTTP REST APIs. Most of the systems with distributed architecture that communicate over such an API (typically client-server applications) need to serialize and deserialize JSON upon sending a request or receiving a response, which might occur quite often.
 
 %TODO: A lot of abbreviations here...
 
-The problem concerning JSON and other similar formats (XML, ProtocolBuffers, etc.) is that there is a variety of libraries available to perform the serialization and deserialization, and we have to decide for one when designing our application. The API tends to be very similar, and for many systems, the performance might be the issue. There are performance tests available that compare the performance of the libraries, but the performance might be different for various sizes, structures, etc. In addition, in the \textit{Capturing Performance Assumptions using Stochastic Performance Logic} it is shown that the performance might vary in different versions.
+The problem concerning JSON and other similar formats (XML, ProtocolBuffers, etc.) is that there is a variety of libraries available to perform the serialization and deserialization, and we have to decide for one when designing our application. The API tends to be very similar, and for many systems, the performance might be the issue. There are performance tests available that compare the performance of the libraries, but the performance might be different for various sizes, structures, etc. In addition, the \cite{Trojanek:Thesis:2013} shows that the performance might vary in different versions.
 %TODO: Add reference and VERIFY!!!
 
 This library decision problem is a perfect use-case for ScalaAdaptive - we can create a simple wrapper library with the same API as the original libraries that will expose the functions combined from the original serialization and deserialization methods. The user will be abstracted from the ScalaAdaptive, and the libraries can be added or removed at any time very easily.
 
 \subsubsection{Combining GSON and Jackson}
 
-For the test, we will use two JSON libraries - GSON and Jackson, which are probably two of the most common libraries from the Java world. We will measure only the deserialization part (parsing of string containing JSON), which is the more time-complex operation. A library wrapper that exposes three parsing functions was created:
+The \cite{dreyfuss_ultimate_2015} provides benchmarks about the basic JSON libraries from the Java world. For the test, we chose to use GSON and Jackson. We will measure only the deserialization part (parsing of string containing JSON), which is the more time-complex operation. A library wrapper that exposes three parsing functions was created:
 \begin{itemize}
 	\item \inlinecode{parseWithGson()}
 	\item \inlinecode{parseWithJackson()}
@@ -155,7 +174,7 @@ For the test, we will use two JSON libraries - GSON and Jackson, which are proba
 
 The setup for the test is following:
 \begin{itemize}
-	\item TTestSelectionStrategy with $\alpha = 0.05$
+	\item T-test with cached statistics and with $\alpha = 0.05$
 	\item PauseSelectionAfterStreakPolicy with streak length 10 and retry every 200th run
 \end{itemize}
 
@@ -167,52 +186,50 @@ The grouping applied is logarithmic to the JSON input string length, i.e. $group
 	\item Large - 8MB, 1000 records array
 \end{itemize}
 
-We know that we will deal with fixed sizes of input files, so we can use the t-test selector without any problems, because every size will occupy one of the groups. If we knew that the sizes within a group might vary, we should use some other strategy.
+We know that we will deal with fixed sizes of input files, so we can use the t-test selection strategy without any problems, because every size will occupy one of the groups. If we knew that the sizes within a group might vary, we should use some other strategy.
 
-During the test, we ran each one of the three parsing functions 10000 times on the small JSON, 5000 times on the medium JSON and 200 times on the large JSON. We measured the total run time of all the functions, and the results can be seen in the table \ref{tab:json_parsing_results}. The measurements are in miliseconds and include complete runs of the parsing functions, including the overhead of ScalaAdaptive.
-
-\begin{table}[h!]
-\captionsetup{justification=centering,margin=0.5cm}
-\bgroup
-\def\arraystretch{1.5}%
-\begin{center}
-	\begin{tabular}{ | l | r | r | r | }
-		\hline
-		& \textbf{GSON} & \textbf{Jackson} & \textbf{Combined} \\ \hline
-		10000 * Small JSON & 1830.36 & 4883.24 & 2566.54 \\ \hline	
-		Small JSON average & 0.18 & 0.49 & 0.26 \\ \hline	
-		5000 * Medium JSON & 4865.89 & 3142.05 & 3059.18 \\ \hline	
-		Medium JSON average & 0.97 & 0.63 & 0.61 \\ \hline	
-		200 * Large JSON & 15790.47 & 7298.75 & 7740.31 \\ \hline	
-		Large JSON average & 78.95 & 36.49 & 38.70 \\ \hline
-		Total time & 22486.71 & 15324.05 & 13366.03 \\
-		\hline
-	\end{tabular}
-\end{center}
-\egroup
-\caption{Results of the JSON parsing tests (times in ms).}
-\label{tab:json_parsing_results}
-\end{table}
-
-As we can see, the average time in all cases is roughly the same or a little worse than the time of the better alternative. The total time spent on parsing shows us that without using ScalaAdaptive, we would get worse performance no matter which function we used.
-
-We can compare the results with table \ref{tab:json_parsing_results_no_policy} showing the same test, only without the PauseSelectionAfterStreakPolicy. We see that by actually performing the selection every time, the overhead grows, which can be best seen on the small and medium inputs, where the results are significantly worse.
 
 \begin{table}[h!]
-		\captionsetup{justification=centering,margin=0.5cm}
+	\captionsetup{justification=centering,margin=0.5cm}
 	\bgroup
 	\def\arraystretch{1.5}%
 	\begin{center}
 		\begin{tabular}{ | l | r | r | r | }
 			\hline
 			& \textbf{GSON} & \textbf{Jackson} & \textbf{Combined} \\ \hline
-10000 * Small JSON  & 2180.20       & 5615.20          & 5667.64           \\ \hline
-Small JSON average  & 0.22          & 0.56             & 0.57              \\ \hline
-5000 * Medium JSON  & 4696.52       & 2944.04          & 3889.25           \\ \hline
-Medium JSON average & 0.94          & 0.59             & 0.78              \\ \hline
-200 * Large JSON    & 15829.39      & 7433.50          & 7772.41           \\ \hline
-Large JSON average  & 79.15         & 37.17            & 38.86             \\ \hline
-Total time          & 22706.11      & 15992.73         & 17329.30          \\ \hline
+			10000 * Small JSON & 1830.36 & 4883.24 & 2566.54 \\ \hline	
+			Small JSON average & 0.18 & 0.49 & 0.26 \\ \hline	
+			5000 * Medium JSON & 4865.89 & 3142.05 & 3059.18 \\ \hline	
+			Medium JSON average & 0.97 & 0.63 & 0.61 \\ \hline	
+			200 * Large JSON & 15790.47 & 7298.75 & 7740.31 \\ \hline	
+			Large JSON average & 78.95 & 36.49 & 38.70 \\ \hline
+			\textbf{Total time} & 22486.71 & 15324.05 & 13366.03 \\
+			\hline
+		\end{tabular}
+	\end{center}
+	\egroup
+	\caption{Results of the JSON parsing tests (times in ms).}
+	\label{tab:json_parsing_results}
+\end{table}
+
+
+During the test, we ran each one of the three parsing functions 10000 times on the small JSON, 5000 times on the medium JSON and 200 times on the large JSON. We measured the total run time of all the functions, and the results can be seen in the table \ref{tab:json_parsing_results}.
+
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\bgroup
+	\def\arraystretch{1.5}%
+	\begin{center}
+		\begin{tabular}{ | l | r | r | r | }
+			\hline
+			& \textbf{GSON} & \textbf{Jackson} & \textbf{Combined} \\ \hline
+			10000 * Small JSON  & 2180.20       & 5615.20          & 5667.64           \\ \hline
+			Small JSON average  & 0.22          & 0.56             & 0.57              \\ \hline
+			5000 * Medium JSON  & 4696.52       & 2944.04          & 3889.25           \\ \hline
+			Medium JSON average & 0.94          & 0.59             & 0.78              \\ \hline
+			200 * Large JSON    & 15829.39      & 7433.50          & 7772.41           \\ \hline
+			Large JSON average  & 79.15         & 37.17            & 38.86             \\ \hline
+			\textbf{Total time}          & 22706.11      & 15992.73         & 17329.30          \\ \hline
 		\end{tabular}
 	\end{center}
 	\egroup
@@ -220,11 +237,16 @@ Total time          & 22706.11      & 15992.73         & 17329.30          \\ \h
 	\label{tab:json_parsing_results_no_policy}
 \end{table}
 
+As we can see, the average time in all cases is roughly the same or a little worse than the time of the better alternative. The total time spent on parsing shows us that without using ScalaAdaptive, we would get worse performance no matter which function we used.
+
+We can compare the results with table \ref{tab:json_parsing_results_no_policy} showing the same test, only without the PauseSelectionAfterStreakPolicy. We see that by actually performing the selection every time, the overhead grows, which can be best seen on the small and medium inputs, where the results are significantly worse.
+
+
 \subsection{Load balancing}
 
 A different sort of problems that ScalaAdaptive might help with is to adapt the system to the environment changes. We can demonstrate this on a simple example - the system that relies on a remote web service that runs in multiple instances on different web servers. The service itself is stateless, so we can perform the request on either of them. 
 
-Main goal of the replication is to distribute the work between more nodes, so that the response time remains low. A technique called load balancing should take care of distributing the requests evenly between the nodes often just using a simple round-robin technique. This, however, has to be done on the side of the service, through a common gateway. We will use the ScalaAdaptive to implement a simple load balancing on the side of the client (so that balance between services hosted at different locations could be done) by evaluating the response times and selecting the target node using our selection strategies. We will take advantage of the possibility to limit the maximal duration of historical data - we want to decide based only on the most recent measurements, because we suppose that they will change rapidly.
+Main goal of the replication is to distribute the work between more nodes, so that the response time remains low. A technique called load balancing should take care of distributing the requests evenly between the nodes often just using a simple round-robin technique. This, however, has to be done on the side of the service, through a common gateway. We will use the ScalaAdaptive to implement a simple load balancing on the side of the client (so that balance between services hosted at different locations could be done) by evaluating the response times and selecting the target node using our selection strategies. We will take advantage of the possibility to limit the maximal age of the historical data (see section \ref{subsec:limiting_record_age}) - we want to make decisions based only on the most recent measurements, because we suppose that they will change rapidly.
 
 There are two goals of this load balancing example:
 
@@ -255,7 +277,7 @@ val balancedRequest =
 )
 \end{lstlisting}
 
-Note that we need to use the custom identifier feature as mentioned in \ref{subsubsec:custom_identifier}, because the function is combined from a single eta-expanded method with different arguments fixed in the currying process. The closure type is therefore the same for all the resulting functions.
+Note that we need to use the custom identifier feature as mentioned in \ref{subsubsec:custom_identifier}, because the function is combined from a single eta-expanded method with different arguments fixed in the currying process. The closure type is therefore the same for all the resulting functions. The selection will be done using t-test with $\alpha = 0.05$.
 
 For the actual test, we used two instances of the web server running on different ports of the same machine. We simulated the problems with load on the machines by artificially changing the response times of the servers every 50 seconds according to a set of predefined scenarios. From the client application, we sent one request every 0.5 seconds directly to each one of the servers and one using our balanced method. The results for three different scenarios can be seen in figure \ref{fig:load_balance_scen}. The lines represent response time evolution in time - direct requests are marked with blue and orange, the balanced request is gray. We can observe that most of the time, the gray line copies the lower of the two remaining lines. Sometimes, the gray line repeatedly reaches the higher line, which means that the balanced request is sent to the slower server in order to gather fresh run data.
 
@@ -276,7 +298,7 @@ For the actual test, we used two instances of the web server running on differen
 	\label{fig:load_balance_scen}
 \end{figure}
 
-The average response times in these scenarios are shown in the table \ref{tab:load_balance_resp_avgs}. The balanced response time is always lower than the worse of the response times. In case where the load alternates between the two servers (scenario 2), the balanced version has the best average response time. If, on the other hand, only one server fluctuates and the other one keeps a relatively low response time (scenario 3), the balanced version is slightly worse than the server that doesn't fluctuate. Nevertheless, the second goal of moving the load between the servers is completed in all three scenarios.
+The average response times in these scenarios are shown in the table \ref{tab:load_balance_resp_avgs}. The balanced response time is always lower than the worse of the response times. In case where the load alternates between the two servers (scenario 2), the balanced version has the best average response time. If, on the other hand, only one server fluctuates and the other one keeps a relatively low response time (scenario 3), the balanced version is slightly worse than the optimal one. Nevertheless, the second goal of moving the load between the servers is completed in all three scenarios.
 
 \begin{table}[h!]
 	\centering
@@ -286,21 +308,21 @@ The average response times in these scenarios are shown in the table \ref{tab:lo
 	
 	\begin{tabular}{|l|r|r|r|}
 		\hline
-		& \textbf{Server 1} (blue)& \textbf{Server 2} (orange)& \textbf{Balanced} (gray)\\ \hline
+		& \textbf{Server 1}& \textbf{Server 2}& \textbf{Balanced}\\ \hline
 		Scenario 1 & 74.20             & 70.48             & 68.38             \\ \hline
 		Scenario 2 & 80.92             & 81.77             & 72.52             \\ \hline
 		Scenario 3 & 81.97             & 94.39             & 85.38             \\ \hline
 	\end{tabular}
 	\egroup
-	\caption{Average response times for the request methods in scenarios 1, 2 and 3 in miliseconds.}
+	\caption{Average response times for the request methods in scenarios 1, 2 and 3 (in ms).}
 \label{tab:load_balance_resp_avgs}
 \end{table}
 
-A disadvantage of ScalaAdaptive that complicates the usage in this area is the fact that it doesn't support measuring run times of asynchronous functions, i.e. functions that perform callbacks or complete promises upon finishing.
+A disadvantage of ScalaAdaptive that complicates the usage in this area is the fact that it does not support measuring run times of asynchronous functions, i.e. functions that perform callbacks or complete promises upon finishing.
 
 \section{Spark}
 
-Apache Spark is a framework for distributed computing that is focused on data processing in a similar way to the MapReduce distributed computation paradigm. It works with distributed data sets that can be mapped, filtered, grouped or reduced, but unlike common implementations in Hadoop or other systems, it is focused on in-memory data processing on the nodes. Currently, it is one of the most used systems in distributed big data processing, designed to work with a large variety of distributed storage systems (HDFS, Cassandra, OpenStack Swift).
+Apache Spark (\cite{noauthor_apache_nodate}) is a framework for distributed computing that is focused on data processing in a similar way as the MapReduce distributed computation paradigm. It works with distributed data sets that can be mapped, filtered, grouped or reduced, but unlike the implementations in Hadoop or other systems, it is focused on in-memory data processing on the nodes. Currently, it is one of the most used systems in big data processing, designed to work with a large variety of distributed storage systems (e.g. HDFS, Cassandra, OpenStack Swift).
 
 The Spark framework represents one of the most interesting possibilities to use the ScalaAdaptive framework. The data processing queries are long-running tasks, so any overhead imposed by the selection is negligible. On the other hand, the potentially saved time on a faster implementation increases. In addition, the distributed computation model and the necessity to create an execution plan which depends on the data locations, sizes, etc. leads to large differences in execution times based on:
 
@@ -319,25 +341,25 @@ Spark currently supports three different APIs that can be used to construct Spar
 
 \subsubsection{RDD}
 
-RDD (Resilient Distributed Dataset) was the first API introduced and is basically a distributed dataset of JVM objects, which can be queried using higher order functions like \inlinecode{map()}, \inlinecode{filter()}, etc. Spark isn't aware of structure of the internal JVM objects, it is treating the individuals like blackboxes. The query is typed and constructed using lambda expressions that work with these objects. It gets executed when a function that doesn't produce new RDD is called, e.g. \inlinecode{collect()} or \inlinecode{count()}:
+RDD (Resilient Distributed Dataset) was the first API introduced and is basically a distributed dataset of JVM objects, which can be queried using higher order functions like \inlinecode{map()}, \inlinecode{filter()}, etc. Spark is not aware of the structure of the internal JVM objects, it is treating the individuals like blackboxes. The query is typed and constructed using lambda expressions that work with these objects. It gets executed when a function that does not produce new RDD is called, e.g. \inlinecode{collect()} or \inlinecode{count()}:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 rdd.filter(_.id > 5000).count
 \end{lstlisting}
 
-Upon execution, the Spark worker engine works with the RDDs as a whole (partitions it, collects the results, etc.), but the operations on its members (filtering, transformation, grouping) are carried out by actually executing the lambda functions. This approach is very simple and allows the user to write queries over custom data types without any limitation. The downside is that the Spark execution engine doesn't know what is going on within the lambdas, can't optimize the execution plan based on the query, and, when moving the parts of RDDs between the nodes, the objects have to be serialized and deserialized again.
+Upon execution, the Spark worker engine works with the RDDs as a whole (partitions it, collects the results, etc.), but the operations on its members (filtering, transformation, grouping) are carried out by actually executing the lambda functions. This approach is very simple and allows the user to write queries over custom data types without any limitation. The downside is that the Spark execution engine does not know what is going on within the lambdas, cannot optimize the execution plan based on the query, and, when moving the parts of RDDs between the nodes, the objects have to be serialized and deserialized again.
 
 \subsubsection{DataFrames and Spark SQL}
 
-DataFrames API was introduced later into the Spark framework with a goal of achieving better performance and scalability. The data within DataFrames are described by a schema, somehow similar to classic SQL schema - Spark knows exactly how are the data records structured. The queries are constructed using Spark SQL, a query language (DSL in Scala) that uses string names of the record attributes (or columns). As we can see in the following example, the actions are described by strings and parsed by Spark upon execution:
+DataFrames API was introduced later into the Spark framework with a goal of achieving better performance and scalability. The data within DataFrames are described by a schema, somehow similar to classic SQL schema - Spark knows exactly how are the data records structured. The queries are constructed using Spark SQL, a query language (DSL in Scala) that uses textual names of the record attributes (or columns). As we can see in the following example, the actions are described by strings and parsed by Spark upon execution:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 df.filter("id > 5000").count
 \end{lstlisting}
 
-Spark therefore knows how exactly the mapping, filtering, reducing or grouping is going to happen and the Spark can use these information to optimize the execution, data distribution, can use it to make estimations, etc. when building the query plan. In addition, the data described by a schema can be easily persisted or transfered between nodes without the need to perform a JVM serialization. A major disadvantage is the necessity to provide the schema and the fact that the actual query is parsed at runtime and is untyped - errors in attribute names or conditions in general won't be detected upon compilation.
+Spark therefore knows how exactly the mapping, filtering, reducing or grouping is going to happen, and can use these information to optimize the execution and data distribution, to make estimations, etc., when building the query plan. In addition, the data described by a schema can be easily persisted or transfered between nodes without the need to perform a JVM serialization. A major disadvantage is the necessity to provide the schema and the fact that the actual query is parsed at runtime and is untyped - errors in attribute names or conditions in general will not be detected upon compilation.
 
 \subsubsection{Datasets}
 
@@ -357,7 +379,7 @@ Randomly generated data were used for the test, no distributed storage was invol
 
 \subsubsection{Query selection}
 
-The most simple case that can be applied to any data processing or querying framework is the query selection. A data operation can usually be expressed using a variety of queries that differ in the order or character of the elementary steps. These queries can often have quite different performance, based on the optimizations that the executing engine can perform, especially in the distributed environment where the main concern is keeping the amount of data transfered to the minimum.
+The most simple adaptation case that can be applied to any data processing or querying framework is the query selection. A data operation can usually be expressed using a variety of queries that differ in the order or character of the elementary steps. These queries can often have quite different performance, based on the optimizations that the executing engine can perform, especially in the distributed environment where the main concern is keeping the amount of data transfered to the minimum.
 
 An example of such a query performance variation can be the \textit{group} versus \textit{reduce} problem. Suppose have a set of key-value pairs and we want to group them by key and then reduce the groups (by aggregating their content somehow). The straightforward approach is to group the data and to map the aggregation function over the grouped values:
 
@@ -390,17 +412,17 @@ As explained in section \ref{subsec:spark_apis}, Spark has various APIs that all
 
 The ScalaAdaptive can be used in this case to limit the eventual negative impact of this change. The Dataset-based queries can be implemented into the system and wrapped along with the old RDD queries into a single combined query. If there was a place where the Dataset query would, for some reason, have worse performance, the ScalaAdaptive framework should discover it and keep using the old RDD query. In the longer term, the results of ScalaAdaptive selections can be evaluated and used to discover problematic queries and to decide about the next steps.
 
-For the test, we prepared two queries:
+For the test, we prepared the RDD and the Dataset variants of two queries:
 \begin{itemize}
-	\item \textbf{Query 1} - generated n random key-value pairs, grouped by the key and counted the groups
-	\item \textbf{Query 2} - generated n records with multiple attributes, filtered by an attribute, grouped by a different attribute, reduced the groups into new records, filtered again and grouped
+	\item \textbf{Query 1} - generates $n$ random key-value pairs, groups by the key and counts the groups
+	\item \textbf{Query 2} - generates $n$ records with multiple attributes, filters by an attribute, groups by a different attribute, reduces the groups into new records, filters again and groups for the second time
 \end{itemize}
 
-The results of multiple ($50-100$ times) execution in various environments can be seen in table \ref{tab:spark_adaptive_rdd_vs_ds_test}, which contains the average execution times of the RDD and the Dataset variants as computed from the analytics data of a combined function. The last column shows the ScalaAdaptive decision after gathering enough data - t-test selection strategy with $\alpha = 0.05$ was used.
+The queries were combined together and the result was executed $100$ times in various environments and with multiple values of $n$. The average execution times of the internal implementations, as retrieved from the analytics data (see section \ref{subsubsec:analytics}), can be seen for all the cases in table \ref{tab:spark_adaptive_rdd_vs_ds_test}. The last column shows the ScalaAdaptive decision after gathering enough data - t-test selection strategy with $\alpha = 0.05$ was used.
 
 We can see that it is definitely not possible to assume that Datasets are faster than RDDs. The only situation where Dataset got better performance was the Query 1 test with the largest amount of data. It is possible to assume that at least for Query 1, the Datasets perform better for larger data sizes, both locally and in the cluster. For Query 2, it seems that Dataset performance is constantly around 7 times worse.
 
-These observations might be caused by Datasets having the operations optimized to different cases, or even by our wrong selection of Spark SQL alternatives of the RDD queries. But such a case might be a real scenario and the case where the ScalaAdaptive framework can be successfully employed.
+These observations might be caused by Datasets having the operations optimized to different cases, or even by our wrong selection of Spark SQL alternatives of the RDD queries. But such a case might be a real scenario where the ScalaAdaptive framework can be successfully employed.
 
 \begin{table}[h!]
 	\centering
@@ -411,11 +433,11 @@ These observations might be caused by Datasets having the operations optimized t
 		\hline
 		& \multicolumn{1}{c|}{\textbf{RDD}} & \multicolumn{1}{c|}{\textbf{Dataset}} & \multicolumn{1}{c|}{\textbf{ScalaAdaptive decision}} \\ \hline
 		Query 1: Cluster 500000       & 920.97                            & 1633.84                           & RDD                                                  \\ \hline
-		Query 1: Cluster 2000000      & 7105.58                           & 7068.34                           & Can't decide                                         \\ \hline
+		Query 1: Cluster 2000000      & 7105.58                           & 7068.34                           & Cannot decide                                         \\ \hline
 		Query 1: Cluster 5000000      & 37140.28                          & 3587.97                           & Dataset                                                  \\ \hline
 		Query 1: Local{[}1{]} 200000  & 2426.95                           & 12554.66                          & RDD                                                  \\ \hline
 		Query 1: Local{[}8{]} 200000  & 1499.14                           & 7446.45                           & RDD                                                  \\ \hline
-		Query 1: Local{[}8{]} 1000000 & 12070.14                          & 12861.32                          & Can't decide                                         \\ \hline
+		Query 1: Local{[}8{]} 1000000 & 12070.14                          & 12861.32                          & Cannot decide                                         \\ \hline
 		Query 2: Cluster 100000 & 1152.19 &	6956.03 & RDD \\ \hline
 		Query 2: Cluster 1000000      & 2162.72                           & 14311.13                          & RDD                                                  \\ \hline
 	\end{tabular}
@@ -426,49 +448,53 @@ These observations might be caused by Datasets having the operations optimized t
 
 \subsubsection{Spark SQL adaptive execution}
 
-Spark queries are divided into stages, where each stage can be perform on a single node without the need to exchange any data. Typically, multiple maps or filters chained can be performed within one stage, because every record can be mapped without the necessity of any other data. On the other hand, join, groupBy and reduce have to be done at the beginning of a new stage, because they potentially need data from other nodes. Before every stage, a shuffle i performed - the data is exchanged between the nodes. 
+Spark queries are divided into stages, where each stage can be performed on a single node without the need to exchange any data. Typically, multiple maps or filters are chained within one stage, because every record can be mapped without the necessity of any other data. On the other hand, join, group and reduce operations have to be done at the beginning of a new stage, because they can potentially require data from other nodes. Before every stage, a shuffle i performed - the data is exchanged between the nodes. 
 
-The data is additionally divided into partitions, where each nodes is processing a subset of partitions, and upon shuffle, some partitions get exchanged. Originally, the partitioning of the data upon each shuffle is fixed and based on the original partitioning - it does not reflect the actual results of previous stages, which could lead, in some extreme cases, to some nodes having a lot less work than the others if there were partitions with majority of data filtered out in previous stage. To solve this issue, an experimental feature called \textit{adaptive execution} was introduced into Spark SQL, which causes that the result sizes from previous stages are collected and a new partitioning is created before performing the shuffle.
+The data is divided into partitions and each node processes a specific subset during the stage execution. Upon shuffle, some partitions get exchanged. Originally, the partitioning of the data following each shuffle was fixed and based on the original partitioning - it did not reflect the actual results of previous stages, which could potentially lead  to some nodes having a lot less work than the others if there were partitions with majority of data filtered out in previous stage. To solve this issue, an experimental feature called \textit{adaptive execution}\footnote{Should not be mistaken with the adaptive execution of \textit{ScalaAdaptive} framework.} was introduced into Spark SQL, which causes that the result sizes from previous stages are collected and a new partitioning is created before performing the shuffle.
 
 The \textit{adaptive execution} feature is turned off by default. We can use ScalaAdaptive to experiment with the performance impact when enabling it. In addition, there are two configurable attributes of the feature:
 \begin{itemize}
-	\item \inlinecode{spark.sql.adaptive.shuffle.targetPostShuffleInputSize} - target size of an optimal partition
-	\item \inlinecode{spark.sql.adaptive.minNumPostShufflePartitions} - minimal number of partitions which will be strictly kept
+	\item \inlinecode{targetPostShuffleInputSize} - the optimal size of a partition (will be targeted during shuffle)
+	\item \inlinecode{minNumPostShufflePartitions} - the minimal number of partitions (will be strictly kept)
 \end{itemize}
 We can try a custom value for these attributes in one of the ScalaAdaptive combinations.
 
 The usage of ScalaAdaptive in this case will, however, be a little more complicated. Some attributes of the Spark SQL configuration can be changed at any point in the execution, but doing so is not reliable, especially in large cluster - changes do not seem to be reflected immediately. A safer approach is to create the SparkSession already with the target configuration. If we create new session for each query, we can incorporate the session creation into the query function. If we, on the other hand, use one session for multiple queries, the only solution is the delayed measurement model, as described in section \ref{subsec:delayed_measuring}. 
 
-The test was performed on a Dataset of records which was filtered, grouped by an attribute, the groups reduced to a single element and the result filtered again and counted. We tried to combine the following setups:
+The test was performed on a Dataset of $n$ records which was filtered, grouped by an attribute, the groups reduced to a single element and the result filtered again and counted. We tried to combine various values of $n$ with the following setups:
 
 \begin{enumerate}
 	\item \textit{Adaptive execution} disabled (currently the default configuration)
 	\item \textit{Adaptive execution} enabled with default attributes
-	\item \textit{Adaptive execution} enabled, 
-	targetPostShuffleInputSize = 512MB, 
-	minNumPostShufflePartitions = -1 (unlimited)
-	\item \textit{Adaptive execution} enabled, targetPostShuffleInputSize = 2MB, minNumPostShufflePartitions = 200
+	\item \textit{Adaptive execution} enabled\\
+	\inlinecode{targetPostShuffleInputSize} = 512MB\\
+	\inlinecode{minNumPostShufflePartitions} = -1 (unlimited)
+	\item \textit{Adaptive execution} enabled\\
+	\inlinecode{targetPostShuffleInputSize} = 2MB\\
+	\inlinecode{minNumPostShufflePartitions} = 200
 \end{enumerate}
 
-The table \ref{tab:spark_adaptive_config_test} shows the average execution times fetched from the combined function analytics data. As we can see, the performances of the options vary a lot depending on the input size and on the execution environment. The default configuration (with \textit{adaptive execution} disabled) in the local execution on small data is by far the worst, in large cluster is among the better ones. Configuration number 2 is the best in all cases, but we can see that the results tend to change a lot, and using ScalaAdaptive can help discover eventual better configurations.
+The SparkSession was created 12 times for every test case and the query was executed 10 times using each session (120 executions in total). As the \inlinecode{LowRunAwareSelectionStrategy} (see section \ref{subsubsec:selection_strategy_impl}) was set to a minimum of 20 records, each of the setups had to be used for at least two sessions. Then, the t-test selection strategy with $\alpha = 0.05$ was used.
 
-The only disadvantage of using ScalaAdaptive in this case is that selection from quite a lot alternatives is required, which complicates the selector decisions. In case of the results discussed, the test wasn't able to decide in the case of Local[8], 10000 entries. The test not being able to decide between the two best options leads to rotating all the options, including the worse ones.
+The table \ref{tab:spark_adaptive_config_test} shows the average execution times for the setups fetched from the combined function analytics and marks if the framework reached a decision after having the 20 records for each one. As we can see, the performances of the options vary a lot depending on the input size and on the execution environment. The default configuration (with \textit{adaptive execution} disabled) in the local execution on small data is by far the worst, in large cluster is among the better ones. The configuration number 2, i.e., the manually activated \textit{adaptive execution} with default setup, is the best in all cases, but we can see that the results tend to change a lot, and using ScalaAdaptive can help discover eventual better configurations.
+
+The disadvantage of using ScalaAdaptive in this case is that selection from quite a lot alternatives is required, which complicates the selector decisions. In case of the results discussed, the test was not able to decide in the two local cases . The test not being able to decide between the two best options leads to rotating all the options, including the worse ones.
 
 \begin{table}[h!]
 	\centering
 	\captionsetup{justification=centering,margin=0.5cm}
 	\bgroup
 	\def\arraystretch{1.5}%
-	\begin{tabular}{|l|r|r|r|r|}
+	\begin{tabular}{|l|r|r|r|r|r|}
 		\hline
-		& \multicolumn{1}{c|}{\textbf{1. (disabled)}} & \multicolumn{1}{c|}{\textbf{2.}} & \multicolumn{1}{c|}{\textbf{3.}} & \multicolumn{1}{c|}{\textbf{4.}} \\ \hline
-		Local{[}8{]} 1000  & 4322.24                                     & 1472.51                          & 1916.87                          & 3528.62                          \\ \hline
-		Local{[}8{]} 10000 & 6911.03                                     & 4499.11                          & 4933.53                          & 6320.43                          \\ \hline
-		Cluster 20000      & 1234.36                                     & 725.79                           & 3892.56                          & 1172.69                          \\ \hline
-		Cluster 200000     & 2879.25                                     & 2538.94                          & 5639.02                          & 2853.10                          \\ \hline
+		& \multicolumn{1}{c|}{\textbf{1.}} & \multicolumn{1}{c|}{\textbf{2.}} & \multicolumn{1}{c|}{\textbf{3.}} & \multicolumn{1}{c|}{\textbf{4.}} & \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}ScalaAdaptive\\ decision\end{tabular}}} \\ \hline
+		Local{[}8{]} 1000  & 4322.24                          & 1472.51                          & 1916.87                          & 3528.62                          & Cannot decide                                                                                  \\ \hline
+		Local{[}8{]} 10000 & 6911.03                          & 4499.11                          & 4933.53                          & 6320.43                          & Cannot decide                                                                                  \\ \hline
+		Cluster 20000      & 1234.36                          & 725.79                           & 3892.56                          & 1172.69                          & 2.                                                                     \\ \hline
+		Cluster 200000     & 2879.25                          & 2538.94                          & 5639.02                          & 2853.10                          & 2.                                                                             \\ \hline
 	\end{tabular}
 \egroup
-\caption{Average run times (in ms) of Spark queries with different configurations in various environments.}
+\caption{Average run times (in ms) of Spark queries with different configurations in various environments, and the configurations that ScalaAdaptive selected.}
 \label{tab:spark_adaptive_config_test}
 \end{table}
 
@@ -478,16 +504,16 @@ Using adaptive framework in the development process is a new concept with many c
 
 \subsection{Invocation overhead}
 
-The framework adds a non-trivial overhead to the function invocation process due to the selection and the evaluation data storing. In order to limit this, the policy-based invocation system was added to the framework to skip this phase in some situations. Therefore, two different types of overhead time per invocation can be measured:
+The framework adds a non-trivial overhead to the function invocation process due to the selection and the evaluation data storing. In order to limit this, the policy-based invocation system was added to the framework to skip the selection in some situations. Therefore, two different types of overhead time per invocation can be measured:
 
 \begin{enumerate}
 	\item \textbf{Policy evaluation overhead}\\
 	Part of every invocation. It is expected to be small and it should be constant throughout the whole application lifetime. It cannot be measured from within the framework, but it can be computed by measuring the combined function run time and then by subtracting the run time and overhead time from the \inlinecode{AnalyticsData} collected by the function.
 	\item \textbf{Selection overhead}\\
-	Exists only when the SelectNew or GatherData result is given by the policy. It is determined by the actual selection strategy used and in general expected to be longer and to be related to the number of history data records for the functions involved. It is tracked by the framework and included in the \inlinecode{AnalyticsData} and the statistics that the policies are based on.
+	Exists only when the SelectNew or GatherData result is given by the policy. It is determined by the actual selection strategy used and is in general expected to be longer and to be related to the number of history data records for the functions involved. It is tracked by the framework and included in the \inlinecode{AnalyticsData} and in addition, it is one of the statistics that the policies are based on.
 \end{enumerate}
 
-The figure \ref{fig:overhead_sel_policy} shows these times tracked for a sequence of 20000 invocations (sampled every 50th run) using the window-bound linear regression strategy (see section \ref{subsec:window_bound_regression}) and a policy that emits the SelectNew result every time. We can see that the selection overhead is significantly larger and really grown with the number of records. The policy evaluation overhead remains basically constant.
+The figure \ref{fig:overhead_sel_policy} shows these times tracked for a sequence of 20000 invocations (sampled every 50th run) using the window-bound linear regression strategy (see section \ref{subsec:window_bound_regression}) and a policy that emits the SelectNew result every time. We can see that the selection overhead is significantly larger and really grows with the number of records. The policy evaluation overhead remains basically constant.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -496,17 +522,17 @@ The figure \ref{fig:overhead_sel_policy} shows these times tracked for a sequenc
 	\label{fig:overhead_sel_policy}
 \end{figure}
 
-The average selection overhead from the sample discussed is \textbf{1.29ms} per invocation, the average policy evaluation overhead from the same sample is \textbf{0.06ms} per invocation. We can see that the policy evaluation overhead is significantly lower, so the key to limiting the overhead is using the correct policies and avoiding selection whenever possible. Analysis in section \ref{subsec:strategy_perf} also showed that there are important differences in overheads of the strategies, so the correct strategy selection is important as well.
+The average selection overhead from the sample discussed is \textbf{1.29ms} per invocation, the average policy evaluation overhead from the same sample is \textbf{0.06ms} per invocation. We can see that the policy evaluation overhead is reasonably low, so the key to limiting the overhead is using the correct policies and avoiding selection whenever possible. Analysis in section \ref{subsec:strategy_perf} also showed that there are important differences in overheads of the strategies, so the correct strategy selection is important as well.
 
 The overhead always exists and has to be counted with, but its significance depends on the actual problem that we are solving. The overhead was counted in for all of the applications presented in this chapter - the real performance of the combined function was compared with the performance of the original, non-combined ones. As we can see from the results in these cases, its significance was minimal.
 
 \subsection{Maintainability}
 
-One of the main problems that such a framework is facing in a real-life software system is an engineering problem. The code of today's systems has to be kept working and maintained for several years, sometimes decades. During this period, bugs appear in the system, business requirements change and consequently, it is necessary to perform changes and adaptations in function code.
+One of the main problems that such a framework is facing in a real-life software system is an engineering issue. The code of current systems has to be kept working and maintained for several years, sometimes decades. During this period, bugs appear in the system, business requirements change and consequently, it is necessary to perform modifications in function code.
 
-Maintaining multiple implementations of the same functionality at once brings a lot of issues. The developers have to know exactly how all the implementations work and whenever it's necessary to modify the behavior, be able to perform changes in all of them to achieve the same result. Described process itself is very demanding and has a significant time impact on the development. 
+Maintaining multiple implementations of the same functionality at once brings a lot of issues. The developers have to know exactly how all the implementations work and whenever it is necessary to modify the behavior, be able to perform changes in all of them to achieve the same result. Described process itself is very demanding and has a significant time impact on the development. 
 
-What is more, subtle differences in behavior of the implementations could be unintentionally introduced. These differences might not have visible effects immediately and may appear after several other modifications. At that moment, it will be extremely difficult to locate the problem, because the misbehavior caused by it won't be deterministic thanks to the nature of the selection algorithm.
+What is more, subtle differences in behavior of the implementations could be unintentionally introduced. These differences might not have visible effects immediately and may appear after several other modifications. At that moment, it will be extremely difficult to locate the problem, because the misbehavior caused will not be deterministic thanks to the nature of the selection algorithm.
 
 In cases where third-party libraries are used within the combined implementations, we introduce yet another factor of risk into the system - the libraries can change their behavior in newer versions, can have undocumented differences in their solutions of input corner cases, etc. Using non-deterministic decision tools in general lowers the maintainability of the system, and the ScalaAdaptive framework is such a tool.
 
@@ -514,24 +540,24 @@ In cases where third-party libraries are used within the combined implementation
 
 \subsection{Testing and verification}
 
-Upon maintenance of all the implementations used in our program, there will be inevitable changes made to every one of them. Before being released, the system has to go through the verification process. Common techniques of regression testing are insufficient in this case due to the non-deterministic nature of the adaptive selection in the system - some of the implementations might not be tested at all during the regression test, but might be selected in the production environment.
+When maintaining multiple implementations used in our program, there will have to be inevitable changes made to every one of them. Before being released, the system has to go through the verification process. Common techniques of regression testing are insufficient in this case due to the non-deterministic nature of the adaptive selection in the system - some of the implementations might not be tested at all during the regression test, but might be selected in the production environment.
 
 The only way how to perform a regression test on the system is to change the \textit{ScalaAdaptive} library configuration in the test environment, specifically the \textit{default policy} and the \textit{selection strategy}. Recommended settings are following:
 
  \begin{itemize}
- 	\item default policy: AlwaysSelectPolicy
- 	\item selection strategy: LeastDataSelectionStrategy
+ 	\item default policy: \inlinecode{AlwaysSelectPolicy}
+ 	\item selection strategy: \inlinecode{LeastDataSelectionStrategy}
  \end{itemize}
 
-Using this setup and ensuring that there are no history run data present, the system will go through all the options in round-robin style upon every run. The test task has to be performed enough times for all the options to reach their turn.
+Using this setup and ensuring that there are no history run data present, the system will go through all the options in round-robin style upon every run. The test process has to be performed enough times for all the options to reach their turn.
 
-The described testing process is cumbersome and can lead to errors in verification. For this reason, more emphasis should be put on \textit{Unit Testing} in a project containing the adaptively selected functions. If all the implementations are well covered by unit tests, all the hidden bugs and deviations of behavior should be immediately detected. In fact, there could be one common set of unit tests covering all the implementations, so that the test cases and acceptation conditions were the same.
+The described testing process is cumbersome and can lead to errors in verification. For this reason, more emphasis should be put on unit testing in a project containing the adaptively selected functions. If all the implementations are well covered by unit tests, all the hidden bugs and deviations of behavior should be immediately detected. In fact, there could be one common set of unit tests covering all the implementations, so that the test cases and acceptation conditions were the same.
 
 A simple library for generating the unit tests for all the implementation would be useful and could be introduced as a part of continuation of the project.
 
 \subsection{Debugging}
 
-Discovering and fixing bugs in a software system is a key part of its development and maintenance process. It is a very complex and time consuming activity, and its complexity grows considerably for the bugs that have non-deterministic occurrences. Whenever there is a bug in one of the implementations used with the library, it is inherently non-deterministic, as it has effect only when the specific implementation is selected.
+Discovering and fixing bugs in a software system is a key part of its development and maintenance process. It is a very complex and time consuming activity, and its complexity grows considerably for the bugs that have non-deterministic occurrences. Whenever there is a bug in one of the implementations used with the library, it is inherently non-deterministic, as it has effect only when the specific implementation is selected. The effort required to discover the bug causes therefore grows.
 
 \subsection{Same API requirement}
 
@@ -543,15 +569,6 @@ In order to create a combined function from two different algorithms implemented
 \end{itemize}
 
 Creating wrappers for the API that solve these issues is not trivial - data structures have to be converted, copied, etc., which will cause more unnecessary overhead. This overhead might get more significant with the complexity of data structures that we need to convert between the two APIs that we need to adapt.
-
-\section{Usage from Java and other JVM based languages}
-\label{sec:usage_from_java}
-
-Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of the ScalaAdaptive framework from Java is not supported. The reason is that the API of the framework depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
-
-There is, however, a very simple way how to utilize the framework in a Java or any JVM based language project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class that internally holds the function created from the Java methods using the \inlinecode{or} operator. It will should expose it using a method, like described in section \ref{subsubsec:method_from_combined_func}, as Java does not have the concept of functions and the invocation would have to be done using the \inlinecode{apply} method call.
-
-As part of future work on the framework, there could be a Java API added, enabling a direct usage from Java, although it would be very limited and not as expressive. More on the topic of API possibilities in other languages will be discussed later.
 
 \section{Future work}
 
@@ -569,7 +586,7 @@ The run data in the persistent storage are currently stored in CSV file format, 
 
 \subsubsection{Thread safety and concurrency}
 
-The framework in general currently is not thread safe. It is designed, however, to be possible to make it that way without the necessity for some major changes. For the possibility to safely use the framework from a multi-threaded environment, we would need to ensure three basic points:
+The framework in general is currently not thread safe. It is designed, however, with regard to the possible concurrency, so the modifications should not be dramatic. For the possibility to safely use the framework from a multi-threaded environment, we would need to ensure three basic points:
 
 \begin{enumerate}
 	\item Thread-safe initialization and static runtime composition
@@ -593,21 +610,21 @@ data.add(i)
 
 \subsubsection{Selection strategies supporting multidimensional input descriptors}
 
-As mentioned in section \ref{sec:input_based_strategies}, algorithm complexities are quite commonly functions of multiple factors of the input. In order to create selection strategies that would be able to correctly decide in case of such algorithms, we would need to add support for \textit{input descriptors} with more factors. The input based strategies would then have to construct multidimensional regression models and analyze the dependency on multiple factors.
+As mentioned in section \ref{subsec:input_in_selection}, algorithm complexities are quite commonly functions of multiple features of the input. In order to create selection strategies that would be able to correctly decide in case of such algorithms, we would need to add support for \textit{input descriptors} with more features. The input based strategies would then have to construct multidimensional regression models and analyze the dependency on multiple features.
 
-\subsubsection{Detecting the function dependency}
+\subsubsection{Detecting the input features}
 
-The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation of input factor changes and run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the factors.
+The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation between the input feature changes and the run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the features.
 
 \subsubsection{Significance level analysis}
 
-The two main selection strategies used, linear regression and t-tests, have a significance level parameter for their decisions. The significance gets affected by performing multiple tests or confidence interval constructions during selection between more than two functions. The theory, as described in sections \ref{subsec:simple_linear_regression} and \ref{subsec:t_test_multiple}, would allow us to perform estimations of the impact of multiple function testing on the significance level, which would be quite complicated. 
+Most of the strategies used have a significance level parameter for their decisions. The significance gets affected by performing multiple tests or confidence interval constructions during selection between more than two functions. The theory, as described in sections \ref{subsec:simple_linear_regression} and \ref{subsec:t_test_multiple}, would allow us to perform estimations of the impact of multiple function testing on the significance level, which would be quite complicated. 
 
-More interesting future work, however, might be based on experimentally determining the most appropriate values for various number of functions, based on real cases and real function behavior.
+More interesting future work, however, might be based on experimentally determining the most appropriate corrections for various number of functions based on real cases and real function behavior.
 
 \subsubsection{Implementation in other languages}
 
-The framework is implemented in Scala and can be used to combine functions for any JVM-based languages (see section \ref{sec:usage_from_java}). Transferring the whole framework to a different language and platform might be desirable in the future. In such a case, the main problem would be the API of the framework, which, in its current design, relies heavily on Scala's DSL features (see \ref{sec:dsls}). It requires the following features from the language:
+The framework is implemented in Scala and can be used to combine functions for any JVM-based languages (see section \ref{subsec:usage_from_java}). Transferring the whole framework to a different language and platform might be desirable in the future. In such a case, the main problem would be the API of the framework, which, in its current design, relies heavily on Scala's DSL features (see section \ref{sec:dsls}). It requires the following features from the language:
 
 \begin{itemize}
 	\item Implicit type conversions

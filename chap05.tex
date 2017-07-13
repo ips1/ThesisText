@@ -578,6 +578,7 @@ These instances can be wrapped in the following decorator classes:
 The \inlinecode{LimitedRunHistory} wrapper should always be used, as it can prevent unexpected out-of-memory exceptions in the program run, as the base run history implementations have no size limits.
 
 \subsubsection{SelectionStrategy}
+\label{subsubsec:selection_strategy_impl}
 
 Very simple trait that represents the selection strategies described in detail in sections \ref{sec:input_based_strategies} and \ref{sec:mean_based_strategies}. The implementations should be stateless and should work only with the \inlinecode{RunHistory} records that it receives (in order not to mix together decisions about two separate history storage locations). The strategy implementations often have a customizable fallback strategy that is used in cases where the current strategy is not able to make a decision, as described in section \ref{subsec:solving_decision_failures}.
 
@@ -673,6 +674,7 @@ Logging is performed by multiple parts that are involved in the selection proces
 Replacing \inlinecode{EmptyLogger} with one of the other types will lead to detailed output describing each invocation of every combined function, which can be used to trace eventual problems with the framework behavior.
 
 \subsubsection{Analytics and control access}
+\label{subsubsec:analytics}
 
 To provide a more systematic and technical access of the framework behavior, a simple set of methods was made accessible on the \inlinecode{MultiFunctionN} type by extending two more traits, \inlinecode{MultiFunctionControl} and \inlinecode{MultiFunctionAnalytics}:
 
@@ -686,7 +688,7 @@ To provide a more systematic and technical access of the framework behavior, a s
 
 The analytics data represent a way of monitoring the decisions of the selection process for each combined function. It contains a complete set of records of previous runs, each one holding the identifier of the selected function, the \textit{input descriptor}, run time and the overhead time spent on the selection. The data can either be analyzed directly in the application by processing these records, or can be easily serialized into a CSV file.
 
-Note that the analytical data collection is relies on the \inlinecode{AnalyticsCollector} trait. Again, we provide two implementations, \inlinecode{BasicAnalyticsCollector} that collects all the data mentioned, and \inlinecode{EmptyAnalyticsCollector}, that does not collect anything. The empty variant is default in order to minimize the overhead of the framework. In case the user has a need of the analytics data from his application, he can enable the collection by replacing the collector.
+Note that the analytics data collection is relies on the \inlinecode{AnalyticsCollector} trait. Again, we provide two implementations, \inlinecode{BasicAnalyticsCollector} that collects all the data mentioned, and \inlinecode{EmptyAnalyticsCollector}, that does not collect anything. The empty variant is default in order to minimize the overhead of the framework. In case the user has a need of the analytics data from his application, he can enable the collection by replacing the collector.
 
 \subsection{Framework configuration}
 \label{subsec:framework_config}

@@ -619,12 +619,12 @@ Now, the test will be based in combining two instances of the same function\foot
 For each test, we will generate 100 sequences, each one containing 200 integers between 100000 and 500000 in case of the linear function, or 100 and 500 for the quadratic function. One sequence will represent one test run - the measurement history will be flushed and the function will be invoked on the members of the sequence one by one. The strategies are set in the way that the first 60 runs will use a round-robin selection to gather 30 data samples for each function before starting the actual selection. It means that the strategy should perform 140 selections for each test run. We are going to count how many times the worse function is be selected. The baseline solution in this case would be to keep using the round-robin technique, which would lead to the worse function being selected 50\% of the time, 70 times out of 140.
 
 Now, we will use the following values for $k$: 4, 2, 1.5, 1.2, 1.1, 1.01, and the following selectors:
-\begin{enumerate}
+\begin{itemize}
 	\item Window-bound t-test (WBTT) with $\alpha$ set to 0.05 and 0.25
 	\item Linear regression (LR) with $\alpha$ set to 0.05 and 0.25
 	\item Window-bound linear regression (WBLR) with $\alpha$ set to 0.05 and 0.25
 	\item Local regression (LOESS)
-\end{enumerate}
+\end{itemize}
 
 For each combination, all 100 test runs were performed and an average percentage of the worse function selection was computed, the results for the linear function can be seen in table \ref{tab:strategy_comparison} and for the quadratic function in table \ref{tab:strategy_comparison_quadratic}. A surprising fact might be the overall better results for the non-linear case, which should be more difficult to model. The reason for this fact is that there is a dramatically lower range of inputs (100 to 500 instead of 100000 to 500000) in order to keep the test run time realistic. In addition, the run time differences between individual inputs grows much faster, so the error factor involved does less damage to the model. In general, it seems that functions with faster-growing complexities get more precise predictions.
 
@@ -682,10 +682,10 @@ In all cases, we can see that lowering the selection significance by increasing 
 Similarly as for the input based strategies, we are going to perform a selection success rate test for the mean based strategies. As we need only a function with fixed non-trivial execution time with a possibility to slow it down a little, we are going to reuse the linear function from section \ref{subsec:input_based_strategies_success}, calling it with a constant input of 200000. Again, we are going to combine an instance of the non-slowed function with the instances of function slowed by a factor $k$. 
 
 The values 2, 1.5, 1.2, 1.1, 1.01 will be used for $k$, along with the following selectors:
-\begin{enumerate}
+\begin{itemize}
 	\item T-test (TT) with $\alpha$ set to 0.05 and 0.25
 	\item U-test (UT) with $\alpha$ set to 0.05 and 0.25
-\end{enumerate}
+\end{itemize}
 
 For each combination of $k$ and a selector, 100 test runs will be performed, each one consisting of invoking the described combined function 200 times and removing all the history records afterwards.
 
