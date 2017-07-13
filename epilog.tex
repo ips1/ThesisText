@@ -14,3 +14,73 @@ The majority of current problems and issues can be addressed in the future by ex
 We believe that the biggest potential of this framework lies in its simplicity and possibility to be used in any kind of system without any structural changes. As we do not expect a common developer to implement one functionality multiple times and then combine it using our library, the main use-case in some larger project would most likely consist in combining multiple libraries, configuration, queries or other simply obtainable entities.
 
 To see the actual benefit that this development approach can bring to a larger system, we would need to practically test it in such an application, i.e. a long running service, and track the performance changes. This kind of test would also expose other problems connected with either the framework, or the whole concept of adaptive development, that could not have been identified in the isolated artificial tests.
+
+
+\section*{Future work}
+
+\subsubsection{Extending the policy logic and connecting it to selectors}
+
+As already briefly mentioned in section \ref{subsec:policy_improvements}, the policies are currently relatively limited, both in the data they have to base their decision on, and in the results they can produce. It would be interesting to analyze possible extensions while keeping the evaluation overhead as minimal as possible. The policies could give hints to the selection strategies, limit the data that they are working with, etc.
+
+\subsubsection{Custom selection rules based on the SPL}
+
+The \cite{bulej_performance_2012} introduces an extension of the SPL language designed to describe conditions based on the trends of historical performance data of functions. A special selector could be designed to accept the SPL conditions and make decisions according to them. This would allow the framework user to have more control over the selection process. 
+
+\subsubsection{Improving the persistent storage}
+
+The run data in the persistent storage are currently stored in CSV file format, which is not very fast to serialize and deserialize. In addition, the serialization buffering is done in a very basic way, leading to a loss of run data when the application ends with a non-empty buffer. In addition, this solution still has a non-trivial overhead. A potential improvement task might be to select a new format and a method how to flush the buffer upon closing the application, i.e. using JVM shutdown hooks.
+
+\subsubsection{Thread safety and concurrency}
+
+The framework in general is currently not thread safe. It is designed, however, with regard to the possible concurrency, so the modifications should not be dramatic. For the possibility to safely use the framework from a multi-threaded environment, we would need to ensure three basic points:
+
+\begin{enumerate}
+	\item Thread-safe initialization and static runtime composition
+	\item Thread-safe access to the run history
+	\item Thread-safe access to the combined function state (run statistics and current policy)
+\end{enumerate}
+
+The first point should not cause any problems. Run histories are already prepared to be made thread-safe by having an API to support immutability (mutating operations return new instances) and an immutable implementation (with all the caches) as well. Because of that, only adding a simple lock on the history updating method should be enough. As to the third point, this is currently the biggest issue, because it has been optimized for performance and the statistics are mutable in general. They could, however, be made into an immutable structure, and replacing the policy and updating the statistics would be atomic operations without any overhead.
+
+\subsubsection{Optimizing run time of the whole system}
+
+Instead of optimizing the run times of separate functions, we could aim for optimizing the whole system. We could, for example, have a set of different data structures that our algorithm will be working with. The data structures would have all the necessary operations implemented and presented using a trait or an abstract class. The framework would generate a factory method that would create one of the implementations, and then track the overall behavior of different methods on the implementations. 
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val data = createDataStructure(list)
+data.getMin()
+data.getMax()
+data.add(i)
+\end{lstlisting}
+
+\subsubsection{Selection strategies supporting multidimensional input descriptors}
+
+As mentioned in section \ref{subsec:input_in_selection}, algorithm complexities are quite commonly functions of multiple features of the input. In order to create selection strategies that would be able to correctly decide in case of such algorithms, we would need to add support for \textit{input descriptors} with more features. The input based strategies would then have to construct multidimensional regression models and analyze the dependency on multiple features.
+
+\subsubsection{Detecting the input features}
+
+The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation between the input feature changes and the run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the features.
+
+\subsubsection{Significance level analysis}
+
+Most of the strategies used have a significance level parameter for their decisions. The significance gets affected by performing multiple tests or confidence interval constructions during selection between more than two functions. The theory, as described in sections \ref{subsec:simple_linear_regression} and \ref{subsec:t_test_multiple}, would allow us to perform estimations of the impact of multiple function testing on the significance level, which would be quite complicated. 
+
+More interesting future work, however, might be based on experimentally determining the most appropriate corrections for various number of functions based on real cases and real function behavior.
+
+\subsubsection{Implementation in other languages}
+
+The framework is implemented in Scala and can be used to combine functions for any JVM-based languages (see section \ref{subsec:usage_from_java}). Transferring the whole framework to a different language and platform might be desirable in the future. In such a case, the main problem would be the API of the framework, which, in its current design, relies heavily on Scala's DSL features (see section \ref{sec:dsls}). It requires the following features from the language:
+
+\begin{itemize}
+	\item Implicit type conversions
+	\item Functions as first-class values
+	\item Extensibility of the function types
+	\item Eta-expansion of methods
+	\item Infix operator syntax for methods
+	\item Macros to parse and modify the AST upon compilation
+\end{itemize}
+
+With a subset of these features in the language, a limited version of the current API could be designed. 
+
+The best approach for a different platform implementation would probably be to analyze the features that the target language offers and the common approach to designing APIs in that language, and to create a new, better suited API.
