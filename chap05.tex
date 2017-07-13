@@ -86,7 +86,7 @@ As we can see, there are two principal logic units participating in the process:
 
 A few questions regarding the implementation arise from the basic architecture showed in section \ref{sec:architecture_overview}. We will provide a brief analysis before explaining the implementation details any further.
 
-\subsection{HistoryStorage location}
+\subsection{History storage location}
 \label{subsec:storing}
 
 \inlinecode{HistoryStorage} is supposed to gather and store history data for all functions that are invoked using a combined function. The question is, where to save the data and how accessible to make it. We propose three variants.
@@ -609,7 +609,7 @@ The common composition pattern is to use the \inlinecode{LowRunAwareSelectionStr
 
 With a goal of potentially supporting larger variety of possible function evaluation data, the selected function is always executed using an implementation of \inlinecode{EvaluationProvider}, which is supposed to run the function and to evaluate it, and return both the result of the function and the evaluation data in the form of \inlinecode{TMeasurement}. The default implementation simply measures the wall-clock time of the function run.
 
-\section{Configuration and customization}
+\section{User interaction and customization}
 
 The basic behavior of the combined functions can be changed in two ways:
 \begin{itemize}
@@ -617,9 +617,25 @@ The basic behavior of the combined functions can be changed in two ways:
 	\item The whole framework can be re-configured and customized
 \end{itemize}
 
-\subsection{Composed function configuration}
+\subsection{Combined function setup}
+\label{subsec:function_setup}
 
-There is a fluent and simple way to configure the most basic behavior as part of the function composition API (see section \ref{subsec:api_function_configuration}). It is based mostly on selecting which one of multiple implementation options should be used with given function. In the \inlinecode{AdaptiveInternal} singleton, we hold two implementations of \inlinecode{AdaptiveSelector}, one with persistent history storage, the other without. Each of these two implementations then includes two instances of  \inlinecode{SelectionStrategy}, one for input based and one for mean based selection.
+As the basic API designed in chapter \ref{chapter:api}, i.e. the \inlinecode{or} method used to create new combined functions, does not allow directly setting the function behavior, a simple configuration API has to be added. In compliance with the DSL-like \inlinecode{or} chaining, the configuration was made possible via special methods on the \inlinecode{MultiFunctionN} type that allow chaining as well\footnote{In the \textit{builder}-style pattern, by returning the same type.} and are also meant to be used like operators. The combined function definition including the configuration can be very fluent and natural:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+val sort = standardSort _ or selectionSort by (_.size) selectUsing Selection.Predictive storeUsing Storage.Global
+\end{lstlisting}
+
+\subsubsection{Input descriptor and group selector}
+
+The most important part of the configuration API are the \inlinecode{by} and \inlinecode{groupBy} methods. The first allow the user to specify the \textit{descriptor function}, i.e., function describing how to extract an \textit{input descriptor} from the input (see \ref{subsec:input_in_selection}). A function of type \inlinecode{(T1, ..., TN) => Long} is used for that, where \inlinecode{T1, ..., TN} are the arguments of the \inlinecode{MultiFunctionN}. 
+
+The second method expects a \textit{group selector}, which assigns the input to a certain group (see \ref{subsubsec:group_selection}). It should receive a function of type \inlinecode{(T1, ..., TN) => Group}.
+
+\subsubsection{Function configuration}
+
+Additional behavior can be modified for the combined function. The choice is based mostly on selecting which one of multiple implementation options should be used with given function. In the \inlinecode{AdaptiveInternal} singleton, we hold two implementations of \inlinecode{AdaptiveSelector}, one with persistent history storage, the other without. Each of these two implementations then includes two instances of  \inlinecode{SelectionStrategy}, one for input based and one for mean based selection.
 
 The function configuration methods and possible values are the following:
 
@@ -632,8 +648,8 @@ The function configuration methods and possible values are the following:
 	\end{itemize}
 \item \inlinecode{selectUsing}
 \begin{itemize}
-	\item \inlinecode{InputBased} - uses the input based strategy from the \inlinecode{AdaptiveSelector}
-	\item \inlinecode{MeanBased} - uses the mean based strategy from the \inlinecode{AdaptiveSelector}
+	\item \inlinecode{InputBased} - uses the input based strategy in \inlinecode{AdaptiveSelector}
+	\item \inlinecode{MeanBased} - uses the mean based strategy in \inlinecode{AdaptiveSelector}
 \end{itemize}
 \item \inlinecode{limitedTo} - allows to specify the maximum age of the history records to be used in the selection process, as described in \ref{subsec:limiting_record_age}
 \item \inlinecode{asClosures} - represents the history storage identifier choice as described in section \ref{subsec:function_identifiers}
@@ -646,7 +662,31 @@ The function configuration methods and possible values are the following:
 
 The user of the library is expected to specify this configuration with most of the combined functions. The default values are determined by the framework configuration, except for the selection strategy choice, which is defaulted to input based if the \textit{descriptor function} is provided for the combined function and to mean based otherwise.
 
-%TODO: Reference by & groupBy, add it somewhere!!!!
+\subsection{Logging, analytics and control access}
+
+There are two basic mechanisms for the user of the framework to observe its functionality - logging and analytics.
+
+\subsubsection{Logging}
+
+Logging is performed by multiple parts that are involved in the selection process. An instance of the simple \inlinecode{Logger} trait held in the \inlinecode{AdaptiveInternals} and passed around to other modules is used for that purpose. The provided implementation of loggers are \inlinecode{ConsoleLogger}, \inlinecode{FileLogger} and \inlinecode{EmptyLogger}, where the last one does not actually save the logs anywhere, and is used by default to limit the overhead.
+
+Replacing \inlinecode{EmptyLogger} with one of the other types will lead to detailed output describing each invocation of every combined function, which can be used to trace eventual problems with the framework behavior.
+
+\subsubsection{Analytics and control access}
+
+To provide a more systematic and technical access of the framework behavior, a simple set of methods was made accessible on the \inlinecode{MultiFunctionN} type by extending two more traits, \inlinecode{MultiFunctionControl} and \inlinecode{MultiFunctionAnalytics}:
+
+\begin{itemize}
+	\item \inlinecode{train} - trains the combined function on a given set of inputs (by executing all of the functions on each of the inputs and storing the results)
+	\item \inlinecode{flushHistory} - flushes the entire run history of given function (in the corresponding history storage)
+	\item \inlinecode{setPolicy} - sets the current policy of the function to a custom one
+	\item \inlinecode{resetPolicy} - sets the current policy of the function to the starting one
+	\item \inlinecode{getAnalyticsData} - retrieves analytics data regarding the function history
+\end{itemize}
+
+The analytics data represent a way of monitoring the decisions of the selection process for each combined function. It contains a complete set of records of previous runs, each one holding the identifier of the selected function, the \textit{input descriptor}, run time and the overhead time spent on the selection. The data can either be analyzed directly in the application by processing these records, or can be easily serialized into a CSV file.
+
+Note that the analytical data collection is relies on the \inlinecode{AnalyticsCollector} trait. Again, we provide two implementations, \inlinecode{BasicAnalyticsCollector} that collects all the data mentioned, and \inlinecode{EmptyAnalyticsCollector}, that does not collect anything. The empty variant is default in order to minimize the overhead of the framework. In case the user has a need of the analytics data from his application, he can enable the collection by replacing the collector.
 
 \subsection{Framework configuration}
 \label{subsec:framework_config}
@@ -736,3 +776,23 @@ If we wanted to change the way in which the history data are stored, e.g. by fil
 \subsubsection{Evaluation data}
 
 We can change the \inlinecode{TMeasurement} data type and make the framework perform the adaptations according to a different (or more complex) evaluation results. In such a case, we need to implement the \inlinecode{EvaluationProvider} trait, and then add our custom selection strategies that select based on the new evaluation type.
+
+\section{Framework distribution and usage}
+
+The framework is distributed in a form of JAR package containing all its compiled classes, which can be found in the \hyperref[attach:cd]{attachments}. The simplest way to set up ScalaAdaptive in any Scala project is to use the SBT (see \cite{noauthor_sbt_nodate}). The \inlinecode{scalaadaptive.jar} file needs to be placed into the \inlinecode{lib} folder in the project root. SBT will automatically locate the content of the archive and add the required classes in the \textit{classpath}.
+
+Now, in any of the Scala source files in the corresponding project, the following line can be added:
+\lstset{style=Scala}
+\begin{lstlisting}
+import scalaadaptive.api.Implicits._
+\end{lstlisting}
+
+From now on, the original Scala function types have been enhanced with the ScalaAdaptive methods, including the most important \inlinecode{or} method, that allows creating functions with adaptive execution. The usage is described in detail in section \ref{sec:api_usage}, a brief description of other options can be found in section \ref{subsec:function_setup}. A complete documentation is included in the \hyperref[attach:scaladoc]{attachments}.
+
+The framework can be configured using the following call:
+\lstset{style=Scala}
+\begin{lstlisting}
+scalaadaptive.api.Adaptive.initialize(configuration)
+\end{lstlisting}
+
+The \inlinecode{configuration} object functionality is described in \ref{subsec:framework_config} along with simple examples. The whole list of blocks that can be used in the configuration process is also available in the \hyperref[attach:config_blocks]{attachments}.

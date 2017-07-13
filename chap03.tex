@@ -153,6 +153,7 @@ The implicit conversions have to be defined for all the function types separatel
 The conversion of \inlinecode{FunctionN} to \inlinecode{MultiFunctionN} should check every time, whether the \inlinecode{FunctionN} instance is not already a \inlinecode{MultiFunctionN} instance as well, and if so, just cast it instead of creating a new wrapper. The same should be done by the \inlinecode{or} function, which can just manually call the conversion on its argument.
 
 \section{Usage of the API}
+\label{sec:api_usage}
 
 After having designed the basic look of our API, we can examine the usage patterns and go through strengths and weaknesses of the solution.
 
@@ -414,37 +415,6 @@ class TestImpl extends TestTrait {
 %TODO: summary of the API approach, definition of key terms and points in adaptive lifecycle - method definition, function / closure creation (eta expansion), function combination, 
 
 %TODO: Evaluation, advantages, disadvantages, generation
-
-\section{Additional API features}
-
-In this section, we will introduce the rest of the API of the \inlinecode{MultiFunction} type that the library user will be working with. This part of the API is not essential as it is possible to combine functions and use the library without it. It can, however, be used to control the selection functionality and behavior and to examine its results.
-
-\subsection{Combined function configuration}
-\label{subsec:api_function_configuration}
-
-When creating a \inlinecode{MultiFunctionN} instance using the implicit conversion and the \inlinecode{or} method, there is no way how to introduce some additional configuration. In compliance with the DSL-like \inlinecode{or} chaining, the configuration was made possible via special methods on the \inlinecode{MultiFunctionN} type that allow chaining as well\footnote{In the \textit{builder}-style pattern, by returning the same type.} and are also meant to be used like operators. The combined function definition including the configuration can be very fluent and natural:
-
-\lstset{style=Scala}
-\begin{lstlisting}
-val sort = standardSort _ or selectionSort by (_.size) selectUsing Selection.Predictive storeUsing Storage.Global
-\end{lstlisting}
-
-The most important part of the configuration API is the \inlinecode{by} method. It allow the user to specify how to create an \textit{input descriptor}, integer that describes the input from the perspective of expected complexity, from the function arguments upon invocation. A function of type \inlinecode{(T1, ..., TN) => Long} is used for that, where \inlinecode{T1, ..., TN} are the arguments of the \inlinecode{MultiFunctionN}.
-
-The rest of the configuration options will be described in later chapters and in the documentation to the framework.
-
-\subsection{Analytics and control access}
-
-There is also a need to monitor and control the \inlinecode{MultiFunctionN} in case the user is aware that he is dealing with a combined function. A simple set of methods on the type allow him to do the following:
-
-\begin{itemize}
-	\item Train the combined function on a given set of inputs (by executing all of the functions on each of the inputs and storing the results)
-	\item Flush entirely the run history of given function
-	\item Set and reset the policy used in the function (will be discussed later in more details)
-	\item Retrieve analytics data regarding the function history
-\end{itemize}
-
-Analytics data allow the user to observe and analyze the decisions of the combined function. It contains a complete set of records of previous runs, each one holding the identifier of the selected function, the \textit{input descriptor}, run time and the overhead time spent on the selection. The data can either be analyzed directly in the application by processing these records, or can be easily serialized into a CSV file.
 
 \subsection{Delayed measuring}
 \label{subsec:delayed_measuring}
