@@ -7,13 +7,13 @@ In this chapter, we will go through the implementation of the framework, its bas
 
 \section{Goals of implementation}
 
-The main concerns upon implementing the library were the following:
+The main concerns upon implementing the framework were the following:
 
 \begin{itemize}
 	\item To separate the API from the selection logic
-	\item To keep the library strongly typed and use static type checking even in the internal parts of the code
-	\item To make the library as extensible as possible
-	\item To keep the library overhead as low as possible
+	\item To keep the framework strongly typed and use static type checking even in the internal parts of the code
+	\item To make the framework as extensible as possible
+	\item To keep the framework overhead as low as possible
 	\item To keep the code well-organized, to minimize code duplication
 \end{itemize}
 
@@ -23,7 +23,7 @@ The main development approach was based on using the Scala language features to 
 
 \subsubsection{Error handling}
 
-The library is designed so that the number of exceptions handled in the code was minimized. The library itself does not raise almost any exceptions in case of errors\footnote{The only exception being custom identifier validation in the function combination.}, and catches most of the exceptions from the libraries within to replace them with a None return value.
+The framework is designed so that the number of exceptions handled in the code was minimized. The ScalaAdaptive itself does not raise almost any exceptions in case of errors\footnote{The only exception being custom identifier validation in the function combination.}, and catches most of the exceptions from the libraries within to replace them with a None return value.
 
 This approach is known from the functional programming and takes advantage of monadic operations over the \textit{Option monad}\footnote{In Haskell and other languages known as Maybe monad.}. The return values can be mapped over using the \textit{bind} operator, which allows smooth function chaining and the error propagation through the chain. More details can be found in the talk \cite{noauthor_railway_nodate}.
 
@@ -77,7 +77,7 @@ As we can see, there are two principal logic units participating in the process:
 
 \begin{enumerate}
 	\item \textbf{\inlinecode{CombinedFunctionInvoker}} \\
-	Supposed to make a quick decision based on the policy of the combined function. It should either directly invoke one of the functions, or delegate the call to the \inlinecode{AdaptiveSelector}, and update the statistics of the combined function afterwards. It works only with the data directly stored in the \inlinecode{CombinedFunction} instance, it does not have any state or shared storage.
+	Supposed to make a quick decision based on the \textit{policy} of the combined function. It should either directly invoke one of the functions, or delegate the call to the \inlinecode{AdaptiveSelector}, and update the statistics of the combined function afterwards. It works only with the data directly stored in the \inlinecode{CombinedFunction} instance, it does not have any state or shared storage.
 	\item \textbf{\inlinecode{AdaptiveSelector}} \\
 	The key component of the framework, it receives a set of functions and an input, and it should decide which one of them to run and to execute it, evaluate the function run and return the result. The default implementation works with an abstract history storage (\inlinecode{HistoryStorage}) a pair of selection strategies (\inlinecode{SelectionStrategy}) and an evaluation mechanism (\inlinecode{EvaluationProvider}). It also offers an operation of invoking the function with least data directly.
 \end{enumerate}
@@ -93,7 +93,7 @@ A few questions regarding the implementation arise from the basic architecture s
 
 \subsubsection{Local}
 
-First option is to make the storage part of the \inlinecode{CombinedFunction} itself. In this case, the history data would, just like the statistics, be unique for every instance of the class, i.e. for every \inlinecode{MultiFunctionN} created by the user of the library. This has two consequences:
+First option is to make the storage part of the \inlinecode{CombinedFunction} itself. In this case, the history data would, just like the statistics, be unique for every instance of the class, i.e. for every \inlinecode{MultiFunctionN} created by the user. This has two consequences:
 
 \begin{itemize}
 	\item A function will have separate histories for every use in a combined function
@@ -206,8 +206,8 @@ In the description of the API in section \ref{subsec:api_implementation}, we int
 
 The conversion is done using the \inlinecode{toAdaptor()} method with two overloads:
 \begin{itemize}
-	\item Accepting only the function - implicit reference is used (type name of the closure)
-	\item Accepting the function and a custom reference - the reference provided is used
+	\item Accepting only the function - implicit identifier is used (type name of the closure)
+	\item Accepting the function and a custom identifier - the identifier provided is used
 \end{itemize}
 
 \subsection{Eta-expansion AST format}
@@ -329,7 +329,7 @@ In order to extract the fully qualified name of the method call target, we need 
 invocationTarget.getClass.getTypeName + ".methodName"
 \end{lstlisting}
 
-The AST representing this expression has to be wrapped in a construction application of \inlinecode{MethodNameIdentifier} class (it is a case class with automatically generated \inlinecode{apply()} method) to get the resulting reference.
+The AST representing this expression has to be wrapped in a construction application of \inlinecode{MethodNameIdentifier} class (it is a case class with automatically generated \inlinecode{apply()} method) to get the resulting identifier.
 
 In all the cases, the \inlinecode{toAdaptor} method has to be generated to replace the macro function. The function literal from the original AST has to be passed in as the first argument, and optionally, the second argument containing the method name identifier can be provided if the extraction of the method name was successful.
 
@@ -379,7 +379,7 @@ We need to transform the block, keeping the definition in the statement part, bu
 
 The approach that was described so far has one small issue - it does not recognize function overloads, so all the overloads share the same identifier.
 
- It would not be difficult to extract the actual number of arguments that the method is being invoked with and include it in the reference. As for extracting their types, the situation gets a little complicated - the function literal is generated without argument type specification, the TypeTree is empty:
+ It would not be difficult to extract the actual number of arguments that the method is being invoked with and include it in the identifier. As for extracting their types, the situation gets a little complicated - the function literal is generated without argument type specification, the TypeTree is empty:
 
 \lstset{style=Dump}
 \begin{lstlisting}
@@ -486,14 +486,14 @@ We will briefly introduce the implementations of these modules and the parts tha
 
 \subsubsection{CombinedFunction}
 
-The \inlinecode{CombinedFunction} is the main data class representing a function with multiple implementations in ScalaAdaptive. It is basically a data holder class, the important functionality was separated to be easily replaceable. It gets created and modified when a user of the library manipulates with the \inlinecode{MultiFunctionN} API type. Part of its attributes are immutable, representing the configuration and default setup of the function, and part of its attributes are mutable, holding its state in the invocation process.
+The \inlinecode{CombinedFunction} is the main data class representing a function with multiple implementations in ScalaAdaptive. It is basically a data holder class, the important functionality was separated to be easily replaceable. It gets created and modified when a user of the framework manipulates with the \inlinecode{MultiFunctionN} API type. Part of its attributes are immutable, representing the configuration and default setup of the function, and part of its attributes are mutable, holding its state in the invocation process.
 
 It contains the following immutable data:
 
 \begin{itemize}
 	\item Set of functions that it is combined from (wrapped into the tuple form, see \ref{subsec:api_architecture})
 	\begin{itemize}
-		\item	Each function holds up to two references - one based on the closure type name, the other being either a method name or a custom name, depending on the creation process (see \ref{subsec:function_identifiers})
+		\item	Each function holds up to two identifiers - one based on the closure type name, the other being either a method name or a custom name, depending on the creation process (see \ref{subsec:function_identifiers})
 	\end{itemize}
 	\item \textit{Descriptor function} (wrapped into the tuple form), see \ref{sec:input_based_strategies}
 	\item \textit{Group selector} function (wrapped into the tuple form), see \ref{subsubsec:group_selection}
@@ -503,7 +503,7 @@ It contains the following immutable data:
 		\item Storage - Local, Global or Persistent (see \ref{subsec:storing})
 		\item Duration - optional maximal age of the history records used for the function (see \ref{subsec:limiting_record_age})
 		\item ClosureIdentifiers - if the closure type identifiers should be preferred over the method name or the custom name (see \ref{subsec:function_identifiers})
-		\item Initial policy
+		\item Initial \textit{policy}
 	\end{itemize}
 \end{itemize}
 
@@ -511,7 +511,7 @@ And the following state representing data:
 
 \begin{itemize}
 	\item Function statistics (separately for each group, see \ref{subsec:statistical_data})
-	\item Current policy (separately for each group, see \ref{sec:policies})
+	\item Current \textit{policy} (separately for each group, see \ref{sec:policies})
 	\item Analytics data - full list of all the selections and their results
 \end{itemize}
 
@@ -522,7 +522,7 @@ In case of the local storage setup, the instance also has to contain its own \in
 It has access to the state of the \inlinecode{CombinedFunction} and its basic implementation does the following:
 
 \begin{itemize}
-	\item Evaluate the current policy with the statistics of the combined function
+	\item Evaluate the current \textit{policy} with the statistics of the combined function
 	\item According to the result either invoke directly the function which is directly accessible through the statistics (the last one and the most selected one), or pass the decision onto the \inlinecode{AdaptiveSelector}
 	\item Update the function statistics
 \end{itemize}
@@ -604,7 +604,7 @@ In addition, some complementary supporting were added:
 \item \inlinecode{LeastDataSelectionStrategy} - uses the function with least historical runs
 \end{itemize}
 
-The common composition pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost one to postpone the decision process until some data are gathered, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual input based or mean based strategies in the middle, optionally wrapped in the window-bound class.
+The common pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost strategy in the composition to postpone the decision process until some data are gathered, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual input based or mean based strategies in the middle, optionally wrapped in the window-bound class.
 
 \subsubsection{EvaluationProvider}
 
@@ -625,7 +625,7 @@ As the basic API designed in chapter \ref{chapter:api}, i.e. the \inlinecode{or}
 
 \lstset{style=Scala}
 \begin{lstlisting}
-val sort = standardSort _ or selectionSort by (_.size) selectUsing Selection.Predictive storeUsing Storage.Global
+val sort = standardSort _ or selectionSort by (_.size) selectUsing Selection.InputBased storeUsing Storage.Global
 \end{lstlisting}
 
 \subsubsection{Input descriptor and group selector}
@@ -655,13 +655,13 @@ The function configuration methods and possible values are the following:
 \item \inlinecode{limitedTo} - allows to specify the maximum age of the history records to be used in the selection process, as described in \ref{subsec:limiting_record_age}
 \item \inlinecode{asClosures} - represents the history storage identifier choice as described in section \ref{subsec:function_identifiers}
 \begin{itemize}
-	\item \textit{true} - always uses closure type names as the function references
-	\item \textit{false} - uses either method names or custom names as the function references if available
+	\item \textit{true} - always uses closure type names as the function identifiers
+	\item \textit{false} - uses either method names or custom names as the function identifiers if available
 \end{itemize}
 \item \inlinecode{withPolicy} - allows to specify the starting policy for the function, as described in \ref{sec:policies}
 \end{itemize}
 
-The user of the library is expected to specify this configuration with most of the combined functions. The default values are determined by the framework configuration, except for the selection strategy choice, which is defaulted to input based if the \textit{descriptor function} is provided for the combined function and to mean based otherwise.
+The user is expected to specify this configuration with most of the combined functions. The default values are determined by the framework configuration, except for the selection strategy choice, which is defaulted to input based if the \textit{descriptor function} is provided for the combined function and to mean based otherwise.
 
 \subsection{Logging, analytics and control access}
 
@@ -676,13 +676,13 @@ Replacing \inlinecode{EmptyLogger} with one of the other types will lead to deta
 \subsubsection{Analytics and control access}
 \label{subsubsec:analytics}
 
-To provide a more systematic and technical access of the framework behavior, a simple set of methods was made accessible on the \inlinecode{MultiFunctionN} type by extending two more traits, \inlinecode{MultiFunctionControl} and \inlinecode{MultiFunctionAnalytics}:
+To provide a more systematic and technical access of the framework behavior, a simple set of methods was made accessible on the \inlinecode{MultiFunctionN} type by extending the \inlinecode{MultiFunctionControl} and \inlinecode{MultiFunctionAnalytics} traits:
 
 \begin{itemize}
 	\item \inlinecode{train} - trains the combined function on a given set of inputs (by executing all of the functions on each of the inputs and storing the results)
 	\item \inlinecode{flushHistory} - flushes the entire run history of given function (in the corresponding history storage)
-	\item \inlinecode{setPolicy} - sets the current policy of the function to a custom one
-	\item \inlinecode{resetPolicy} - sets the current policy of the function to the starting one
+	\item \inlinecode{setPolicy} - sets the current \textit{policy} of the function to a custom one
+	\item \inlinecode{resetPolicy} - sets the current \textit{policy} of the function to the starting one
 	\item \inlinecode{getAnalyticsData} - retrieves analytics data regarding the function history
 \end{itemize}
 

@@ -31,6 +31,9 @@
 % Draw black "slugs" whenever a line overflows, so that we can spot it easily.
 \overfullrule=1mm
 
+\expandafter\def\expandafter\UrlBreaks\expandafter{\UrlBreaks%  save the current one
+	\do\*\do\-\do\~\do\'\do\"\do\-}
+
 %%% Macros for definitions, theorems, claims, examples, ... (requires amsthm package)
 
 \theoremstyle{plain}

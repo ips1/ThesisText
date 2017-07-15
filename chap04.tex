@@ -1,4 +1,4 @@
-\chapter{Selecting functions to run}
+\chapter{Adaptive function selection}
 \label{chap:deciding}
 
 The key purpose of the ScalaAdaptive framework is to always invoke a function that is expected to have the best performance possible in given environment and with given inputs. By \textit{function performance} we mean any measurable description of the qualities of the function. It can be the actual run time of the function, memory consumption, number of I/O operations, number of threads created, execution counts for various parts of the code, etc. All these factors can be valuable and be the goal of the system run optimization.
@@ -371,12 +371,12 @@ This approximation is a \textit{simple linear regression model}. The slope \(a'\
 
 The major of the model is its simplicity and thus minimal overhead when generating the regression during the selection process. In addition, the model can be easily cached for fixed set of samples and updated when adding new data without having to construct it all over again.
 
-The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph. The straight line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
+The main problem is that the linear regression model applied to a case where the relation is not linear leads to a non-trivial errors that increase with the range that we are trying to cover with the model. Figure \ref{fig:selection_sort_linear_trendline} shows samples of run times of the basic selection sort algorithm, which has the complexity of \(O(N^2)\), on sample arrays with 0 to 30000 integers. Collected data obviously match the quadratic function graph, denoted by the dotted curve. The straight line shows the linear regression model. As we can see, the predictions based on this model would be quite inaccurate, especially if we tried to predict run time on an input significantly larger than the samples.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=90mm]{./img/selection_sort_linear_trendline.png}}}
-	\caption{Linear regression line of a selection sort runtime samples.}
+	\centerline{\mbox{\includegraphics[width=100mm]{./img/selection_sort_linear_trendline.png}}}
+	\caption{Linear regression model of selection sort runtime samples.}
 	\label{fig:selection_sort_linear_trendline}
 \end{figure}
 
@@ -472,7 +472,7 @@ To be able to apply the strategy described in section \ref{subsec:simple_linear_
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=140mm]{./img/window_examples.png}}}
+	\centerline{\mbox{\includegraphics[width=150mm]{./img/window_examples.png}}}
 	\caption{Examples of subsets of the data from figure \ref{fig:selection_sort_linear_trendline} with linear regressions.}
 	\label{fig:window_examples}
 \end{figure}
@@ -515,7 +515,7 @@ There are other disadvantages of this strategy as well. First of all, the entire
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
-	\State $m_i \gets$ buildRegression($d_i$)
+	\State $m_i \gets$ interpolateLoess($d_i$)
 	\State $p_i \gets$ predictValue($m_i, x$)
 	\If{$p_i = NaN$}\Comment{The prediction can fail}
 	\State$p_i \gets -1$\Comment{We select the function on which it failed}
@@ -531,21 +531,21 @@ The mean based t-test selection strategy described in sections \ref{subsec:t_tes
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=90mm]{./img/quick_vs_selection.png}}}
-	\caption{Run times of quick sort algorithm (blue dots) and selection sort algorithm (red dots) by input size.}
+	\centerline{\mbox{\includegraphics[width=100mm]{./img/quick_vs_selection.png}}}
+	\caption{Run times of quick sort algorithm (dark dots) and selection sort algorithm (light dots) by input size.}
 	\label{fig:quick_vs_selection}
 \end{figure}
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=110mm]{./img/window_t_test_examples.png}}}
+	\centerline{\mbox{\includegraphics[width=150mm]{./img/window_t_test_examples.png}}}
 	\caption{Examples of subsets of the data from figure \ref{fig:quick_vs_selection}}
 	\label{fig:window_t_test_examples}
 \end{figure}
 
 If we wanted to use the t-test strategy on the functions with non-constant complexity, the same approach as with the \textit{simple linear regression} can be taken. Instead of assuming that the relation in the small window is linear, we want it to be constant and normally distributed. We can then predict the run time using the mean of the measurements from within a very small range of \textit{input descriptor} values. Consequently, it is extremely important to keep the window size limited, so that these assumptions held at least approximately. The t-test significance levels and strengths will be approximate as well, but our goal is to get reasonable results, we do not need to be precise.
 
-The figure \ref{fig:quick_vs_selection} shows the run times measured for a quick sort and selection sort algorithms on random arrays of sizes between $0$ and $30000$. Obviously, there is a relation to the input size, so the simple t-test should not be applied in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - $0$ to $3000$, $7000$ to $10000$ and $17000$ to $20000$. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
+The figure \ref{fig:quick_vs_selection} shows the run times measured for the quick sort and selection sort algorithms on random arrays of sizes between $0$ and $30000$. Obviously, there is a relation to the input size, so the simple t-test should not be applied in this case. In figure \ref{fig:window_t_test_examples}, there are the same data in three different windows - $0$ to $3000$, $7000$ to $10000$ and $17000$ to $20000$. As we can see, in a window of this size, the run times are almost constant and the random fluctuations are more significant than the actual relation to the input size. We can apply the t-test as described in sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} to these windows and use the result as relevant enough with respect to the input.
 
 The window sizes can be determined in a similar way as in section \ref{subsec:window_bound_regression}. If we reduce it to a constant 0, we will get a technique in which only the results for inputs with the same descriptor are tested. When there are none, we refuse to select and wait until data is gathered. This might be useful in cases where we know that the function will be called repeatedly on a limited set of input variants, and basically rules out the prediction factor, as we need to have actual observation for each input before making any conclusions. Similar approach is taken in \cite{bulej_performance_2012}. The same goal, however, can be achieved more efficiently using the grouping mechanism (see \ref{subsec:grouping}).
 
@@ -789,7 +789,7 @@ We can notice that these results require only the basic statistical data about p
 
 The \textit{policy} evaluation process also replaces the current \textit{policy} with a new one. This technically creates a state machine - the state of the function is represented by the active \textit{policy}, and whenever the function is invoked, a result is produced and new \textit{policy} becomes active. This corresponds to producing output and moving to a new state in a state machine.
 
-The advantage of the \textit{policy} system over a regular state machine is its extensibility and reusability - there are no rules directly in the state machine (i.e. here in the \textit{combined function}). All the logic of deciding on the result and the next \textit{policy} is in the \textit{policy} node itself. So the entire behavior of the state machine is defined by the initial \textit{policy}, which should be specified by the user upon creating the \textit{combined function}. As a result, reusable policies that are parametrized can be used in various chains of policies, smaller chains can be put together, etc.
+The advantage of the \textit{policy} system over a regular state machine is its extensibility and reusability - there are no rules directly in the state machine (i.e. here in the \textit{combined function}). All the logic of deciding on the result and the next \textit{policy} is in the \textit{policy} node itself. So the entire behavior of the state machine is defined by the initial \textit{policy}, which should be specified by the user upon creating the \textit{combined function}. As a result, reusable \textit{policies} that are parametrized can be used in various chains of \textit{policies}, smaller chains can be put together, etc.
 %TODO: Reference to the API
 
 \subsection{Statistical data}
@@ -804,7 +804,7 @@ The only input that the \textit{policy} receives when making decision is a stati
 	\label{fig:run_schema}
 \end{figure}
 
-The \textit{policies} are a suitable tool to limit the potential damage of the selection process on the system. For this, it is necessary to observe and to store various times connected with the selection and execution. Figure \ref{fig:run_schema} shows the whole process with policy being evaluated with the SelectNew result, split into individual parts. Upon every invocation, the following is tracked:
+The \textit{policies} are a suitable tool to limit the potential damage of the selection process on the system. For this, it is necessary to observe and to store various times connected with the selection and execution. Figure \ref{fig:run_schema} shows the whole process with \textit{policy} being evaluated with the SelectNew result, split into individual parts. Upon every invocation, the following is tracked:
 
 \begin{itemize}
 	\item Selection and run history storage time (2 and 4)
@@ -813,9 +813,9 @@ The \textit{policies} are a suitable tool to limit the potential damage of the s
 	\item Total time spent on the GatherData result (3 and 4, 2 is skipped in such a case)
 \end{itemize}
 
-Sums of these times are kept in every \textit{combined function}. The policy can work with these numbers and analyze the changes that happen to them over time. In addition, the number of times each function was selected, the total number of times we received the SelectNew and GatherData result and the total number of times the combined function was invoked have to be tracked. 
+Sums of these times are kept in every \textit{combined function}. The \textit{policy} can work with these numbers and analyze the changes that happen to them over time. In addition, the number of times each function was selected, the total number of times we received the SelectNew and GatherData result and the total number of times the combined function was invoked have to be tracked. 
 
-In general the policy has the following data available to decide:
+In general the \textit{policy} has the following data available to decide:
 
 \begin{itemize}
 	\item Total run count of the combined function
@@ -832,9 +832,9 @@ In general the policy has the following data available to decide:
 
 \subsection{Implemented policies}
 
-As mentioned earlier, \textit{policies} are designed to be reusable as building-blocks. The immutable \textit{policy} itself is the only holder of the state and change of state can be performed only by transitioning to a different \textit{policy}. Its functionality and very simple decision-making process can be visualized using a transition diagram, which shows the \textit{policy} itself as a red square, all the other \textit{policies} as a gray square and green arrows as state transitions. The transitions might be conditional, in such a case, the condition splits the arrow into two. The transition can produce a result which is shown next to the transition arrow. If a result is produced, the \textit{policy} makes a decision and next \textit{policy} will be evaluated during the following invocation. If a result isn't produced, the \textit{policy} just delegates the decision to the next \textit{policy} which is evaluated immediately. The chain of evaluation stops when first result is produced.
+As mentioned earlier, \textit{policies} are designed to be reusable as building-blocks. The immutable \textit{policy} itself is the only holder of the state and change of state can be performed only by transitioning to a different \textit{policy}. Its functionality and very simple decision-making process can be visualized using a transition diagram, which shows the \textit{policy} itself as a dark (red) square with solid border, all the other \textit{policies} as a lighter squares with either solid or dashed border (determines if the policy is an argument or not), and arrows as state transitions. The transitions might be conditional, in such a case, the condition splits the arrow into two. The transition can produce a result which is shown next to the transition arrow. If a result is produced, the \textit{policy} makes a decision and next \textit{policy} will be evaluated during the following invocation. If a result isn't produced, the \textit{policy} just delegates the decision to the next \textit{policy} which is evaluated immediately. The chain of evaluation stops when first result is produced.
 
-The transition conditions use \textit{policy} parameters, which are passed to a \textit{policy} in the constructor, and the current statistical data explained in section \ref{subsec:statistical_data}. It can also use static fields and methods that it has access to. The parameters of the top-level (starting) \textit{policy} are passed in by the user creating it, the parameters of the other policies in the chain are fixed when the \textit{policies} are created, usually during the decision of the top-level \textit{policy}, which typically builds the entire policy chain (that can be cyclic and lead back to it).
+The transition conditions use \textit{policy} parameters, which are passed to a \textit{policy} in the constructor, and the current statistical data explained in section \ref{subsec:statistical_data}. It can also use static fields and methods that it has access to. The parameters of the top-level (starting) \textit{policy} are passed in by the user creating it, the parameters of the other policies in the chain are fixed when the \textit{policies} are created, usually during the decision of the top-level \textit{policy}, which typically builds the entire \textit{policy} chain (that can be cyclic and lead back to it).
 
 The transition diagrams and short descriptions of some \textit{policies} will follow.
 
@@ -847,7 +847,7 @@ The transition diagrams and short descriptions of some \textit{policies} will fo
 	\label{fig:helper_policies}
 \end{figure}
 
-Figure \ref{fig:helper_policies} shows the main policies that serve as a building-blocks. The most important is the \textbf{Repeat until \textit{condition}} \textit{policy}, parametrized by a \textit{condition}, result \textit{R}, which it keeps producing until the \textit{condition} becomes true, and the policy \textit{P}, which it makes transition to at that moment. The \textbf{Always do} \textit{policy} represents an infinite loop producing the same result \textit{R} every time, and the \textbf{Do once} \textit{policy} produces the result \textit{R} once and immediately makes transition to the policy \textit{P}.
+Figure \ref{fig:helper_policies} shows the main policies that serve as a building-blocks. The most important is the \textbf{Repeat until condition} \textit{policy}, parametrized by a \textit{condition}, result \textit{R}, which it keeps producing until the \textit{condition} becomes true, and the \textit{policy} \textit{P}, which it makes transition to at that moment. The \textbf{Always do} \textit{policy} represents an infinite loop producing the same result \textit{R} every time, and the \textbf{Do once} \textit{policy} produces the result \textit{R} once and immediately makes transition to the \textit{policy} \textit{P}.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -856,7 +856,7 @@ Figure \ref{fig:helper_policies} shows the main policies that serve as a buildin
 	\label{fig:start_policy}
 \end{figure}
 
-Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accepts the gather frequency \textit{GF}, number of invocation times \textit{N} before moving to a next policy \textit{P}. It is a little more complicated and specialized version of the \textbf{Repeat until} policy - it keeps producing the SelectNew result, and every \textit{GF}-th invocation, it produces the GatherData result. It might be useful at the beginning, when it is necessary to gather data for all of the functions and perform some selections so that the following policies had statistical data to base their decision on.
+Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accepts the gather frequency \textit{GF}, number of invocation times \textit{N} before moving to a next \textit{policy} \textit{P}. It is a little more complicated and specialized version of the \textbf{Repeat until} \textit{policy} - it keeps producing the SelectNew result, and every \textit{GF}-th invocation, it produces the GatherData result. It might be useful at the beginning, when it is necessary to gather data for all of the functions and perform some selections so that the following policies had statistical data to base their decision on.
 
 \subsubsection{Stop selecting when decided}
 
@@ -867,9 +867,9 @@ Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accept
 	\label{fig:stop_selecting_when_decided}
 \end{figure}
 
-In order to limit the overhead, it might be useful to completely stop selecting when we are sure that one of the functions gets selected a lot more often. The \textbf{Stop selecting when decided} policy shown in figure \ref{fig:stop_selecting_when_decided} keeps selecting new function until both the total number of invocations exceeds minimum run count \textit{MR} and the ratio of the number of times that the last selected function was selected and the total number of invocations exceeds the minimum percentage \textit{MP}. After that, it will keep using the last function forever. 
+In order to limit the overhead, it might be useful to completely stop selecting when we are sure that one of the functions gets selected a lot more often. The \textbf{Stop selecting when decided} \textit{policy} shown in figure \ref{fig:stop_selecting_when_decided} keeps selecting new function until both the total number of invocations exceeds minimum run count \textit{MR} and the ratio of the number of times that the last selected function was selected and the total number of invocations exceeds the minimum percentage \textit{MP}. After that, it will keep using the last function forever. 
 
-The advantage of falling back to the infinite \textbf{Always use last} policy is its basically zero overhead - no condition is evaluated in the decision process. So this policy is useful for the fast functions where keeping low overhead for the long-term is critical. It cannot however, undo a wrong decision, reflect a change in conditions, or anything else.
+The advantage of falling back to the infinite \textbf{Always use last} \textit{policy} is its basically zero overhead - no condition is evaluated in the decision process. So this \textit{policy} is useful for the fast functions where keeping low overhead for the long-term is critical. It cannot however, undo a wrong decision, reflect a change in conditions, or anything else.
 
 \subsubsection{Pause selection after streak}
 
@@ -880,7 +880,7 @@ The advantage of falling back to the infinite \textbf{Always use last} policy is
 	\label{fig:pause_selection_after_streak}
 \end{figure}
 
-To lower the number of selections, an approach based on the streak lengths can be used as well. It is implemented by the \textbf{Pause selection after streak} policy in figure \ref{fig:pause_selection_after_streak}. Its functionality is defined by the \textit{SL} (streak length) and \textit{RE} (retry every) arguments. Whenever one function is selected \textit{SL} times in a row, the selection process stops and the UseLast result is being produced. Once every \textit{RE} times, a new selection attempt is done, looping back to the original policy. If the same function is selected once again, the streak gets longer by one and the selection process stops again. If, however, a different function is selected this time, the streak becomes zero and we start selecting again.
+To lower the number of selections, an approach based on the streak lengths can be used as well. It is implemented by the \textbf{Pause selection after streak} \textit{policy} in figure \ref{fig:pause_selection_after_streak}. Its functionality is defined by the \textit{SL} (streak length) and \textit{RE} (retry every) arguments. Whenever one function is selected \textit{SL} times in a row, the selection process stops and the UseLast result is being produced. Once every \textit{RE} times, a new selection attempt is done, looping back to the original \textit{policy}. If the same function is selected once again, the streak gets longer by one and the selection process stops again. If, however, a different function is selected this time, the streak becomes zero and we start selecting again.
 
 The described behavior is the preferred way of limiting the selection overhead. By setting the streak length to a reasonable number (e.g. between 10 and 100, based on the data, situation, etc.), we can assure that if one function is significantly better than the others, it will be used without the need to select it. The retry that happens every once in a while makes sure that eventual wrong decision will be detected and will reset the system back to the beginning.
 
@@ -893,7 +893,7 @@ The described behavior is the preferred way of limiting the selection overhead. 
 	\label{fig:limited_overhead}
 \end{figure}
 
-Policies can be used to limit the framework involvement per a real-time period, so that the selection overhead or the time spent on gathering data does not damage the system more than a specified limit. The \textbf{Limited overhead} policy in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it cannot select anymore and keeps using the most selected function until the end of the period.
+Policies can be used to limit the framework involvement per a real-time period, so that the selection overhead or the time spent on gathering data does not damage the system more than a specified limit. The \textbf{Limited overhead} \textit{policy} in figure \ref{fig:limited_overhead} limits only the selection overhead time to \textit{AO} (allowed overhead) every \textit{RP} (reset period). After depleting the allowed time, it cannot select anymore and keeps using the most selected function until the end of the period.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -902,13 +902,13 @@ Policies can be used to limit the framework involvement per a real-time period, 
 	\label{fig:limited_gather_time}
 \end{figure}
 
-In exactly the same way, the time spent on executing the function for the result GatherData and the whole process of selection and execution for the SelectNew result can be limited. The figure \ref{fig:limited_gather_time} demonstrates the \textbf{Limited gather time} policy, which keeps producing GatherData until total gather time reaches \textit{AGT} (allowed gather time), after that, it continues with the SelectNew result until total selection time reaches \textit{AST} (allowed selection time). A loop producing UseMost follows, for the rest of the real-time period specified by \textit{RP} (reset period).
+In exactly the same way, the time spent on executing the function for the result GatherData and the whole process of selection and execution for the SelectNew result can be limited. The figure \ref{fig:limited_gather_time} demonstrates the \textbf{Limited gather time} \textit{policy}, which keeps producing GatherData until total gather time reaches \textit{AGT} (allowed gather time), after that, it continues with the SelectNew result until total selection time reaches \textit{AST} (allowed selection time). A loop producing UseMost follows, for the rest of the real-time period specified by \textit{RP} (reset period).
 
 This \textit{policy} gives us control over the time spent on selecting results in real-time. If we get a lot of requests at the same time, receive a large batch of data to process or for any reason need to momentarily increase the throughput of the system, the time or overhead limits get depleted very quickly and the UseMost fallback result means reasonably good performance with a minimum overhead.
 
 \subsection{Policy builder}
 
-As we could see from the policy examples, most of them were built only using the \textbf{Repeat until} or \textbf{Do once} blocks in a simple cycle. This process of combining these generic blocks into sequences can be automatized and hidden behind a simple DSL (see \ref{sec:dsls}) that would allow the user to express his customized way to decide about the function run. The DSL was implemented and named \textit{policy builder}.
+As we could see from the \textit{policy} examples, most of them were built only using the \textbf{Repeat until} or \textbf{Do once} blocks in a simple cycle. This process of combining these generic blocks into sequences can be automatized and hidden behind a simple DSL (see \ref{sec:dsls}) that would allow the user to express his customized way to decide about the function run. The DSL was implemented and named \textit{policy builder}.
 
 Figure \ref{fig:policy_builder_chart} shows the syntax diagram of \textit{policy builder}.
 
@@ -919,11 +919,11 @@ Figure \ref{fig:policy_builder_chart} shows the syntax diagram of \textit{policy
 	\label{fig:policy_builder_chart}
 \end{figure}
 
-The policy built with \textit{policy builder} has always one main loop. Its definition starts with the first result that it emits: \textit{selectNew}, \textit{gatherData}, \textit{useMost} or \textit{useLast}. A result is always followed by a duration specifier, and another result. When we specify the sequence of results and their durations, we can end it by either closing the main loop (using \textit{andThenRepeat}), by transitioning to an external policy (using \textit{andThenGoTo}, leads to a policy out of the loop), or by using \textit{forever} as a duration for the last result, which limits the loop just the one result. In addition, it is possible to put a conditional transition to a policy out of tho loop anywhere in between two results (using \textit{andThenIf}).
+The \textit{policy} built with \textit{policy builder} has always one main loop. Its definition starts with the first result that it emits: \textit{selectNew}, \textit{gatherData}, \textit{useMost} or \textit{useLast}. A result is always followed by a duration specifier, and another result. When we specify the sequence of results and their durations, we can end it by either closing the main loop (using \textit{andThenRepeat}), by transitioning to an external \textit{policy} (using \textit{andThenGoTo}, leads to a \textit{policy} out of the loop), or by using \textit{forever} as a duration for the last result, which limits the loop just the one result. In addition, it is possible to put a conditional transition to a \textit{policy} out of tho loop anywhere in between two results (using \textit{andThenIf}).
 
-The conditions can be either simple functions accepting statistical data and returning a boolean value, or a \textit{growsBy} condition with a value extractor\footnote{A function that extracts a value of some type from the statistical data, default implementations are provided for the basic fields.} and an amount. A simple condition is evaluated only once against current statistical data. In case of the \textit{growsBy} condition, the extractor is executed once at the beginning of the policy loop and its result is stored, and the condition evaluation consist of executing it and comparing current result to the stored one.
+The conditions can be either simple functions accepting statistical data and returning a boolean value, or a \textit{growsBy} condition with a value extractor\footnote{A function that extracts a value of some type from the statistical data, default implementations are provided for the basic fields.} and an amount. A simple condition is evaluated only once against current statistical data. In case of the \textit{growsBy} condition, the extractor is executed once at the beginning of the \textit{policy} loop and its result is stored, and the condition evaluation consist of executing it and comparing current result to the stored one.
 
-An example of a simple policy described using the \textit{policy builder} follows. It produces GatherData 50 times, then SelectNew 50 times, and then either loops forever on UseLast, if the streak is larger than 20, or repeats the whole process otherwise.
+An example of a simple \textit{policy} described using the \textit{policy builder} follows. It produces GatherData 50 times, then SelectNew 50 times, and then either loops forever on UseLast, if the streak is larger than 20, or repeats the whole process otherwise.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -938,9 +938,9 @@ val conditional: Policy = (
 
 \subsection{Policies and groups}
 
-One of the techniques for improving the selection process is grouping the history records using some input features, as described in \ref{subsec:grouping}. We will extend the grouping to function statistics and to the current policy. It means that the \textit{combined function} needs to hold the policy and the statistical data for every group and to evaluate and update the 
+One of the techniques for improving the selection process is grouping the history records using some input features, as described in \ref{subsec:grouping}. We will extend the grouping to function statistics and to the current \textit{policy}. It means that the \textit{combined function} needs to hold the \textit{policy} and the statistical data for every group and to evaluate and update the 
 
-The main advantage is the possibility to take faster decisions in some groups, using for example the \textit{Pause selection after streak} policy. When a function is significantly faster than the others for some category of inputs, the streak will build up fast within the group and the invocation for future inputs from such a group will require no selection and will be very quick, yielding correct results.
+The main advantage is the possibility to take faster decisions in some groups, using for example the \textit{Pause selection after streak} \textit{policy}. When a function is significantly faster than the others for some category of inputs, the streak will build up fast within the group and the invocation for future inputs from such a group will require no selection and will be very quick, yielding correct results.
 
 \subsection{Possible improvements}
 \label{subsec:policy_improvements}

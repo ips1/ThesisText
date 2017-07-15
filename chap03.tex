@@ -10,7 +10,7 @@ Some key design decisions about the functionality of the entire framework that a
 
 \subsection{Basic API requirements}
 
-The library itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations. The typical use-case of our API could be described in the following way:
+The framework itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations. The typical use-case of our API could be described in the following way:
 
 \blockquote{
 \textit{User has a class with two methods, \inlinecode{method1()} and \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.}
@@ -22,7 +22,7 @@ We can make a list of the \textbf{basic requirements}:
 \begin{enumerate}
 	\item Create a method by combining two or more different methods (stating that they can be called interchangeably)
 	\item Define some basic adaptation behavior for the function
-	\item Make some more complex configuration changes for the whole library
+	\item Make some more complex configuration changes for the whole framework
 \end{enumerate}
 
 \subsection{Possible API drafts}
@@ -115,7 +115,7 @@ Inspired by this readable and very simple syntax to compose functions which reli
 val combinedFunction = function1 or function2
 \end{lstlisting}
 
-\subsection{Choosing the draft}
+\subsection{Functional API requirements}
 
 From the two basic drafts presented in section \ref{subsec:api_drafts}, the function-based API will be implemented in this work, the reason being primarily a more fluent integration into the Scala programming style and functional development in general. Based on this decision, we can make the basic outlines of the ScalaAdaptive API to be able to examine its usage patterns and possibilities.
 
@@ -432,9 +432,9 @@ It is obvious that our API, which was designed to remain as simple as possible, 
 
 \subsubsection{Decision context}
 
-Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the library has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
+Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the framework has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
 
-The contexts can interleave and we cannot match the decision with the invocation by time or location. It is impossible to decide which invocation belongs to which decision automatically - we need support from the library user. The user will have to explicitly state the context whenever invoking the measured function. By doing this, he will pinpoint the moment of decision that affected the invocation.
+The contexts can interleave and we cannot match the decision with the invocation by time or location. It is impossible to decide which invocation belongs to which decision automatically - we need support from the user. He will have to explicitly state the context whenever invoking the measured function. By doing this, he will also pinpoint the moment of decision that affected the invocation.
 
 Practically, we need to introduce a special object - the \textit{measurement token} - which will represent the context. The \inlinecode{MultiFunctionN} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate a measurement token that will be used to measure future function runs. We chose to make it accessible using the \inlinecode{\textasciicircum()} operator, to simulate the fluent application.
 
