@@ -176,7 +176,7 @@ Abstract.
 \label{attachments}
 \renewcommand{\thesection}{\Alph{section}}
 
-\section{The enclosed CD contents}
+\section{The enclosed disc contents}
 \label{attach:cd}
 
 \section{The Scaladoc documentation}
@@ -184,6 +184,46 @@ Abstract.
 
 \section{Complete list of configuration blocks}
 \label{attach:config_blocks}
+
+The following blocks can be used to configure ScalaAdaptive. If there is not a suitable block, a custom configuration implementation can be done.
+
+\subsubsection{Analytics}
+\begin{itemize}
+	\item \inlinecode{AnalyticsCollection} - turns on the analytics data collection
+	\item \inlinecode{NoAnalyticsCollection} - turns off the analytics data collection
+\end{itemize}
+
+\subsubsection{Logging}
+\begin{itemize}
+	\item \inlinecode{ConsoleLogging} - framework logs to the standard output
+	\item \inlinecode{FileLogging} - framework logs to a specified file (\textit{logFilePath} argument)
+	\item \inlinecode{NoLogging} - framework does not log
+\end{itemize}
+
+\subsubsection{Persistence}
+\begin{itemize}
+	\item \inlinecode{BufferedPersistence} - framework persists the run data in batches of \textit{serializationBufferSize} into a directory (\textit{rootHistoryPath} argument)
+	\item \inlinecode{DirectPersistence} - framework persists the run data into a directory (\textit{rootHistoryPath} argument)
+	\item \inlinecode{NoPersistence} - framework does not persist the data, global storage is used for persistent setup
+\end{itemize}
+
+\subsubsection{Selection strategies}
+Sets the corresponding strategy as the main strategy of given type. Note that the \inlinecode{LowRunAwareStrategy} is always used as a wrapper with configurable \textit{lowRunLimit} argument. Some strategy blocks allow setting \textit{alpha} and \textit{averageWindowSize} arguments.
+\begin{itemize}
+	\item \inlinecode{LinearRegressionInputBasedStrategy}
+	\item \inlinecode{LoessInterpolationInputBasedStrategy}
+	\item \inlinecode{TTestMeanBasedStrategy}	
+	\item \inlinecode{UTestMeanBasedStrategy}
+	\item \inlinecode{WindowBoundRegressionInputBasedStrategy}
+	\item \inlinecode{WindowBoundTTestInputBasedStrategy}
+\end{itemize}
+
+\subsubsection{History}
+\begin{itemize}
+	\item \inlinecode{CachedGroupHistory} - caches average run times for input descriptors
+	\item \inlinecode{CachedRegressionHistory} - caches linear regression model
+	\item \inlinecode{CachedStatisticsHistory} - caches statistics (used for T-test)
+\end{itemize}
 
 \openright
 \end{document}
