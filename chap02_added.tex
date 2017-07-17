@@ -22,7 +22,9 @@ val impl3: (T) => U = ???
 val function = impl1 _ or impl2 or impl3
 \end{lstlisting}
 
-This means that we are going to have to work with implicit typecasts from function types and with eta-expansion.
+In the rest of the text, such a function will be called \textit{combined function}. We will also occasionally use the term \textit{adaptive function}, as it will be the API name of the function.
+
+In order to achieve this behavior, we are going to have to work with implicit typecasts from function types and with eta-expansion.
 
 \subsubsection{Transparent usage}
 
