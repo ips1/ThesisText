@@ -79,7 +79,7 @@ As we can see, there are two principal logic units participating in the process:
 	\item \textbf{\inlinecode{CombinedFunctionInvoker}} \\
 	Supposed to make a quick decision based on the \textit{policy} of the combined function. It should either directly invoke one of the functions, or delegate the call to the \inlinecode{AdaptiveSelector}, and update the statistics of the combined function afterwards. It works only with the data directly stored in the \inlinecode{CombinedFunction} instance, it does not have any state or shared storage.
 	\item \textbf{\inlinecode{AdaptiveSelector}} \\
-	The key component of the framework, it receives a set of functions and an input, and it should decide which one of them to run and to execute it, evaluate the function run and return the result. The default implementation works with an abstract history storage (\inlinecode{HistoryStorage}), three selection strategies (\inlinecode{SelectionStrategy}) and an evaluation mechanism (\inlinecode{EvaluationProvider}). It also offers an operation of invoking the function with least data directly.
+	The key component of the framework, it receives a set of functions and an input, and it should decide which one of them to run and to execute it, evaluate the function run and return the result. The default implementation works with an abstract history storage (\inlinecode{HistoryStorage}), three selection strategies (\inlinecode{SelectionStrategy}) and an evaluation mechanism (\inlinecode{EvaluationProvider}).
 \end{enumerate}
 
 \section{Implementation options}
@@ -541,7 +541,7 @@ Note that the \inlinecode{SelectionStrategy} for gathering new data should selec
 
 \subsubsection{HistoryStorage}
 
-A type with a map-like interface based on the concepts from section \ref{subsec:storing_evaluation_data} - it is supposed to hold the historical measurement vectors represented by \inlinecode{RunHistory} instances for each combination of function and group. A key composed of the function identifier and the group identifier is used to access the histories.
+A type with a map-like interface based on the concepts from section \ref{subsec:storing_evaluation_data} - it is supposed to hold the historical measurement vectors represented by \inlinecode{RunHistory} instances for each combination of function and input group. A key composed of a function identifier and a group identifier is used to access the histories.
 
 There are two implementations in the framework:
 
