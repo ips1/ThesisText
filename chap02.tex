@@ -146,8 +146,6 @@ In order to simplify the process of creating a new DSL, it is often implemented 
 
 These DSLs became recently very popular for defining configurations, build and deployment processes - an example could be the Gradle scripting language \cite{noauthor_gradle_nodate}, which is actually a DSL in Groovy, or the Recipe DSL for Chef \cite{noauthor_chef_nodate} built atop of the Ruby language.
 
-%TODO: Gradle and Chef references
-
 DSLs can be efficiently implemented only in languages with flexible-enough syntax, which do not limit it too much. Scala belongs to this class of languages, along with for example Groovy. A code in one of the Scala DSLs, the ScalaTest framework \cite{noauthor_scalatest:_2017}, can look the following way:
 
 \lstset{style=Scala}
@@ -264,6 +262,47 @@ implicit def intIsIncrementable(i: Int): Incrementable[Int] = new Incrementable[
   \end{lstlisting}
   
 Note that the value of an implicit argument can be specified manually at the time of the call, and it does not necessarily have to be implicit in the calling scope. In such a situation, it will be treated as implicit only inside the method scope.
+
+\section{Trait linearization and mixins}
+\label{sec:linearization_mixins}
+
+In Scala, the concept of \textit{interfaces} known from common object-oriented languages is replaced by \textit{traits}. The main difference is that traits can contain method definitions and data, thus being almost equivalent to abstract classes (except for not having parametrized constructors). The possibility to extend multiple types containing data members leads to the \textit{diamond problem} known from C++ and other languages with multiple inheritance. The issue lies in the fact that one ancestor can exist in more inheritance branches, and therefore be extended multiple times.
+
+Scala solves this problem using a concept of \textit{linearization}, a set of rules that can determine a clear and unique single inheritance line for any type (for more details see \cite{noauthor_trait_2016}). A new chain is build specifically for each concrete type that can be instantiated. The \inlinecode{super} keyword gets bound dynamically to the parent in this chain (i.e. a \inlinecode{super} call in a trait might result in different calls for different usages of the trait). Consider the following example:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+class Parent
+trait TraitA extends Parent
+trait TraitB extends Parent
+class Child extends TraitA with TraitB
+\end{lstlisting}
+
+The \textit{linearization} of type \inlinecode{Child} leads to the following inheritance chain:
+
+\lstset{style=Dump}
+\begin{lstlisting}
+Child <- TraitB <- TraitA <- Parent
+\end{lstlisting}
+
+In tis case, the \inlinecode{TraitB} will have the \inlinecode{super} reference bound to \inlinecode{TraitA}, even though at the point of definition of the \inlinecode{TraitB}, the \inlinecode{TraitA} does not even have to be known.
+
+The multiple inheritance among traits leads to the possibility of creating \textit{mixins} - traits containing methods with implementations that can be added to a type to enrich it. An example follows:
+
+\lstset{style=Scala}
+\begin{lstlisting}
+trait IntSequence {
+  val data: Seq[Int]
+}
+trait SequenceWithAverage extends IntSequence {
+  def average(): Double = data.sum / data.size
+}
+class IntList(val data: List[Int]) extends IntSequence
+
+val listWithAverage = 
+  new IntList(List(1, 5, 200)) with SequenceWithAverage
+val average = listWithAverage.average()
+\end{lstlisting}
 
 \section{Def Macros}
 \label{sec:defmacros}

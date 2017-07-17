@@ -553,10 +553,11 @@ There are two implementations in the framework:
 The \inlinecode{HistorySerializer} has two basic implementations, one for direct serialization, and one for buffered serialization. The data are stored into a file, one per function, and the format, root directory and file name pattern are fully customizable. There is no list of these history containing files anywhere - when trying to deserialize a function, a file with corresponding name is checked for existence. This means that the individual function histories are deserialized one by one, at the moment of the first invocation of a combined function that contains them, which might cause a delay in the first execution.
 
 \subsubsection{RunHistory}
+\label{subsubsec:run_history}
 
 \inlinecode{RunHistory} represents the vector of historical measurement results and other details about a function run. The interface is designed to support immutable solution - the appending methods always return an instance of the same type, which might or might not be the same object depending on the implementation. The interface provides some basic operations on the history, allows iteration over the data and appending new data (always at the end). 
 
-Apart from that, it also has some methods to directly provide precomputed data for some of the selection strategies in order to support caching. These supporting methods can always be computed using the data available, and if the implementation of \inlinecode{RunHistory} does not support the caching or precomputation, there are \textit{mixin} traits\footnote{Traits that contain functionality that can be included in a class.} with default implementations available.
+Apart from that, it also has some methods to directly provide precomputed data for some of the selection strategies in order to support caching. These supporting methods can always be computed using the data available, and if the implementation of \inlinecode{RunHistory} does not support the caching or precomputation, there are \textit{mixin} traits (see section \ref{sec:linearization_mixins}) with default implementations available.
 
 The provided implementations of \inlinecode{RunHistory} can be chained using the \textit{Decorator} pattern to modify the behavior. The basic implementations are the following:
 \begin{itemize}
@@ -648,6 +649,7 @@ The function configuration methods and possible values are the following:
 \begin{itemize}
 	\item \inlinecode{InputBased} - uses the input based strategy in \inlinecode{AdaptiveSelector}
 	\item \inlinecode{MeanBased} - uses the mean based strategy in \inlinecode{AdaptiveSelector}
+	\item If none is specified, uses the input based strategy if the \textit{descriptor function} is set and the mean based strategy otherwise
 \end{itemize}
 \item \inlinecode{limitedTo} - allows to specify the maximum age of the history records to be used in the selection process, as described in \ref{subsec:limiting_record_age}
 \item \inlinecode{asClosures} - represents the history storage identifier choice as described in section \ref{subsec:function_identifiers}
@@ -692,7 +694,7 @@ Note that the analytics data collection is relies on the \inlinecode{AnalyticsCo
 
 In section \ref{sec:module_impl}, we mentioned a variety of building blocks that the main parts of the framework are composed of, and the possibility to use multiple implementation to change the behavior of the entire system. This is the more advanced part of the configuration and it requires manipulation with the actual implementations.
 
-As explained earlier, all the shared and commonly accessible functionality is held inside the singleton object \inlinecode{AdaptiveInternal}. This object can be initialized using an \inlinecode{initialize()} method on a publicly accessible singleton \inlinecode{Adaptive}. The static description of the composition of the implementations that is followed in this process is provided by a \inlinecode{Configuration} trait. This can be though of as a composition root of the whole system - it has to provide factory functions for all the building blocks used. In addition, it has an abstract type member \inlinecode{TMeasurement} for the evaluation data. 
+As explained earlier, all the shared and commonly accessible functionality is held inside the singleton object \inlinecode{AdaptiveInternal}. This object can be initialized using an \inlinecode{initialize()} method on a publicly accessible singleton \inlinecode{Adaptive}. The static description of the composition of the implementations that is followed in this process is provided by the \inlinecode{Configuration} trait. This can be thought of as a composition root of the whole system - it has to provide factory methods for all the building blocks used. In addition, it has an abstract type member \inlinecode{TMeasurement} that determines the type of the evaluation data used throughout the whole framework.
 
 %TODO: Add ref to http://docs.scala-lang.org/tutorials/tour/abstract-types.html
 
@@ -710,9 +712,11 @@ These traits have to be extended to define the unimplemented values.
 \subsubsection{Configuration blocks}
  To simplify the configuration process when working with existing implementations and to hide the initialization details from the user, a concept called \textit{configuration blocks} was introduced. 
  
- \textit{Configuration blocks} are traits that provide implementation for just one (or a few) functions from the \inlinecode{Configuration} trait, setting up part of the framework in given way. The user of the framework can then define the configuration by creating an anonymous class extending the base configuration along with desired \textit{configuration blocks}. Thanks to the fluent and simple syntax of Scala, this concept is very expressive and easy to use. The compile-time check will automatically alert the user if the combination of block does not cover some required method.
+ \textit{Configuration blocks} are \textit{mixin} traits (see section \ref{sec:linearization_mixins}) that provide implementation for just one (or a few) functions from the \inlinecode{Configuration} trait, setting up part of the framework in given way. The user of the framework can then define the configuration by creating an anonymous class extending the base configuration along with desired \textit{configuration blocks}. Thanks to the fluent and simple syntax of Scala, this concept is very expressive and easy to use. The compile-time check will automatically alert the user if the combination of block does not cover some required method.
  
  In addition, some blocks can be parametrized. The parameters are always protected read-only attributes of the block trait that usually have default implementation (i.e. value), but can be overridden. It fits easily into the anonymous class usage pattern, as the new parameter values for all the blocks can simply be stated in the body of the class. Blocks can share a parameter by inheriting it from the same base trait - in such a case, it is impossible to set different values for different blocks.
+ 
+ Some blocks call the parent implementation of the factory method to wrap its result into a different type. An example is the \inlinecode{CachedRegressionStorage}, which creates a wrapper for caching the linear regression model atop of the \inlinecode{RunHistory} provided by its parent (for information about the wrappers see \ref{subsubsec:run_history}). The parents in the configuration inheritance chain are determined using \textit{linearization} (see section \ref{sec:linearization_mixins}). According to the rules, we have to be careful when mixing in a block with implementations and a wrapping block at the same time - the block with implementation have to be listed before the wrapping block in the extensions list.
  
  The whole configuration can look the following way:
 
@@ -723,7 +727,8 @@ val config = new BaseLongConfiguration
   with RunTimeMeasurement
   with WindowBoundRegressionInputBasedStrategy
   with UTestMeanBasedStrategy
-  with CachedRegressionAndStatisticsStorage
+  with CachedRegressionStorage
+  with CachedStatisticsStorage
   with FileLogging {
   override val maximumNumberOfRecords = 20000
   override val alpha = 0.25
