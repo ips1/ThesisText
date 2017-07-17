@@ -79,7 +79,7 @@ As we can see, there are two principal logic units participating in the process:
 	\item \textbf{\inlinecode{CombinedFunctionInvoker}} \\
 	Supposed to make a quick decision based on the \textit{policy} of the combined function. It should either directly invoke one of the functions, or delegate the call to the \inlinecode{AdaptiveSelector}, and update the statistics of the combined function afterwards. It works only with the data directly stored in the \inlinecode{CombinedFunction} instance, it does not have any state or shared storage.
 	\item \textbf{\inlinecode{AdaptiveSelector}} \\
-	The key component of the framework, it receives a set of functions and an input, and it should decide which one of them to run and to execute it, evaluate the function run and return the result. The default implementation works with an abstract history storage (\inlinecode{HistoryStorage}) a pair of selection strategies (\inlinecode{SelectionStrategy}) and an evaluation mechanism (\inlinecode{EvaluationProvider}). It also offers an operation of invoking the function with least data directly.
+	The key component of the framework, it receives a set of functions and an input, and it should decide which one of them to run and to execute it, evaluate the function run and return the result. The default implementation works with an abstract history storage (\inlinecode{HistoryStorage}), three selection strategies (\inlinecode{SelectionStrategy}) and an evaluation mechanism (\inlinecode{EvaluationProvider}). It also offers an operation of invoking the function with least data directly.
 \end{enumerate}
 
 \section{Implementation options}
@@ -497,14 +497,7 @@ It contains the following immutable data:
 	\end{itemize}
 	\item \textit{Descriptor function} (wrapped into the tuple form), see \ref{sec:input_based_strategies}
 	\item \textit{Group selector} function (wrapped into the tuple form), see \ref{subsubsec:group_selection}
-	\item A \inlinecode{FunctionConfiguration} a setup independent on the argument and return value types, consisting of the following:
-	\begin{itemize}
-		\item Selection strategy - InputBased or MeanBased
-		\item Storage - Local, Global or Persistent (see \ref{subsec:storing})
-		\item Duration - optional maximal age of the history records used for the function (see \ref{subsec:limiting_record_age})
-		\item ClosureIdentifiers - if the closure type identifiers should be preferred over the method name or the custom name (see \ref{subsec:function_identifiers})
-		\item Initial \textit{policy}
-	\end{itemize}
+	\item Function configuration defined by the user, will be described later in more detail
 \end{itemize}
 
 And the following state representing data:
@@ -523,7 +516,7 @@ It has access to the state of the \inlinecode{CombinedFunction} and its basic im
 
 \begin{itemize}
 	\item Evaluate the current \textit{policy} with the statistics of the combined function
-	\item According to the result either invoke directly the function which is directly accessible through the statistics (the last one and the most selected one), or pass the decision onto the \inlinecode{AdaptiveSelector}
+	\item According to the result either invoke directly the function which is accessible through the statistics (the last one and the most selected one) in case of \inlinecode{UseLast} or \inlinecode{UseMost} results , or pass the decision onto the \inlinecode{AdaptiveSelector} in case of \inlinecode{SelectNew} or \inlinecode{GatherData} results
 	\item Update the function statistics
 \end{itemize}
 
@@ -531,9 +524,13 @@ The \inlinecode{AdaptiveSelector} is accessed either through the \inlinecode{Com
 
 \subsubsection{AdaptiveSelector}
 
-A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used.
+A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used. It supports two basic operations - \textit{selectAndRun} and \textit{gatherData}, which correspond to the \textit{policy} results. Both of these operations have also an option with delayed measurement (see \ref{subsec:delayed_measuring}).
 
-The implementation \inlinecode{HistoryBasedAdaptiveSelector} contains the general chain described in \ref{sec:selection_and_invocation_process}. It uses a \inlinecode{HistoryStorage} to store and retrieve the run data of individual functions. In addition, it holds two \inlinecode{SelectionStrategy} instances, one for the input based selection, the other for the mean based selection. One of these two instances is used to select the function to run, which is then executed using an \inlinecode{EvaluationProvider}. The measurement retrieved is added to the history and the result is returned, along with a performance benchmark including execution and overhead times (independent on the actual measurement, always based on wall-clock times) for the function statistics update. Figure \ref{fig:history_based_selector} shows the entire process.
+The implementation \inlinecode{HistoryBasedAdaptiveSelector} contains the general chain described in \ref{sec:selection_and_invocation_process}. It uses a \inlinecode{HistoryStorage} to store and retrieve the run data of individual functions. In addition, it holds three \inlinecode{SelectionStrategy} instances, one for gathering new data, one for the input based selection, and one for the mean based selection. One of these three instances is used to select the function to run, which is then executed using an \inlinecode{EvaluationProvider}. The measurement retrieved is added to the history and the result is returned, along with a performance benchmark including execution and overhead times (independent on the actual measurement, always based on wall-clock times) for the function statistics update. Figure \ref{fig:history_based_selector} shows the entire process.
+
+In case of the operations with delayed measurement, the function run is not evaluated, an \inlinecode{InvocationToken} is generated instead. The token holds a callback to the \inlinecode{AdaptiveSelector} and whenever used to invoke some function, it will use the \inlinecode{EvaluationProvider} to evaluate the run and store the data to the corresponding history record.
+
+Note that the \inlinecode{SelectionStrategy} for gathering new data should select a function for which data are needed the most at the moment instead of optimizing the performance.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -604,7 +601,7 @@ In addition, some complementary supporting were added:
 \item \inlinecode{LeastDataSelectionStrategy} - uses the function with least historical runs
 \end{itemize}
 
-The common pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost strategy in the composition to postpone the decision process until some data are gathered, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual input based or mean based strategies in the middle, optionally wrapped in the window-bound class.
+The common pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost strategy in the composition to postpone the decision process until some data are ed, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual input based or mean based strategies in the middle, optionally wrapped in the window-bound class. The \inlinecode{LeastDataSelectionStrategy} is also recommended to be used as the strategy for the \textit{gather data} operation of \inlinecode{AdaptiveSelector}.
 
 \subsubsection{EvaluationProvider}
 
