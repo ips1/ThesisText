@@ -436,7 +436,7 @@ Supposing we already have a mechanism to mark the actual function to measure, we
 
 The contexts can interleave and we cannot match the decision with the invocation by time or location. It is impossible to decide which invocation belongs to which decision automatically - we need support from the user. He will have to explicitly state the context whenever invoking the measured function. By doing this, he will also pinpoint the moment of decision that affected the invocation.
 
-Practically, we need to introduce a special object - the \textit{measurement token} - which will represent the context. The \inlinecode{AdaptiveFunctionN} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate a measurement token that will be used to measure future function runs. We chose to make it accessible using the \inlinecode{\textasciicircum()} operator, to simulate the fluent application.
+Practically, we need to introduce a special object - the \textit{invocation token} - which will represent the context. The \inlinecode{AdaptiveFunctionN} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate an invocation token that will be used to measure future function runs. We chose to make it accessible using the \inlinecode{\textasciicircum()} operator, to simulate the fluent application.
 
 \lstset{style=Scala}
 \begin{lstlisting}
