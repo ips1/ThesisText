@@ -5,6 +5,8 @@ The key purpose of the ScalaAdaptive framework is to always invoke a function th
 
 This thesis is focused on the task of optimizing the function run time or time complexity in general. The core of the framework, however, is designed to be extensible by modules that can analyze the function run in different ways. More on this topic will be covered in chapter \ref{chap:implementation}.
 
+Note we will suppose some basic knowledge of mathematical statistics in this chapter. A nice introduction covering all the concepts that this text works with can be found in \cite{weiss_introductory_2010}.
+
 \section{Overview of the selection process}
 \label{sec:selection_overview}
 
@@ -908,7 +910,7 @@ This \textit{policy} gives us control over the time spent on selecting results i
 
 \subsection{Policy builder}
 
-As we could see from the \textit{policy} examples, most of them were built only using the \textbf{Repeat until} or \textbf{Do once} blocks in a simple cycle. This process of combining these generic blocks into sequences can be automatized and hidden behind a simple DSL (see \ref{sec:dsls}) that would allow the user to express his customized way to decide about the function run. The DSL was implemented and named \textit{policy builder}.
+As we could see from the \textit{policy} examples, most of them were built only using the \textbf{Repeat until} or \textbf{Do once} blocks in a loop. This process of combining these generic blocks into sequences can be automatized and hidden behind a simple DSL (see \ref{sec:dsls}) that would allow the user to express his customized way to decide about the function run. The DSL was implemented and named \textit{policy builder}.
 
 Figure \ref{fig:policy_builder_chart} shows the syntax diagram of \textit{policy builder}.
 
