@@ -470,6 +470,37 @@ The  \inlinecode{toAdaptiveFunction1} method is a macro - it gets executed at co
 
 This does not require any extra AST manipulations, only one method call generation. It does, however, mean a complication for us, as the macros cannot be called virtually. The macro definition therefore has to be a part of the \inlinecode{AdaptiveFunctionN} API trait, breaking somehow the encapsulation of the implementation. Fortunately, it does not perform any actions by itself, only replaces the \inlinecode{or} call with a conversion and an \inlinecode{orAdaptiveFunction} call, which is, again, a virtual method defined on the trait without implementation and therefore encapsulated.
 
+\subsection{Extraction evaluation}
+
+In order to evaluate the method name extracting solution presented throughout this section, we converted some expressions with function values to corresponding \inlinecode{AdaptiveFunctionN} types using the macro approach. Table \ref{tab:method_extraction_results} shows the results. Note that the package prefixes were omitted from the method names for simplicity, the actual identifiers contain fully qualified names. The conversion was performed in the scope of a \inlinecode{NameTest} singleton object.
+
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+\begin{table}[h!]
+	\captionsetup{justification=centering,margin=0.5cm}
+	\bgroup
+		\begin{center}
+	\begin{tabular}{ll}
+		\toprule
+		\textbf{Expression}             & \textbf{Assigned method name}              \\ \midrule
+		\inlinecode{method \_}                                             & NameTest\$.method                   \\
+		\inlinecode{genericMethod{[}Int{]} \_}                             & NameTest\$.genericMethod            \\
+		\inlinecode{Singleton.quickSort \_}                         & NameTest\$Singleton\$.quickSort \\
+		\inlinecode{variableSorter.quickSort \_}                           & Sorter.quickSort                            \\
+		\inlinecode{getSorter.quickSort \_}                                & Sorter.quickSort                            \\
+		\inlinecode{new Sorter().quickSort \_}                            & Sorter.quickSort                            \\
+		\inlinecode{new GenericClass{[}Int{]}().foo \_}              &   GenericClass.foo                         \\
+		\inlinecode{(i: Int) =\textgreater{} method(i)}                  &   N/A (Closure name used)                                        \\
+		\inlinecode{(i: Int) =\textgreater{} method(i + 1)}                & N/A (Closure name used)                                        \\
+		\inlinecode{fun}                                                 &   N/A (Closure name used)                                        \\ \bottomrule
+	\end{tabular}
+\end{center}
+\egroup
+\caption{The method names extracted from expressions during their conversion to combined functions.}
+\label{tab:method_extraction_results}
+\end{table}
+
+As we can see, the method name extraction succeeded in all the \textit{eta-expansion} cases and did not get confused even by a direct method call within a lambda expression.
 
 \section{Module implementation}
 \label{sec:module_impl}
