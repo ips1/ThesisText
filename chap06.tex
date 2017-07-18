@@ -375,7 +375,7 @@ To perform the test of adaptation with Apache Spark, two environments were used:
 	\item Cluster of 12 Spark workers deployed in Docker containers on 3 machines, each with two 8-core Intel(R) Xeon(R) CPU E5-2660 0 @ 2.20GHz and 48GB of RAM
 \end{itemize}
 
-Randomly generated data were used for the test, no distributed storage was involved. The tests were running with the \inlinecode{StorageLevel.MEMORY\_ONLY} data persistence configuration.
+Randomly generated data were used for the test, no distributed storage was involved. The tests were running with the \inlinecode{StorageLevel.MEMORY\_ONLY} data persistence configuration. The version 2.1.0 of the Apache Spark library was used.
 
 \subsubsection{Query selection}
 
@@ -410,12 +410,14 @@ A simple t-test selection strategy correctly chooses the more optimized version.
 
 As explained in section \ref{subsec:spark_apis}, Spark has various APIs that allow the user to perform the query. Theoretically, the Dataset API should offer the same expressiveness and better performance. A lot of current production Spark code is, however, written in RDDs, as it was the first (and the only for some time) presented API. This poses a question whether the code should be kept and maintained in RDDs, or whether it would be better to replace it with Datasets and what the eventual performance gain would be.
 
-The ScalaAdaptive can be used in this case to limit the eventual negative impact of this change. The Dataset-based queries can be implemented into the system and wrapped along with the old RDD queries into a single combined query. If there was a place where the Dataset query would, for some reason, have worse performance, the ScalaAdaptive framework should discover it and keep using the old RDD query. In the longer term, the results of ScalaAdaptive selections can be evaluated and used to discover problematic queries and to decide about the next steps.
+The ScalaAdaptive can be used in this case to limit the eventual negative impact of this change. The Dataset-based queries can be implemented into the system and wrapped along with the old RDD queries into a single combined query. If there was a place where the Dataset query would, for some reason, have worse performance, the ScalaAdaptive framework should discover it and keep using the old RDD query. In the longer term, the results of ScalaAdaptive selections can be evaluated and used to discover problematic queries and to decide about next steps.
+
+In this test, we are going to try to combine two queries from the two different APIs and try them out in different environments and with different data sizes. We are going to track the execution times of both of them (in the phase where the data is gathered in a round-robin manner), and the decision made by the ScalaAdaptive framework afterwards. We would preferably like to find out whether the decision will be the same for all the data and environments, or whether there are going to be significant differences.
 
 For the test, we prepared the RDD and the Dataset variants of two queries:
 \begin{itemize}
-	\item \textbf{Query 1} - generates $n$ random key-value pairs, groups by the key and counts the groups
-	\item \textbf{Query 2} - generates $n$ records with multiple attributes, filters by an attribute, groups by a different attribute, reduces the groups into new records, filters again and groups for the second time
+	\item \textbf{Query 1} - generates $n$ random key-value pairs using parallelized RDD generation, groups by the key and counts the groups
+	\item \textbf{Query 2} - generates $n$ records with multiple attributes from in-memory sequence, filters by an attribute, groups by a different attribute, reduces the groups into new records, filters again and groups for the second time
 \end{itemize}
 
 The queries were combined together and the result was executed $100$ times in various environments and with multiple values of $n$. The average execution times of the internal implementations, as retrieved from the analytics data (see section \ref{subsubsec:analytics}), can be seen for all the cases in table \ref{tab:spark_adaptive_rdd_vs_ds_test}. The last column shows the ScalaAdaptive decision after gathering enough data - t-test selection strategy with $\alpha = 0.05$ was used.
