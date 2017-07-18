@@ -6,6 +6,8 @@ This chapter will present some applications and practical usages of the ScalaAda
 
 We are going to suggest a couple of situations where the adaptive style of programming could be used. The problems will be described and an example usage of the ScalaAdaptive framework will be provided. A series of tests will be executed for each case, with results showing the impact that the adaptivity had on the overall performance.
 
+Note that all the tests, if not specified otherwise, were performed on a laptop with quad-core 1.3 GHz Intel Core i5 processor and 8GB of RAM. The tests are available in the \hyperref[attach:config_blocks]{attachments}.
+
 \subsection{Sorting algorithms}
 
 The first test of the ScalaAdaptive will be motivated by the example case of almost every lecture about algorithm complexity - sorting. We are going to try combining an implementation of a selection sort with complexity $O(N^2)$ with an implementation of quick sort, which belongs to a category of algorithms with complexity $O(N logN)$. From the theoretical point of view, the quick sort should be a better choice for every input. In practice, however, it is faster to use selection sort for shorter inputs, as the quick sort has an overhead connected to the recursive nature of the algorithm.
@@ -165,7 +167,7 @@ This library decision problem is a perfect use-case for ScalaAdaptive - we can c
 
 \subsubsection{Combining GSON and Jackson}
 
-The \cite{dreyfuss_ultimate_2015} provides benchmarks about the basic JSON libraries from the Java world. For the test, we chose to use GSON and Jackson. We will measure only the deserialization part (parsing of string containing JSON), which is the more time-complex operation. A library wrapper that exposes three parsing functions was created:
+The \cite{dreyfuss_ultimate_2015} provides benchmarks about the basic JSON libraries from the Java world. For the test, we chose to use GSON\footnote{Version 2.8.1 of the GSON library from Maven repository was used in the test.} and Jackson\footnote{Version 2.8.8 of the Jackson library from Maven repository was used in the test.}. We will measure only the deserialization part (parsing of string containing JSON), which is the more time-complex operation. A library wrapper that exposes three parsing functions was created:
 \begin{itemize}
 	\item \inlinecode{parseWithGson()}
 	\item \inlinecode{parseWithJackson()}
@@ -370,9 +372,9 @@ The newest Spark API, Datasets, was introduced with a goal of combining the best
 To perform the test of adaptation with Apache Spark, two environments were used:
 
 \begin{itemize}
-	\item Spark local mode with 1 worker\footnote{Using \inlinecode{master("local[1]")} setup.} on a a laptop with quad-core Intel i5 processor and 8GB of RAM
+	\item Spark local mode with 1 worker\footnote{Using \inlinecode{master("local[1]")} setup.} on a laptop with quad-core 1.3 GHz Intel Core i5 processor and 8GB of RAM
 	\item Spark local mode with 8 workers\footnote{Using \inlinecode{master("local[8]")} setup.} on the same machine
-	\item Cluster of 12 Spark workers deployed in Docker containers on 3 machines, each with two 8-core Intel(R) Xeon(R) CPU E5-2660 0 @ 2.20GHz and 48GB of RAM
+	\item Cluster of 12 Spark workers deployed in Docker containers on 3 machines, each with two 8-core Intel Xeon CPU E5-2660 0 @ 2.20GHz and 48GB of RAM
 \end{itemize}
 
 Randomly generated data were used for the test, no distributed storage was involved. The tests were running with the \inlinecode{StorageLevel.MEMORY\_ONLY} data persistence configuration. The version 2.1.0 of the Apache Spark library was used.
