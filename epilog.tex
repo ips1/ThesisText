@@ -17,7 +17,7 @@ To see the actual benefit that this development approach can bring to a larger s
 
 \section*{Future work}
 
-\subsection{Selecting from multiple functions}
+\subsubsection{Improving selection from multiple functions}
 \label{subsec:problem_selecting_multiple}
 
 As mentioned in \ref{subsec:selecting_multiple_function}, the task of selecting the most suitable function out of a larger set is complicated by its nature and we have taken a simplified approach in this work. In addition, the significance-based selection strategies have to perform multiple tests (or confidence interval constructions) in the process and the probability of an error increases. We can either keep the significance high and lower the strength of the test, which leads to more situations without any function being selected, or let the significance drop while keeping the strength, causing more selection errors.
@@ -26,15 +26,11 @@ The potential future extension could either completely redefine the goal of the 
 
 \subsubsection{Extending the policy logic and connecting it to selectors}
 
-As already briefly mentioned in section \ref{subsec:policy_improvements}, the policies are currently relatively limited, both in the data they have to base their decision on, and in the results they can produce. It would be interesting to analyze possible extensions while keeping the evaluation overhead as minimal as possible. The policies could give hints to the selection strategies, limit the data that they are working with, etc.
+In section \ref{subsec:policy_improvements} we stated that the policies were currently relatively limited, both in the data they have to base their decision on, and in the results they can produce. It would be interesting to analyze possible extensions while keeping the evaluation overhead as minimal as possible. The policies could give hints to the selection strategies, limit the data that they are working with, etc.
 
 \subsubsection{Custom selection rules based on the SPL}
 
 The \cite{bulej_performance_2012} introduces an extension of the SPL language designed to describe conditions based on the trends of historical performance data of functions. A special selector could be designed to accept the SPL conditions and make decisions according to them. This would allow the framework user to have more control over the selection process. 
-
-\subsubsection{Improving the persistent storage}
-
-The run data in the persistent storage are currently stored in CSV file format, which is not very fast to serialize and deserialize. In addition, the serialization buffering is done in a very basic way, leading to a loss of run data when the application ends with a non-empty buffer. In addition, this solution still has a non-trivial overhead. A potential improvement task might be to select a new format and a method how to flush the buffer upon closing the application, i.e. using JVM shutdown hooks.
 
 \subsubsection{Thread safety and concurrency}
 
@@ -67,12 +63,6 @@ As mentioned in section \ref{subsec:input_in_selection}, algorithm complexities 
 \subsubsection{Detecting the input features}
 
 The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation between the input feature changes and the run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the features.
-
-\subsubsection{Significance level analysis}
-
-Most of the strategies used have a significance level parameter for their decisions. The significance gets affected by performing multiple tests or confidence interval constructions during selection between more than two functions. The theory, as described in sections \ref{subsec:simple_linear_regression} and \ref{subsec:t_test_multiple}, would allow us to perform estimations of the impact of multiple function testing on the significance level, which would be quite complicated. 
-
-More interesting future work, however, might be based on experimentally determining the most appropriate corrections for various number of functions based on real cases and real function behavior.
 
 \subsubsection{Implementation in other languages}
 
