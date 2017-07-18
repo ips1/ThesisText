@@ -88,6 +88,7 @@ For these reasons, we need to have the historical run records marked with timest
 As mentioned before, we would like the decision process to take into account the certainty of the decisions, i.e., refuse to give a decision when the possibility of committing an error is too high. If this happens, it can mean either that the run times of the functions involved are very close to each other, or that the models are very inaccurate. The first situation does not mean any problem for us, as using any of the functions is equally good. In the second case, we would need to increase the precision of the model, ideally by adding more data. Therefore, the most useful action is to select a function with least historical data. 
 
 \subsection{Selecting from multiple functions}
+\label{subsec:selecting_multiple_function}
 
 The goal of the decision process is obvious when selecting from two functions - compare the predictions and select the one that is better (taking into account the confidence of the predictions), or refuse to select when the decision cannot be done. Upon selection among three or more functions, the situation becomes less clear. Ideally, we would like to be able to identify a function that is significantly better than each one of the remaining functions. The problem is that there might be a function that is significantly better that some of the remaining functions, but not better than all of them. This function cannot be selected, because we are not able to rule out the possibility that there is a faster option.
 
@@ -258,31 +259,47 @@ H_0: \mu_1 = \mu_2 = \dots = \mu_k
 H_1: \exists i, j: \mu_i \neq \mu_j
 \]
 
-These multiple-sample tests are usually preferred over performing multiple t-tests, because it usually offers higher strength of the test for the same significance. In our case, however, this approach would have a few problems. Firstly, we want to actually find out which of the samples is the deviating one, or, if there are more, which one is the most deviating one. Secondly, we need the one-sided alternative (to find out the lowest expectation). 
+These multiple-sample tests are usually preferred over performing multiple t-tests, because it usually offers higher strength of the test for the same significance. In our case, however, this approach is not very suitable. We need to find out whether there is one sample deviating significantly from all the others - \textit{ANOVA} guarantees only the existence of some deviation.
 
-Based on these observations, it is necessary to come up with different hypotheses. We will consider a simpler task first - suppose we want to test $\mu_1$ against all the other expectations:
+Based on these observations, it is necessary to come up with different hypotheses. We will consider a simpler task first.
+
+\subsubsection{Testing one function against the others}
+
+Suppose we want to test $\mu_i$ against all the other expectations:
 
 \[
-H_0: \mu_1 = \mu_2 \vee \dots \vee \mu_1 = \mu_k
+H_{i,0}: \exists j \neq i,  \mu_i = \mu_j
 \]
 \[
-H_1: \mu_1 < \mu_2 \wedge \dots \wedge \mu_1 < \mu_k
+H_{i,1}: \forall j \neq i,  \mu_i < \mu_j
 \]
 
-$H_0$ is basically saying that there is at least one other sample with the same mean, and the one-sided alternative $H_1$ puts $\mu_1$ as the lowest of all the means.
+$H_{i,0}$ is basically saying that there is at least one other sample with the same mean, and the one-sided alternative $H_{i,1}$ puts $\mu_i$ as the lowest of all the means.
 
-We can perform a simple t-test of $H_{j,0}: \mu_1 = \mu_j$ against $H_{j,1}: \mu_1 < \mu_j$ $\forall j = 2, \dots, k$. It is clear that the $H_0$ can be rejected in favor of $H_1$ only if all of the $H_{j,0}$ were rejected in favor of $H_{j,1}$. Note that the $H_{j,1}$ is an alternative hypothesis of a one-sided test - we need to take it into account when performing the test and modify the critical values.
+We can perform a simple t-test of $H_{i,j,0}: \mu_i = \mu_j$ against $H_{i,j,1}: \mu_i < \mu_j$ $\forall j = 1, \dots, k; j \neq i$. It is clear that the $H_{i,0}$ can be rejected in favor of $H_{i,1}$ only if all of the $H_{i,j,0}$ were rejected in favor of $H_{i,j,1}$. Note that the $H_{i,j,1}$ is an alternative hypothesis of a one-sided test - we need to take it into account when performing the test and modify the critical values.
 
 The procedure of combining statistical tests usually requires artificially lowering the significance level of the individual tests with the goal of keeping the significance level of the whole set of tests reasonably low. These methods are based on the assumption that committing a type-I error in any of the individual tests leads to a type-I error overall, and the probability of committing at least one gets higher with the number of tests.
 
-In our case, however, a type-I error in one of the individual tests does not necessarily lead to a type-I error in the whole test. Suppose that $H_0$ is true, so for an $l \geq 1$ $\exists i_1,\dots,i_l: \mu_1 = \mu_{i_1} \wedge \dots \wedge \mu_1 = \mu_{i_l}$. In order to commit a type-I error, we need to reject $H_{i_j,0}$ $\forall j = 1, \dots, l$, by committing the type-I error on the individual tests $l$-times. At the same time, we need to decide correctly about the remaining $k-l$ tests. So the probability of committing a type-I error overall is $\alpha^l(1-\alpha)^{k-l}$, and consequentially, the significance level of the entire test gets even lower than $\alpha$.
+In our case, however, a type-I error in one of the individual tests does not necessarily lead to a type-I error in the whole test. Suppose that $H_{i,0}$ is true, so for an $l \geq 1$ $\exists m_1,\dots,m_l: \mu_i = \mu_{m_1} \wedge \dots \wedge \mu_i = \mu_{m_l}$. In order to commit a type-I error, we need to reject $H_{i,m_j,0}$ $\forall j = 1, \dots, l$, by committing the type-I error in the individual tests $l$-times. At the same time, we need to decide correctly about the remaining $k-l$ tests. So the probability of committing a type-I error overall is $\alpha^l(1-\alpha)^{k-l}$, and consequentially, the significance level of the entire test gets even lower than $\alpha$.
 
-As the $\alpha$ decreases with growing $k$, the test gets more pessimistic - it will require more data and more certainty in order to reject the $H_0$. If we wanted to keep the significance level at exactly $\alpha$, we would need to apply a reverse correction - artificially increase $\alpha$. The exact method how to do so would, however, be quite difficult to derive, as there are a lot of cases to consider with unknown probabilities. The assumption is that the number $k$ of the functions involved will be low enough not to affect the significance too much. 
+As the $\alpha$ decreases with growing $k$, the test gets more pessimistic - it will require more data and more certainty in order to reject the $H_{i,0}$. If we wanted to keep the significance level at exactly $\alpha$, we would need to apply a reverse correction - artificially increase $\alpha$. The exact method how to do so would, however, be quite difficult to derive, as there are a lot of cases to consider with unknown probabilities. The assumption is that the number $k$ of the functions involved will be low enough not to affect the significance too much. 
 
-Now, we are able to decide about a function whether it is significantly better than all of the others. In the selection strategy, this test will be performed for all the functions one by one and the first one where the $H_0$ is rejected in favor of $H_1$ gets selected. This means performing at most $k$ of these combined tests. In this case, the type-I error in any of the tests leads to a critical error of the selection process and we should try to keep it as unlikely as possible, by applying one of the correction techniques mentioned. A simple example of such a technique could be the \textit{Bonferroni correction}, which sets the $\alpha'$ of the individual tests to $\alpha / k$ for $\alpha$ being the desired significance overall and $k$ the number of samples.
+\subsubsection{Testing multiple functions for a deviating one}
 
-%TODO: Bonferroni correction reference
-%TODO: Teoria statistica delle classi e calcolo delle probabilità? :D
+Now we are able to decide about a function whether it is significantly better than all the others. We can use it to decide about the following:
+
+\[
+H_0: \forall i, \exists j \neq i, \mu_i = \mu_j
+\]
+\[
+H_1: \exists i, \forall j \neq i, \mu_i < \mu_j
+\]
+
+The one-against-others will be performed for all the functions one by one. If $\exists i$ so that $H_{i,0}$ can be rejected in favor of $H_{i, 1}$, the $H_0$ can be rejected in favor of $H_1$ and we can use the $i$-th function as our selected candidate. If such an $i$ does not exist, we cannot reject $H_0$ and no function will be selected.
+
+ In this case, the type-I error in any of the elementary tests leads to a critical error of the selection process. If we wanted to remain precise about the significance levels, we would need to apply a correction at this moment to lower the significance of the one-against-others test. As that test is, however, again composed from multiple individual tests, the situation gets complicated and deriving a precise correction is out of the scope of this work. In addition, such a correction leads to lowering the test strength, i.e., the $H_0$ being rejected less often. This could severely affect the strategy behavior, maybe even make it unusable for some higher numbers.
+ 
+ We will, therefore, use the unmodified significance level for simplicity, as the expected usages combine mostly three functions at maximum. The task of determining a suitable correction for the selection case, either theoretically using probabilities in the composed tests, or practically by observing behavior with different values, is left as a future extension.
 
 \subsubsection{Selection algorithm}
 
@@ -438,9 +455,7 @@ The described method allows us to decide between two functions with given certai
 
 It can be done by constructing all the regression models and then $\forall i$ performing the comparison described in \ref{subsubsec:confidence_interval_selection} of $h_i$ with $h_j, \forall j \ne i$. If $h_i$ is better than all of the $h_j$, we can choose the corresponding function.
 
-The strength of this decision is influenced by the fact that we perform multiple confidence interval constructions - the errors an error in any of them can influence the result of the selection, se the significance gets lower in general. If we wanted the results to be precise, we would have to perform the correction of the significance level $\alpha$.
-
-%TODO: How to set alpha? correction?
+The strength of this decision is influenced by the fact that we perform multiple confidence interval constructions - the errors an error in any of them can influence the result of the selection, se the significance gets lower in general. If we wanted the results to be precise, we would have to perform the correction of the significance level $\alpha$. Just like in \ref{subsec:t_test_multiple}, we will leave the significance correction analysis as a potential future work.
 
 \subsubsection{Selection algorithm}
 

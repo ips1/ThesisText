@@ -15,8 +15,14 @@ We believe that the biggest potential of this framework lies in its simplicity a
 
 To see the actual benefit that this development approach can bring to a larger system, we would need to practically test it in such an application, i.e. a long running service, and track the performance changes. This kind of test would also expose other problems connected with either the framework, or the whole concept of adaptive development, that could not have been identified in the isolated artificial tests that were part of this work.
 
-
 \section*{Future work}
+
+\subsection{Selecting from multiple functions}
+\label{subsec:problem_selecting_multiple}
+
+As mentioned in \ref{subsec:selecting_multiple_function}, the task of selecting the most suitable function out of a larger set is complicated by its nature and we have taken a simplified approach in this work. In addition, the significance-based selection strategies have to perform multiple tests (or confidence interval constructions) in the process and the probability of an error increases. We can either keep the significance high and lower the strength of the test, which leads to more situations without any function being selected, or let the significance drop while keeping the strength, causing more selection errors.
+
+The potential future extension could either completely redefine the goal of the selection from multiple functions and design a new process, or extend the current solution by determining suitable significance corrections.
 
 \subsubsection{Extending the policy logic and connecting it to selectors}
 
