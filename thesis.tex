@@ -11,19 +11,19 @@
 \setlength\topmargin{0mm}
 \setlength\headsep{0mm}
 \setlength\headheight{0mm}
-% \openright makes the following text appear on a right-hand page
+%% \openright makes the following text appear on a right-hand page
 \let\openright=\clearpage
 
 %% Settings for two-sided (duplex) printing
-% \documentclass[12pt,a4paper,twoside,openright]{report}
-% \setlength\textwidth{145mm}
-% \setlength\textheight{247mm}
-% \setlength\oddsidemargin{14.2mm}
-% \setlength\evensidemargin{0mm}
-% \setlength\topmargin{0mm}
-% \setlength\headsep{0mm}
-% \setlength\headheight{0mm}
-% \let\openright=\cleardoublepage
+%\documentclass[12pt,a4paper,twoside,openright]{report}
+%\setlength\textwidth{145mm}
+%\setlength\textheight{247mm}
+%\setlength\oddsidemargin{14.2mm}
+%\setlength\evensidemargin{0mm}
+%\setlength\topmargin{0mm}
+%\setlength\headsep{0mm}
+%\setlength\headheight{0mm}
+%\let\openright=\cleardoublepage
 
 %% Character encoding: usually latin2, cp1250 or utf8:
 \usepackage[utf8]{inputenc}
@@ -50,6 +50,8 @@
 \usepackage[noend]{algpseudocode}
 \usepackage{csquotes}
 \usepackage{url}
+\usepackage{blindtext}
+\usepackage{enumitem}
 
 
 %%% Basic information on the thesis
@@ -84,17 +86,21 @@
 % An optional dedication: you can thank whomever you wish (your supervisor,
 % consultant, a person who lent the software, etc.)
 \def\Dedication{%
-I would like to thank my supervisor, Doc. RNDr. Tomáš Bureš, PhD., for his help, valuable suggestions and feedback. I would also like to thank prof. Ing. Petr Tůma, Dr. for his consultations and advice. Last but not least, I would like to thank Mgr. Vojtěch Horký for setting up the environment to perform Spark tests.
+I would like to thank my supervisor, Doc. RNDr. Tomáš Bureš, PhD., for his help, valuable suggestions and ideas. I would also like to thank prof. Ing. Petr Tůma, Dr. for his consultations and advice. My thanks go to Mgr. Vojtěch Horký for setting up the environment to perform Spark tests. Last but not least, I would like to thank David Kuboň for providing useful feedback about the work.
 }
 
 % Abstract (recommended length around 80-200 words; this is not a copy of your thesis assignment!)
 \def\Abstract{%
-Abstract.
+Dynamic adaptivity of computer system is its ability to modify the behavior according to an environment in which it is executed. It allows the system to achieve better performance, but usually requires specialized architecture and brings more complexity.
+
+The thesis presents an analysis and design of a framework that allows simple and fluent performance-based adaptive development at the level of functions and methods. It closely examines the API requirements and possibilities of integrating such a framework into the Scala programming language using its advanced syntactical constructs. On theoretical level, it deals with the problem of selecting the most appropriate function to execute with given input based on measurements of previous executions.
+
+In the provided framework implementation, the main stress is laid on modularity and extensibility, as many possible future extensions are outlined. The solution is evaluated on a variety of development scenarios, ranging from input adaptation of algorithms to environment adaptations of complex distributed computations in Apache Spark.
 }
 
 % 3 to 5 keywords (recommended), each enclosed in curly braces
 \def\Keywords{%
-{key} {words}
+{adaptive systems} {performance optimization} {run time prediction}
 }
 
 %% The hyperref package for clickable links in PDF and also for storing
@@ -144,22 +150,23 @@ Abstract.
 \chapwithtoc{List of Abbreviations}
 
 \begin{itemize}
-	\item \textbf{HTML} - Hyper Text Markup Language
-	\item \textbf{API} - Application Programming Interface
-	\item \textbf{REST} - Representational State Transfer, a philosophy of web API
-	\item \textbf{JSON} - JavaScript Object Notation, a format for data exchange
-	\item \textbf{XML} - Extensible Markup Language, a format for data exchange
-	\item \textbf{FFT} - Fast Fourier Transform
-	\item \textbf{JAR} - Java Archive, a package format to distribute JVM based applications
-	\item \textbf{SPL} - Stochastic Performance Logic
-	\item \textbf{OS} - Operating System
-	\item \textbf{CPU} - Central Processing Unit
-	\item \textbf{I/O} - Input / Output
-	\item \textbf{IoC} - Inversion of Control, an application development pattern
-	\item \textbf{AST} - Abstract Syntax Tree, the result of syntax analysis of a code
-	\item \textbf{DSL} - Domain Specific Language
-	\item \textbf{SBT} - Scala Build Tools
-	\item \textbf{RDD} - Remote Distributed Dataset, a Spark API
+	\item \textbf{JVM} -- Java Virtual Machine, the target platform of Java, Scala and other languages
+	\item \textbf{HTML} -- Hyper Text Markup Language
+	\item \textbf{API} -- Application Programming Interface
+	\item \textbf{REST} -- Representational State Transfer, a philosophy of web API
+	\item \textbf{JSON} -- JavaScript Object Notation, a format for data exchange
+	\item \textbf{XML} -- Extensible Markup Language, a format for data exchange
+	\item \textbf{FFT} -- Fast Fourier Transform
+	\item \textbf{JAR} -- Java Archive, a package format to distribute JVM based applications
+	\item \textbf{SPL} -- Stochastic Performance Logic
+	\item \textbf{OS} -- Operating System
+	\item \textbf{CPU} -- Central Processing Unit
+	\item \textbf{I/O} -- Input / Output
+	\item \textbf{IoC} -- Inversion of Control, an application development pattern
+	\item \textbf{AST} -- Abstract Syntax Tree, the result of syntax analysis of a code
+	\item \textbf{DSL} -- Domain Specific Language
+	\item \textbf{SBT} -- Scala Build Tools
+	\item \textbf{RDD} -- Remote Distributed Dataset, a Spark API
 \end{itemize}
 
 %%% Attachments to the master thesis, if any. Each attachment must be
@@ -179,8 +186,23 @@ Abstract.
 \section{The enclosed disc contents}
 \label{attach:cd}
 
-\section{The Scaladoc documentation}
+A disc is enclosed 
+
+\section{ScalaAdaptiveEvaluation project}
+\label{attach:eval_project}
+
+The ScalaAdaptive project contains only the framework, as it uses compile-time macros and therefore cannot be used from the same compilation unit. The ScalaAdaptiveEvaluation project contains all the source code that uses with the ScalaAdaptive framework. The important parts of the project are the following:
+
+\begin{description}
+	\item [evaluation] Package containing all the tests that were used to generate evaluation data. In each of the subpackages, there are Scala objects that have the \inlinecode{main} method and run the test. Each test contains a brief description about its inputs and output.
+	\item [tutorials] Package containing a set of examples serving as simple introduction to the usage of the framework.
+	\item [tests] Package containing mostly uncommented tests that were written and used in the process of development of the ScalaAdaptive framework.
+\end{description}
+
+\section{Scaladoc documentation}
 \label{attach:scaladoc}
+
+A detailed automatically generated documentation of all the classes in the ScalaAdaptive framework is enclosed on the disk. The 
 
 \section{Complete list of configuration blocks}
 \label{attach:config_blocks}
