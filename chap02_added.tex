@@ -67,11 +67,11 @@ The selection would be based on historical measurements of each function. We sho
 	\item Functions whose run time depends on the execution environment and is expected to change over time
 \end{itemize}
 
-This leads to a few requirements. Multiple selection strategies meeting the requirements of these cases will be necessary - we need to propose some decision making procedures that will reflect the certainty using the methods of statistical testing with given significance level. The user will have a way to customize the function combination in order to identify the case and configure the selection process correctly.
+This leads to a few consequences. Multiple selection strategies meeting the requirements of these cases will be necessary. In addition, their decisions should reflect the certainty using methods of statistical testing with given significance level. The user will have a way to customize the function combination in order to identify the case and the input characteristics.
 
 \subsubsection{Controlling the invocation behavior}
 
-The invocation behavior should change in some situations - when we are sure enough that one option is better than the other in general, when we need to gather more data, when we need to save time and cannot perform the selection, or in other cases. Every combined function should have its state and some behavior plan, which would reflect some basic statistics and events on the functions.
+The invocation behavior should change in some situations - when we are sure enough that one option is in general better than the other, when we need to gather more data, when we need to save time and cannot perform the selection, or in other cases. Every combined function should have its state and some behavior plan, which would reflect some basic statistics and events on the functions.
 
 We can achieve this by introducing a simple state machine logic and a language in form of a Scala DSL to create simple state machines.
 
@@ -94,9 +94,9 @@ For this to work, the framework runtime will be created by composition with no c
 Based on the extended goals presented in section \ref{sec:goals_revisited}, key parts of the solution can be identified and will be described in detail in the rest of the text.
 
 \begin{itemize}
-	\item \textbf{API and \inlinecode{CombinedFunction}} - a set of classes and methods that the user will be directly interacting with in order to and invoke the combined functions
-	\item \textbf{Invocation policies} - a system of simple state machines to manage the invocation process with almost no overhead, handled directly in the \textit{CombinedFunction}
-	\item \textbf{Selection strategies} - simple, stateless and isolated strategies that can decide about the most appropriate function to run given a historical measurements of all the functions
-	\item \textbf{Function selector and invoker with the history storage} - module that will be responsible for selecting the method using a given strategy, invoking it, measuring the performance metrics and storing and retrieving the history data; it will be called by the \textit{CombinedFunction}
-	\item \textbf{Configuration} - a static description of the function selector and invoker, can be changed by the user
+	\item \textbf{API and \inlinecode{CombinedFunction}} -- a set of classes and methods that the user will be directly interacting with in order to invoke the combined functions
+	\item \textbf{Invocation policies} -- a system of simple state machines to manage the invocation process with almost no overhead, handled directly in the \textit{CombinedFunction}
+	\item \textbf{Selection strategies} -- simple, stateless and isolated strategies that can decide about the most appropriate function to run given the historical measurements of all the functions
+	\item \textbf{Function selector and invoker with the history storage} -- module that will be responsible for selecting the method using a given strategy, invoking it, measuring the performance metrics and storing and retrieving the historical data; it will be called by the \textit{CombinedFunction}
+	\item \textbf{Configuration} -- a static description of the function selector and invoker; can be changed by the user
 \end{itemize}
