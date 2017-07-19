@@ -20,7 +20,7 @@ val obj = new Class()
 println(obj.method("Hello"))
 \end{lstlisting}
 
-Functions are first-class values that have a type and can be passed into other functions or methods, or be part of expressions. Internally, they are represented as closure objects, carrying around their context and the compiled code stored as a method in the closure type. They are created using lambda expressions:
+Functions are first-class values that have a type and can be passed into other functions or methods, or be part of expressions. Internally, they are represented as closure objects, carrying around their context. The compiled code is stored as a method in the closure type. They are created using lambda expressions:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -30,7 +30,7 @@ function("Hello again!")
 List("One", "Two", "Three").foreach(function)
 \end{lstlisting}
 
-Each lambda expression is converted into an automatically generated class upon compilation, and its usages in the code are replaced by instantiation of the class. The \lstinline|obj| reference is \textit{captured}\footnote{Becomes an attribute of the class and is passed in in the constructor.} inside the closure, the function is not tied to any class. 
+Each lambda expression is upon compilation converted into an automatically generated class, and its occurrences in the code are replaced by an instantiation of the class. The \lstinline|obj| reference is \textit{captured}\footnote{Becomes an attribute of the class and is passed in using the constructor.} inside the closure, the function is not tied to any class. 
 
 The methods represent the basic building block of the object-oriented approach, being the single point that can access or modify the private internal state of the object. The functions are a foundation of the functional part of the language, because they can be passed around as values.
 
@@ -45,14 +45,14 @@ val instance = new Class("Test")
 instance.print()
 \end{lstlisting}
 
-In this case, the class contains an immutable field \inlinecode{print} containing a function. The function references another field, which is stored in the function closure. And the invocation is done by accessing the \inlinecode{print} field and invoking the result.
+In this case, the class contains an immutable field \inlinecode{print} containing a function. The function references another field, which is stored in the function closure. The invocation is done by accessing the \inlinecode{print} field and invoking the result.
 
 %TODO: Function limitations - generics, etc.
 
 \subsection{Function types}
 \label{subsec:functiontypes}
 
-The first-class value functions have to be anchored somewhere in the Scala type system in order for the type inference, type checking and other mechanisms to work correctly. The type of a function is unambiguously determined by its signature, i.e. the number and types of arguments and the type of the return type. Consequentially, the function types have to be generic and able to accept different numbers of type arguments.
+The first-class value functions have to be anchored somewhere in the Scala type system in order for type inference, type checking and other mechanisms to work correctly. The type of a function is unambiguously determined by its signature, i.e. the number and types of arguments and the return type. Consequentially, the function types have to be generic and able to accept different numbers of type arguments.
 
 Scala as a language does not support variadic generic types (as opposed to languages like C++), so there has to be a different type with different number of type arguments for every possible number of arguments of a function. Currently, there are traits for functions accepting 0 to 22 arguments\footnote{In the code snippets, the type and argument lists will be shortened using the ... notation. The code would have to be expanded in order to be compilable. Analogically, an N will be used in place of a number in the type or type argument names.}:
 
@@ -142,11 +142,11 @@ val composed = (method _).andThen(method)
 
 DSL (Domain Specific Language) is a type of a programming language that is narrowly focused on solving a specific class of problems. It offers a higher level of expressiveness and therefore is easier to use than general-purpose languages. There is a large variety of areas where the DSLs are often employed, e.g. mathematical computations (R, MATLAB), database queries (SQL), build scripts (make, Ant), parsing (regular expressions) and many more.
 
-In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language, using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This significantly speeds up the development process - there is no need to implement the syntax parser, compiler, the end user does not have to have any specialized tools to actually use the language. A program written in such a language will just get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, interpret it and carry out required tasks.
+In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This significantly speeds up the development process - there is no need to implement the syntax parser or the compiler. Additionally, the end user does not have to have any specialized tools to actually use the language. A program written in such a language will only get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, interpret it and carry out required tasks.
 
-These DSLs became recently very popular for defining configurations, build and deployment processes - an example could be the Gradle scripting language \cite{noauthor_gradle_nodate}, which is actually a DSL in Groovy, or the Recipe DSL for Chef \cite{noauthor_chef_nodate} built atop of the Ruby language.
+These DSLs became recently very popular for defining configurations, and build and deployment processes - an example could be the Gradle scripting language \cite{noauthor_gradle_nodate}, which is actually a DSL in Groovy, or the Recipe DSL for Chef \cite{noauthor_chef_nodate} built atop of the Ruby language.
 
-DSLs can be efficiently implemented only in languages with flexible-enough syntax, which do not limit it too much. Scala belongs to this class of languages, along with for example Groovy. A code in one of the Scala DSLs, the ScalaTest framework \cite{noauthor_scalatest:_2017}, can look the following way:
+DSLs can be efficiently implemented only in languages with flexible-enough syntax, which do not limit it too much. Scala belongs to this category of languages, along with for example Groovy. A code in one of the Scala DSLs, the ScalaTest framework \cite{noauthor_scalatest:_2017}, can look like:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -179,7 +179,7 @@ def +(other: RichInt) = ???
 val res = x + y
 \end{lstlisting}
 
-This approach enables us to use the infix syntax with existing methods and with methods that were not designed with the intention to be used that way. It has, however, a downside as well - it does not allow us to create an infix operator that would accept a certain type as its first argument without actually changing the definition of that type and adding the method to its definition. Scala does not directly support declaring extension methods\footnote{Methods, that can be added to existing types without changing them, they have access only to the public API of the type.} on types (unlike C\#, Kotlin and other languages) and so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
+This approach enables us to use the infix syntax with existing methods and with methods that were not designed with the intention to be used that way. It has, however, a downside as well - it does not allow us to create an infix operator that would accept a certain type as its first argument without actually changing the definition of that type and adding the method to its definition. Scala does not directly support declaring extension methods\footnote{Methods that can be added to existing types without changing them, they have access only to the public API of the type.} on types (unlike C\#, Kotlin and other languages), so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
 
 \section{Implicit conversions}
 \label{sec:implicits}
@@ -211,14 +211,14 @@ def greet(): Unit = println("Hello!")
 4 times greet
 \end{lstlisting}
 
-In other languages (C\#, Kotlin), the same goal is achieved using extension methods, which is less flexible but more transparent solution.
+In other languages (C\#, Kotlin), the same goal is achieved using extension methods, which is a less flexible, but more transparent solution.
 
 Implicit conversions are considered a potentially dangerous feature, therefore they have to be manually enabled either by a Scala compiler switch, or by importing \inlinecode{scala.language.implicitConversions} in the scope.
 
 \subsection{Implicit arguments}
 \label{subsec:implicit_args}
 
-In addition to being automatically called for conversions, the implicit methods and values can be automatically passed into method calls as arguments. If an argument of a method is marked with the implicit attribute, it does not have to be specified at invocation, it will be filled automatically by an identifier with matching type that is accessible at the point of the call and is marked implicit itself. The actual argument then, again, behaves as being marked implicit within the function. This can be used to propagate implicit values throughout a chain of calls.
+In addition to being automatically called for conversions, the implicit methods and values can be automatically passed into method calls as arguments. If an argument of a method is marked with the implicit attribute, it does not have to be specified at invocation. It will be filled automatically by an identifier with matching type that is accessible at the point of the call and is marked implicit itself. The actual argument then, again, behaves as being marked implicit within the function. This can be used to propagate implicit values throughout a chain of calls.
 
 The most common application of implicit arguments is enabling the usage of implicit typecasts with type arguments - a method can set bound on its type arguments by requiring implicit conversion to a different type. In the Scala terminology, the type has to be \textit{viewable} as that type.
 
@@ -252,7 +252,7 @@ implicit def intIsIncrementable(i: Int): Incrementable[Int] = new Incrementable[
 }
  \end{lstlisting}
  
- Now, whenever this conversion method is accessible, \inlinecode{Int} can be used as \inlinecode{Incrementable[Int]} and in addition, can be passed to any generic function that requires the argument to be \textit{viewable} as \inlinecode{Incrementable}:
+ Now, whenever this conversion method is accessible, \inlinecode{Int} can be used as \inlinecode{Incrementable[Int]} and, in addition, can be passed to any generic function that requires the argument to be \textit{viewable} as \inlinecode{Incrementable}:
  
   \lstset{style=Scala}
  \begin{lstlisting}
@@ -307,13 +307,13 @@ val average = listWithAverage.average()
 \section{Def Macros}
 \label{sec:defmacros}
 
-Def Macros are quite a unique feature among all the widely used programming languages. It allows a library writer to include a code that will be executed upon compilation of the unit which references the library. This basically means that simple compiler extensions in Scala can behave like libraries, can be distributed and used as common \textit{jar} files.
+Def Macros is quite a unique feature among all the widely used programming languages. It allows a library writer to include a code that will be executed upon compilation of the unit which references the library. This basically means that simple compiler extensions in Scala can behave like libraries and can be distributed and used similarly.
 
-The API is very simple - there are methods marked as \textit{macros} in the library code. Whenever a call of this method is being compiled, the compiler invokes the macro implementation, which is a normal Scala method. It will receive an AST\footnote{Abstract Syntax Tree - the product of the syntax analysis of a source code} of the arguments passed to the original method and produce another AST, which will replace the call in the code.
+The API is very simple - there are methods marked as \textit{macros} in the library code. Whenever a call of this method is being compiled, the compiler invokes the macro implementation, which is a normal Scala method. It will receive an AST\footnote{Abstract Syntax Tree - the product of the syntax analysis of the source code} of the arguments passed to the original method and produce another AST, which will replace the call in the code.
 
 %TODO: Example, usages, source
 
-The only limitation is that the macro cannot be used in the same compilation unit where its declaration and implementation is, as the Scala compiler has to have access to the already compiled implementation when building the usages.
+The only limitation is that the macro cannot be used in the same compilation unit where its declaration and implementation are, as the Scala compiler needs to have access to the already compiled implementation when building the usages.
 
 \subsection{Building syntax trees}
 \label{subsec:buildingast}
@@ -342,7 +342,7 @@ def printAst_impl(c: Context)(arg: c.Expr[Any]): c.Expr[Any] = {
 }
 \end{lstlisting}
 
-The output that is written to \textit{stdout} by a macro implementation is displayed as a warning in the compilation process, so there is no need to run the program to see the results of \inlinecode{printAst()}, it is sufficient just to compile it.
+The output that is written to \textit{stdout} by a macro implementation is displayed as a warning in the compilation process, so there is no need to run the program to see the results of \inlinecode{printAst()}, it is sufficient to just compile it.
 
 For example, \inlinecode{printAst(x + 1)} produces the following compile-time warning:
 
