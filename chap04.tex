@@ -815,7 +815,7 @@ The only input that the \textit{policy} receives when making decision is a stati
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=110mm]{./img/run_schema.png}}}
+	\centerline{\mbox{\includegraphics[width=100mm]{./img/run_schema.png}}}
 	\caption{Process of \textit{combined function} invocation.}
 	\label{fig:run_schema}
 \end{figure}
@@ -856,7 +856,7 @@ The transition diagrams and short descriptions of some \textit{policies} will fo
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=110mm]{./img/helper_policies.png}}}
+	\centerline{\mbox{\includegraphics[width=130mm]{./img/helper_policies.png}}}
 	\caption{Transition diagram of the basic building-block policies.}
 	\label{fig:helper_policies}
 \end{figure}
@@ -865,18 +865,18 @@ Figure \ref{fig:helper_policies} shows the main policies that serve as a buildin
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=75mm]{./img/start_policy.png}}}
+	\centerline{\mbox{\includegraphics[width=80mm]{./img/start_policy.png}}}
 	\caption{Transition diagram of the \textbf{Start policy}.}
 	\label{fig:start_policy}
 \end{figure}
 
-Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accepts the gather frequency \textit{GF}, number of invocation times \textit{N} before moving to a next \textit{policy} \textit{P}. It is a little more complicated and specialized version of the \textbf{Repeat until} \textit{policy} - it keeps producing the SelectNew result, and every \textit{GF}-th invocation, it produces the GatherData result. It might be useful at the beginning, when it is necessary to gather data for all of the functions and perform some selections so that the following policies had statistical data to base their decision on.
+Figure \ref{fig:start_policy} represents the \textbf{Start policy}, which accepts the gather frequency \textit{GF}, number of invocation times \textit{N} before moving to a next \textit{policy} \textit{P}. It is a little more complicated and specialized version of the \textbf{Repeat until} \textit{policy} - it keeps producing the \textbf{SelectNew} result, and every \textit{GF}-th invocation, it produces the \textbf{GatherData} result. It might be useful at the beginning, when it is necessary to gather data for all of the functions and perform some selections so that the following policies had statistical data to base their decision on.
 
 \subsubsection{Stop selecting when decided}
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=75mm]{./img/stop_selecting_when_decided.png}}}
+	\centerline{\mbox{\includegraphics[width=90mm]{./img/stop_selecting_when_decided.png}}}
 	\caption{Transition diagram of the \textbf{Stop selecting  when decided} policy.}
 	\label{fig:stop_selecting_when_decided}
 \end{figure}
@@ -889,12 +889,12 @@ The advantage of falling back to the infinite \textbf{Always use last} \textit{p
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=85mm]{./img/pause_selection_after_streak.png}}}
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/pause_selection_after_streak.png}}}
 	\caption{Transition diagram of the \textbf{Pause selection after streak} policy.}
 	\label{fig:pause_selection_after_streak}
 \end{figure}
 
-To lower the number of selections, an approach based on the streak lengths can be used as well. It is implemented by the \textbf{Pause selection after streak} \textit{policy} in figure \ref{fig:pause_selection_after_streak}. Its functionality is defined by the \textit{SL} (streak length) and \textit{RE} (retry every) arguments. Whenever one function is selected \textit{SL} times in a row, the selection process stops and the UseLast result is being produced. Once every \textit{RE} times, a new selection attempt is done, looping back to the original \textit{policy}. If the same function is selected once again, the streak gets longer by one and the selection process stops again. If, however, a different function is selected this time, the streak becomes zero and we start selecting again.
+To lower the number of selections, an approach based on the streak lengths can be used as well. It is implemented by the \textbf{Pause selection after streak} \textit{policy} in figure \ref{fig:pause_selection_after_streak}. Its functionality is defined by the \textit{SL} (streak length) and \textit{RE} (retry every) arguments. Whenever one function is selected \textit{SL} times in a row, the selection process stops and the \textbf{UseLast} result is being produced. Once every \textit{RE} times, a new selection attempt is done, looping back to the original \textit{policy}. If the same function is selected once again, the streak gets longer by one and the selection process stops again. If, however, a different function is selected this time, the streak becomes zero and we start selecting again.
 
 The described behavior is the preferred way of limiting the selection overhead. By setting the streak length to a reasonable number (e.g. between 10 and 100, based on the data, situation, etc.), we can assure that if one function is significantly better than the others, it will be used without the need to select it. The retry that happens every once in a while makes sure that eventual wrong decision will be detected and will reset the system back to the beginning.
 
@@ -902,7 +902,7 @@ The described behavior is the preferred way of limiting the selection overhead. 
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=85mm]{./img/limited_overhead.png}}}
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/limited_overhead.png}}}
 	\caption{Transition diagram of the \textbf{Limited overhead} policy.}
 	\label{fig:limited_overhead}
 \end{figure}
@@ -911,7 +911,7 @@ Policies can be used to limit the framework involvement per a real-time period, 
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=85mm]{./img/limited_gather_time.png}}}
+	\centerline{\mbox{\includegraphics[width=110mm]{./img/limited_gather_time.png}}}
 	\caption{Transition diagram of the \textbf{Limited gather time} policy.}
 	\label{fig:limited_gather_time}
 \end{figure}
@@ -928,7 +928,7 @@ Figure \ref{fig:policy_builder_chart} shows the syntax diagram of \textit{policy
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
-	\centerline{\mbox{\includegraphics[width=130mm]{./img/policy_builder_chart.png}}}
+	\centerline{\mbox{\includegraphics[width=140mm]{./img/policy_builder_chart.png}}}
 	\caption{Syntax diagram of the \textit{policy builder} DSL.}
 	\label{fig:policy_builder_chart}
 \end{figure}
@@ -941,13 +941,11 @@ An example of a simple \textit{policy} described using the \textit{policy builde
 
 \lstset{style=Scala}
 \begin{lstlisting}
-val useLastForever: Policy = useLast forever
 val conditional: Policy = (
   gatherData until (totalRunCount growsBy 50)
   andThen selectNew until (totalRunCount growsBy 100)
-  andThenIf ((stats: StatisticDataProvider) => stats.getStreakLength >= 20) goTo useLastForever
-  andThenRepeat
-)
+  andThenIf ((stats: StatisticDataProvider) => stats.getStreakLength >= 20) goTo (useLast forever)
+  andThenRepeat)
 \end{lstlisting}
 
 \subsection{Policies and groups}
