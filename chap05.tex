@@ -77,7 +77,7 @@ As we can see, there are two principal logic units participating in the process:
 
 \begin{enumerate}
 	\item \textbf{\inlinecode{CombinedFunctionInvoker}} \\
-	Supposed to make a quick decision based on the \textit{policy} of the combined function. It should either directly invoke one of the functions, or delegate the call to the \inlinecode{AdaptiveSelector}, and update the statistics of the combined function afterwards. It works only with the data directly stored in the \inlinecode{CombinedFunction} instance, it does not have any state or shared storage.
+	Supposed to make a quick decision based on the policy of the combined function. It should either directly invoke one of the functions, or delegate the call to the \inlinecode{AdaptiveSelector}, and update the statistics of the combined function afterwards. It works only with the data directly stored in the \inlinecode{CombinedFunction} instance, it does not have any state or shared storage.
 	\item \textbf{\inlinecode{AdaptiveSelector}} \\
 	The key component of the framework, it receives a set of functions and an input, and it should decide which one of them to run and to execute it, evaluate the function run and return the result. The default implementation works with an abstract history storage (\inlinecode{HistoryStorage}), three selection strategies (\inlinecode{SelectionStrategy}) and an evaluation mechanism (\inlinecode{EvaluationProvider}).
 \end{enumerate}
@@ -535,7 +535,7 @@ And the following state representing data:
 
 \begin{itemize}
 	\item Function statistics (separately for each group, see \ref{subsec:statistical_data})
-	\item Current \textit{policy} (separately for each group, see \ref{sec:policies})
+	\item Current policy (separately for each group, see \ref{sec:policies})
 	\item Analytics data - full list of all the selections and their results
 \end{itemize}
 
@@ -546,7 +546,7 @@ In case of the local storage setup, the instance also has to contain its own \in
 It has access to the state of the \inlinecode{CombinedFunction} and its basic implementation does the following:
 
 \begin{itemize}
-	\item Evaluate the current \textit{policy} with the statistics of the combined function
+	\item Evaluate current policy using the statistics of the combined function
 	\item According to the result either invoke directly the function which is accessible through the statistics (the last one and the most selected one) in case of \inlinecode{UseLast} or \inlinecode{UseMost} results , or pass the decision onto the \inlinecode{AdaptiveSelector} in case of \inlinecode{SelectNew} or \inlinecode{GatherData} results
 	\item Update the function statistics
 \end{itemize}
@@ -555,7 +555,7 @@ The \inlinecode{AdaptiveSelector} is accessed either through the \inlinecode{Com
 
 \subsubsection{AdaptiveSelector}
 
-A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used. It supports two basic operations - \textit{selectAndRun} and \textit{gatherData}, which correspond to the \textit{policy} results. Both of these operations have also an option with delayed measurement (see \ref{subsec:delayed_measuring}).
+A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used. It supports two basic operations - \textit{selectAndRun} and \textit{gatherData}, which correspond to the policy results. Both of these operations have also an option with delayed measurement (see \ref{subsec:delayed_measuring}).
 
 The implementation \inlinecode{HistoryBasedAdaptiveSelector} contains the general chain described in \ref{sec:selection_and_invocation_process}. It uses a \inlinecode{HistoryStorage} to store and retrieve the run data of individual functions. In addition, it holds three \inlinecode{SelectionStrategy} instances, one for gathering new data, one for the input based selection, and one for the mean based selection. One of these three instances is used to select the function to run, which is then executed using an \inlinecode{EvaluationProvider}. The measurement retrieved is added to the history and the result is returned, along with a performance benchmark including execution and overhead times (independent on the actual measurement, always based on wall-clock times) for the function statistics update. Figure \ref{fig:history_based_selector} shows the entire process.
 
@@ -711,8 +711,8 @@ To provide a more systematic and technical access of the framework behavior, a s
 \begin{itemize}
 	\item \inlinecode{train} - trains the combined function on a given set of inputs (by executing all of the functions on each of the inputs and storing the results)
 	\item \inlinecode{flushHistory} - flushes the entire run history of given function (in the corresponding history storage)
-	\item \inlinecode{setPolicy} - sets the current \textit{policy} of the function to a custom one
-	\item \inlinecode{resetPolicy} - sets the current \textit{policy} of the function to the starting one
+	\item \inlinecode{setPolicy} - sets the current policy of the function to a custom one
+	\item \inlinecode{resetPolicy} - sets the current policy of the function to the starting one
 	\item \inlinecode{getAnalyticsData} - retrieves analytics data regarding the function history
 \end{itemize}
 
