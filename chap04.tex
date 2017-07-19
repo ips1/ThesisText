@@ -104,7 +104,7 @@ We have discussed the selection process using prediction techniques on a theoret
 The basic steps required to do so are the following:
 
 \begin{enumerate}
-	\item Use the \textit{group selector} to find the group identifier $g$ and the \textit{descriptor function} to find the input descriptor $x$ for $in$ (if either of the functions is not defined, the corresponding variable will have a special \textit{undefined} value)
+	\item Use the \textit{group selector} to find the group identifier $g$ and the \textit{descriptor function} to find the \textit{input descriptor} $x$ for $in$ (if either of the functions is not defined, the corresponding variable will have a special \textit{undefined} value)
 	\item Locate the history vectors $d_1,\dots,d_n$ of functions $f_1,\dots,f_n$ for group $g$
 	\item Filter out records older than the maximum age (infinite by default) from each vector $d_i$ into $d'_i$
 	\item Select the function $f_k$ to be executed based on $d'_1,\dots,d'_n$ and $x$
@@ -157,7 +157,7 @@ For simplicity, we suppose that the run histories of the actual implementations 
 The actual selection process, as described in \ref{sec:selection_overview}, can be implemented in many ways using many different models. It is basically an isolated algorithm with the following input:
 \begin{enumerate}
 	\item History data vectors $d_1,\dots,d_n$ corresponding to functions $f_1,\dots,f_n$, where $d_i = ((x_{i,1}, y_{i,1}),\dots,(x_{i,l_i}, y_{i,l_i}))$, for $x_{i,j}$ being the \textit{input descriptors} and $y_{i,j}$ being the corresponding run times of historical runs (the \textit{input descriptors} can be \textit{undefined})
-	\item Current input descriptor $x$
+	\item Current \textit{input descriptor} $x$
 \end{enumerate}
 
 It should return $k \in {1,\dots,n}$, which will determine the function $f_k$ to run.
@@ -401,7 +401,7 @@ The model can then be used to formulate simple predictions, $a'x + b'$ being the
 \subsubsection{Confidence interval based selection from two functions}
 \label{subsubsec:confidence_interval_selection}
 
-Suppose we have the linear regression model \(h'(x) = a' x + b'\) that approximates the function $h(x) = ax + b$ constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the input descriptors and \(y_i\) are the run times). If we assume that the errors $\varepsilon_i = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation about the model.
+Suppose we have the linear regression model \(h'(x) = a' x + b'\) that approximates the function $h(x) = ax + b$ constructed using \(n\) data samples \(x_i, y_i\) (in our case, \(x_i\) are the \textit{input descriptors} and \(y_i\) are the run times). If we assume that the errors $\varepsilon_i = y_i - h'(x_i)$ of our sample from the regression model values are random variables with normal distribution, we can perform some observation about the model.
 
 Firstly, the standard errors $se(b')$ and $se(a')$ of the intercept $b'$ and the slope $a'$ can be derived from the model. In addition, the statistics $t_a = \frac{a' - a}{se(a')}$ and $t_b = \frac{b' - b}{se(b')}$ have a t-distribution with $n-2$ degrees of freedom. This means that we are able to construct confidence intervals and perform t-tests for $a$ and $b$. The default tests hypotheses have the following form:
 
@@ -459,7 +459,7 @@ The strength of this decision is influenced by the fact that we perform multiple
 The strategy is parametrized by the selection significance level $\alpha$ and by the secondary strategy to be used in case of decision failure.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, \textit{input descriptor} $x$
 	\For{$i=1$ to $n$}
 	\State $r_i \gets$ createRegression($d_i$) \Comment{Uses the least squares method}
 	\EndFor
@@ -504,7 +504,7 @@ The window limitation might seem similar to the grouping described in \ref{subse
 The strategy is parametrized by the selection significance level $\alpha$ and by the average record count per window $avg$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, \textit{input descriptor} $x$
 	\For{$i=1$ to $n$}
 	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / (l_i-1)$
 	\State $w \gets dist * avg$
@@ -529,7 +529,7 @@ There are other disadvantages of this strategy as well. First of all, the entire
 The strategy is parametrized by the secondary strategy to be used in case of decision failure.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, \textit{input descriptor} $x$
 	\For{$i=1$ to $n$}
 	\State $m_i \gets$ interpolateLoess($d_i$)
 	\State $p_i \gets$ predictValue($m_i, x$)
@@ -570,7 +570,7 @@ The window sizes can be determined in a similar way as in section \ref{subsec:wi
 The strategy is parametrized by the selection significance level $\alpha$ and by the average record count per window $avg$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
-	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
+	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, \textit{input descriptor} $x$
 	\For{$i=1$ to $n$}
 	\State $dist \gets (max(x_{i,j}) - min(x_{i,j})) / (l_i-1)$
 	\State $w \gets dist * avg$

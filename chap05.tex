@@ -794,7 +794,7 @@ An overview of the areas that are the simplest and most useful to extend will fo
 
 \subsubsection{Selection strategies}
 
-A new selection strategy can be created by extending the \inlinecode{SelectionStrategy} trait and by providing the implementation as either input based or mean based selection strategy. The trait itself is technically a single function corresponding to the algorithm mentioned in \ref{subsec:selecting_function}, which is given a sequence of function run histories and an input descriptor and is supposed to return the key (function identifier and group identifier) of the function with best expected performance:
+A new selection strategy can be created by extending the \inlinecode{SelectionStrategy} trait and by providing the implementation as either input based or mean based selection strategy. The trait itself is technically a single function corresponding to the algorithm mentioned in \ref{subsec:selecting_function}, which is given a sequence of function run histories and an \textit{input descriptor} and is supposed to return the key (function identifier and group identifier) of the function with best expected performance:
 
 \lstset{style=Scala}
 \begin{lstlisting}
