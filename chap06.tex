@@ -6,7 +6,7 @@ This chapter will present some applications and practical usages of the ScalaAda
 
 We are going to suggest a couple of situations where the adaptive style of programming could be used. The problems will be described and an example usage of the ScalaAdaptive framework will be provided. A series of tests will be executed for each case, with results showing the impact that the adaptivity had on the overall performance.
 
-Note that all the tests, if not specified otherwise, were performed on a laptop with quad-core 1.3 GHz Intel Core i5 processor and 8GB of RAM. The tests are available in the \hyperref[attach:config_blocks]{attachments}.
+Note that all the tests, if not specified otherwise, were performed on a laptop with quad-core 1.3 GHz Intel Core i5 processor and 8GB of RAM. The tests and the resulting data are available in the attachment \ref{attach:cd}.
 
 \subsection{Sorting algorithms}
 
@@ -281,7 +281,7 @@ val balancedRequest =
 
 Note that we need to use the custom identifier feature as mentioned in \ref{subsubsec:custom_identifier}, because the function is combined from a single eta-expanded method with different arguments fixed in the currying process. The closure type is therefore the same for all the resulting functions. The selection will be done using t-test with $\alpha = 0.05$.
 
-For the actual test, we used two instances of the web server running on different ports of the same machine. We simulated the problems with load on the machines by artificially changing the response times of the servers every 50 seconds according to a set of predefined scenarios. From the client application, we sent one request every 0.5 seconds directly to each one of the servers and one using our balanced method. The results for three different scenarios can be seen in figure \ref{fig:load_balance_scen}. The lines represent response time evolution in time - direct requests are marked with double line and dotted line, the balanced request is solid. We can observe that most of the time, the solid line copies the lower of the two remaining lines. Sometimes, it repeatedly reaches the higher line, which means that the balanced request is sent to the slower server in order to gather fresh run data.
+For the actual test, we used two instances of a simple custom web server running on different ports of the same machine. The web server implementation can be found in attachment \ref{attach:cd}. We simulated the problems with load on the machines by artificially changing the response times of the servers every 50 seconds according to a set of predefined scenarios. From the client application, we sent one request every 0.5 seconds directly to each one of the servers and one using our balanced method. The results for three different scenarios can be seen in figure \ref{fig:load_balance_scen}. The lines represent response time evolution in time - direct requests are marked with double line and dotted line, the balanced request is solid. We can observe that most of the time, the solid line copies the lower of the two remaining lines. Sometimes, it repeatedly reaches the higher line, which means that the balanced request is sent to the slower server in order to gather fresh run data.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
