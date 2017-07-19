@@ -226,13 +226,13 @@ Rejecting $H_0$ in favor of $H_1$ means that the sample distributions have signi
 
 \subsubsection{Selection algorithm}
 
-The strategy is parametrized by the selection significance level $\alpha$.
+The strategy is parametrized by the selection significance level $\alpha$ and by the secondary strategy to be used in case of decision failure.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,d_2$ where $d_i = [y_{i,1},\dots, y_{i,l_i}]$
 	\State $equalityRejected \gets$ twoSidedTTest($d_1, d_2, \alpha$)
 	\If{not $equalityRejected$}
-	\State \Return{useSecondarySelector($d_1,d_2$)}
+	\State \Return{useSecondaryStrategy($d_1,d_2$)}
 	\EndIf
 	\If {$mean(d_1) < mean(d_2)$}
 	\State \Return{1}
@@ -303,7 +303,7 @@ The one-against-others will be performed for all the functions one by one. If $\
 
 \subsubsection{Selection algorithm}
 
-The strategy is parametrized by the selection significance level $\alpha$.
+The strategy is parametrized by the selection significance level $\alpha$ and by the secondary strategy to be used in case of decision failure.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [y_{i,1},...,y_{i,l_i}]$
@@ -319,14 +319,14 @@ The strategy is parametrized by the selection significance level $\alpha$.
 			\State \Return{$i$}
 		\EndIf
 	\EndFor
-	\State \Return{useSecondarySelector($d_1,...,d_n$)}
+	\State \Return{useSecondaryStrategy($d_1,...,d_n$)}
 	
 \end{algorithmic}
 
-\subsection{Mann–Whitney U test}
+\subsection{Mann–Whitney U-test}
 \label{subsec:u_test}
 
-The t-tests used in strategies from sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} require the historical measurement data to come from a normal distribution. Even though it was one of our assumptions at the beginning, it does not necessarily hold in reality, as the fluctuations in the run time depend on many factors of the environment. We might try to use a test that is nonparametric, i.e., does not require any standardized and parametrized distribution of the data. One of these tests is the Mann–Whitney U test (for details see \cite{weiss_introductory_2010}), which only requires the sample observations to be independent.
+The t-tests used in strategies from sections \ref{subsec:t_test_two} and \ref{subsec:t_test_multiple} require the historical measurement data to come from a normal distribution. Even though it was one of our assumptions at the beginning, it does not necessarily hold in reality, as the fluctuations in the run time depend on many factors of the environment. We might try to use a test that is nonparametric, i.e., does not require any standardized and parametrized distribution of the data. One of these tests is the Mann–Whitney U-test (for details see \cite{weiss_introductory_2010}), which only requires the sample observations to be independent.
 
 Supposing we have the samples $X_1, \dots, X_n$ and $Y_1, \dots, Y_m$ from distributions with respective means $\mu_1$ and $\mu_2$, the hypotheses are going to be exactly the same as for the t-test:
 
@@ -350,8 +350,7 @@ The strategy can be extended to three or more functions exactly in the same way 
 
 \subsubsection{Selection algorithm}
 
-
-The strategy is parametrized by the selection significance level $\alpha$.
+The strategy is parametrized by the selection significance level $\alpha$ and by the secondary strategy to be used in case of decision failure.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [y_{i,1},...,y_{i,l_i}]$
@@ -367,7 +366,7 @@ The strategy is parametrized by the selection significance level $\alpha$.
 	\State \Return{$i$}
 	\EndIf
 	\EndFor
-	\State \Return{useSecondarySelector($d_1,...,d_n$)}
+	\State \Return{useSecondaryStrategy($d_1,...,d_n$)}
 	
 \end{algorithmic}
 
@@ -457,7 +456,7 @@ The strength of this decision is influenced by the fact that we perform multiple
 
 \subsubsection{Selection algorithm}
 
-The strategy is parametrized by the selection significance level $\alpha$.
+The strategy is parametrized by the selection significance level $\alpha$ and by the secondary strategy to be used in case of decision failure.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
@@ -477,7 +476,7 @@ The strategy is parametrized by the selection significance level $\alpha$.
 	\State \Return{$i$}
 	\EndIf
 	\EndFor
-	\State \Return{useSecondarySelector($d_1,\dots,d_n, x$)}
+	\State \Return{useSecondaryStrategy($d_1,\dots,d_n, x$)}
 \end{algorithmic}
 
 \subsection{Window-bound linear regression}
@@ -502,7 +501,7 @@ The window limitation might seem similar to the grouping described in \ref{subse
 
 \subsubsection{Selection algorithm}
 
-The strategy is parametrized by the selection significance level $\alpha$ and an average record count per window $avg$.
+The strategy is parametrized by the selection significance level $\alpha$ and by the average record count per window $avg$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
@@ -527,13 +526,15 @@ There are other disadvantages of this strategy as well. First of all, the entire
 
 \subsubsection{Selection algorithm}
 
+The strategy is parametrized by the secondary strategy to be used in case of decision failure.
+
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
 	\For{$i=1$ to $n$}
 	\State $m_i \gets$ interpolateLoess($d_i$)
 	\State $p_i \gets$ predictValue($m_i, x$)
 	\If{$p_i = NaN$}\Comment{The prediction can fail}
-	\State\Return{useSecondarySelector($d_1,\dots,d_n, x$)}
+	\State\Return{useSecondaryStrategy($d_1,\dots,d_n, x$)}
 	\EndIf
 	\EndFor
 	\State\Return{$argmin(p_i)$}
@@ -566,7 +567,7 @@ The window sizes can be determined in a similar way as in section \ref{subsec:wi
 
 \subsubsection{Selection algorithm}
 
-The strategy is parametrized by the selection significance level $\alpha$ and an average record count per window $avg$.
+The strategy is parametrized by the selection significance level $\alpha$ and by the average record count per window $avg$.
 
 \begin{algorithmic}[1] % The number tells where the line numbering should start
 	\INPUT Historical data vectors $d_1,...,d_n$ where $d_i = [(x_{i,1}, y_{i,1}),...,(x_{i,l_i}, y_{i,l_i})]$, input descriptor $x$
