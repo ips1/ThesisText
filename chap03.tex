@@ -1,7 +1,7 @@
 \chapter{Adaptive development API}
 \label{chapter:api}
 
-API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even an entire running application) interacts with its environment. This includes the possible calls or requests, format of the data that is passed in as arguments and the data that is received as a result of the action. In our case, the API will be used to access functionality of our library from the user's own code.
+API (Application Programming Interface) is a key component of every framework or library. It defines how a stand-alone piece of code (a function, class, module, or even an entire running application) interacts with its environment. This includes the possible calls or requests, format of the data that are passed in as arguments and the data that are received as the result of the action. In our case, the API will be used to access functionality of our library from the user's own code.
 
 One of the key tasks of this thesis is to research the potential possibilities of adaptive development in the user code using the API of the adaptation framework, to design it to be as fluent and expressive as possible using the Scala programming language features described in chapter \ref{chap:scala} and to analyze the problems and limitations that it has. 
 Some key design decisions about the functionality of the entire framework that are tightly connected to the API design have to be discussed as well.
@@ -10,18 +10,18 @@ Some key design decisions about the functionality of the entire framework that a
 
 \subsection{Basic API requirements}
 
-The framework itself should not require much interaction from the programmer. The usage would be based on performing some initial configuration, marking method implementations that are interchangeable, and then calling repeatedly either one of the methods marked, or some special method, and receiving correct results from one of the implementations. The typical use-case of our API could be described in the following way:
+The framework itself should not require much interaction from the programmer. The typical use-case of our API could be described in the following way:
 
 \blockquote{
-\textit{User has a class with two methods, \inlinecode{method1()} and \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.}
+User has a class with two methods, \inlinecode{method1()} and  \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.
 }
 
-The important point is that we want the result of combining the methods to behave exactly like a normal function or method. The caller should not know and should not have to know that he is using an object that is somehow special. This allows introducing adaptivity to existing project just by changing the method implementation, and no new dependency will be introduced in the majority of the code.
+The important point is that we want the result of combining the methods to behave exactly like a normal function or method. The caller should not know and should not need to know that he is using an object that is somehow special. This allows introducing adaptivity to existing project just by changing the method implementation, and no new dependency will be introduced in the majority of the code.
 
-We can make a list of the \textbf{basic requirements}:
+We can make a list of the \textbf{basic functional requirements}:
 \begin{enumerate}
 	\item Create a method by combining two or more different methods (stating that they can be called interchangeably)
-	\item Define some basic adaptation behavior for the function
+	\item Define some basic adaptation behavior for the method
 	\item Make some more complex configuration changes for the whole framework
 \end{enumerate}
 
@@ -49,7 +49,7 @@ class Functions {
 }
 \end{lstlisting}
 
-There are multiple ways of implementing such an API, we are going to discuss the following two:
+There are multiple ways of implementing such an API. We are going to discuss the following two:
 
 \begin{enumerate}
 	\item Using Scala compile-time macros
@@ -65,7 +65,7 @@ Scala macros would be able to modify the AST of the \inlinecode{Functions} class
 	\item The string-based name of the combined method is error prone - methods could be excluded from the combination due to typos in the name, or an existing method could be overwritten by mistake
 \end{itemize}
 
-The second option of using an aspect weaver\footnote{For more information about JVM aspect weaving see e.g. the AspectJ project \cite{here_aspectj_nodate}.} would lead to a very similar API with different limitations. The weaver does not allow us to modify the class and to generate a method, but can intercept calls of annotated methods using an annotation pointcut. We could either intercept all calls on the methods combined into the same group and use the selection mechanism every time (which would not allow the user to invoke any of the combined methods without the selection process), or have a dummy method with empty implementation and intercept its calls. Looking for other methods with annotation from the pointcut would require us to use reflection.
+The second option of using an aspect weaver\footnote{For more information about JVM-based language aspect weaving see e.g. the AspectJ project \cite{here_aspectj_nodate}.} would lead to a very similar API with different limitations. The weaver does not allow us to modify the class and to generate a method, but can intercept calls of annotated methods using an annotation pointcut. We could either intercept all calls on the methods combined into the same group and use the selection mechanism every time (which would not allow the user to invoke any of the combined methods without the selection process), or have a dummy method with empty implementation and intercept its calls. Looking for other methods with annotation from the pointcut would require us to use reflection.
 
 \subsubsection{API based on functions}
 
@@ -81,11 +81,11 @@ val result = combinedFunction(data)
 
 The \inlinecode{combinedFunction} would be an object extending the \inlinecode{Function1} trait (see \ref{subsec:functiontypes}) and thus usable as a normal function.
 
-The main inconvenience of the design is that it works only with functions. Existing methods can be treated as functions using \textit{eta-expansion} (see section \ref{subsec:etaexpansion}), so methods can be combined as well with almost no effort. The other way around, creating a new method, is a little more complicated. Both will be discussed later.
+The main inconvenience of the design is that it works only with functions. Existing methods can be treated as functions using \textit{eta-expansion} (see section \ref{subsec:etaexpansion}), so methods can be combined as well with almost no effort. The other way around, i.e. creating an adaptive method, is a little more complicated. Both will be discussed later.
 
-Apart from these complications, this approach a lot of advantages. It can be used at runtime in any context to create a temporary function, the type checking and IDE tooling work on it, it can be fluent and flexible. And, in general, this approach fits the functional concept of Scala.
+Apart from these complications, this approach has a lot of advantages. It can be used at runtime in any context to create a temporary function. The type checking and IDE tooling work on it, it can be fluent and flexible. And, in general, this approach fits the functional concept of Scala.
 
-The function combination expression technically has to be a higher-order function (or method). We would like it to conform to the functional Scala design patterns. As an inspiration, lets have a look at a different case where we generate one function from two different ones - function composition. This can be done in Scala using \inlinecode{andThen} method defined on the function type traits (see \ref{subsec:functiontypes}):
+The function combination expression technically has to be a higher-order function (or method). We would like it to conform to the functional Scala design patterns. As an inspiration, lets have a look at a different case where we generate one function from two different ones -- function composition. This can be done in Scala using \inlinecode{andThen} method defined on the function type traits (see \ref{subsec:functiontypes}):
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -108,7 +108,7 @@ Chaining of the methods / operators is possible as well:
 val manyOperations = timesTwo andThen plusOne andThen plusOne andThen timesTwo
 \end{lstlisting}
 
-Inspired by this readable and very simple syntax to compose functions which relies on only the basic syntactic features of Scala, we can try to design the combining expression exactly in the same way:
+Inspired by this readable and very simple syntax to compose functions which relies only on the basic syntactic features of Scala, we can try to design the combining expression exactly in the same way:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -117,21 +117,20 @@ val combinedFunction = function1 or function2
 
 \subsection{Functional API requirements}
 
-From the two basic drafts presented in section \ref{subsec:api_drafts}, the function-based API will be implemented in this work, the reason being primarily a more fluent integration into the Scala programming style and functional development in general. Based on this decision, we can make the basic outlines of the ScalaAdaptive API to be able to examine its usage patterns and possibilities.
+From the two basic drafts presented in section \ref{subsec:api_drafts}, the function-based API will be implemented in this work. The reason is primarily a more fluent integration into the Scala programming style and functional development in general. Based on this decision, we can make the basic outlines of the ScalaAdaptive API to be able to examine its usage patterns and possibilities.
 
-The \inlinecode{or} method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case a function. More specifically, all of the function types mentioned in \ref{subsec:functiontypes}. Because Scala does not support extension methods, we need to introduce a new custom type for functions containing this behavior, and an implicit conversion from the function traits. We will use the same type as for the resulting combined function - a \inlinecode{AdaptiveFunctionN} type\footnote{Actually a set of types, one for each $N$, in this thesis only from $0$ to $5$}. The following is required:
+The \inlinecode{or} method, in order to be used as an infix operator, has to be defined on the type that represents the first argument, in this case a function. More specifically, all of the function types mentioned in \ref{subsec:functiontypes}. Because Scala does not support extension methods, we need to introduce a new custom type for functions containing this behavior, and an implicit conversion from the function traits. We will use the same type as for the resulting combined function -- an \inlinecode{AdaptiveFunctionN} type\footnote{Actually a set of types, one for each $N$, in this thesis only from $0$ to $5$}. The following is required:
 
 \begin{itemize}
-	\item \inlinecode{FunctionN} is implicitly convertible into \inlinecode{AdaptiveFunctionN}, creating a default with just one function
-	\item \inlinecode{AdaptiveFunctionN} has an operator \inlinecode{or} that will combine it with a different \inlinecode{AdaptiveFunctionN}, creating a new object with concatenation of the functions combined
-	\item \inlinecode{AdaptiveFunctionN} will initiate the selection process upon calling \inlinecode{apply()}
-	\item \inlinecode{AdaptiveFunctionN} is a subtype of \inlinecode{FunctionN}
+	\item \inlinecode{FunctionN} is implicitly convertible into \inlinecode{AdaptiveFunctionN}, creating a default with just one implementation
+	\item \inlinecode{AdaptiveFunctionN} has an operator \inlinecode{or} that will combine it with a different \inlinecode{AdaptiveFunctionN}, creating a new object with concatenation of the implementations
+	\item \inlinecode{AdaptiveFunctionN} is a subtype of \inlinecode{FunctionN} and performs the implementation selection and invocation upon calling \inlinecode{apply()}
 \end{itemize}
 
 \subsection{Implementation}
 \label{subsec:api_implementation}
 
-The type \inlinecode{AdaptiveFunctionN}, which will be the main part of the interface for the user, will be just a trait hiding a concrete implementation. The user should never come in contact with the actual class, as we do not want him to create instances of it manually or interact with its API. The implementation itself should wrap a list of functions from which to chose, along with some basic configuration, which will be discussed later.
+The type \inlinecode{AdaptiveFunctionN}, which will be the main part of the interface for the user, will be just a trait hiding a concrete implementation. The user should never come in contact with the actual class, as we do not want him to create instances of it manually or to interact with its API. The implementation itself should wrap a list of functions from which to choose, along with some basic configuration, which will be discussed later.
 
 There are two ways for the user how to get a new \inlinecode{AdaptiveFunctionN} instance:
 
@@ -214,7 +213,7 @@ val combinedFunc = { () => obj1.call(...) } or { () => obj2.call(...) }
 \subsubsection{Combining methods}
 \label{subsubsec:apimethods}
 
-This is expected to be the most common use-case - we have multiple methods and we want to combine them into a single combined function. As mentioned in \ref{subsec:etaexpansion}, the methods can be easily converted in functions, but unfortunately, in case of the implicit typecast and then a method call, the expansion is not done automatically on the first method. The second method, which is an argument, gets expanded.
+This is expected to be the most common use-case -- we have multiple methods and we want to combine them into a single combined function. As mentioned in \ref{subsec:etaexpansion}, the methods can be easily converted in functions, but unfortunately, in case of the implicit typecast and then a method call, the expansion is not done automatically on the first method. The second method, which is an argument, gets expanded.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -231,7 +230,7 @@ val combinedFunc = obj.method1 _ or obj.method2 _
 \subsubsection{Creating a method from combined function}
 \label{subsubsec:method_from_combined_func}
 
-Even though functions are so common in Scala, there might be situations where we would need to create a method from our combined function. Thanks to the simplified syntax that allows us to define the method body using a one-line expression, quite idiomatic way to create this combined method exists:
+Even though functions are so common in Scala, there might be situations where we would need to create a method from our combined function. Thanks to the simplified syntax that allows us to define the method body using a one-line expression, quite an idiomatic way to create this combined method exists:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -302,7 +301,7 @@ Potentially, this problem could be solved by having the \inlinecode{or} function
 \begin{lstlisting}
 def or[J1 <: T1, S >: R](fun: (J1) => S): AdaptiveFunction1[J1, S]
 \end{lstlisting}
-This, however, lead to problems when being invoked as a macro, so this solution was not used in the final version.
+This, however, leads to problems when being invoked as a macro, so this solution was not used in the final version.
 
 \subsection{Generic methods}
 \label{subsec:generics}
@@ -311,7 +310,7 @@ This, however, lead to problems when being invoked as a macro, so this solution 
 
 %TODO: How to solve this issue?
 
-Functions have one major limitation in Scala - they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the \textit{eta-expansion} on a generic method, we have to specify the type argument, otherwise, the type arguments will be fixed as the most general achievable within the limits of the covariance and contravariance of the function type (see \ref{subsec:covariance_contravariance}).
+Functions have one major limitation in Scala - they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the \textit{eta-expansion} on a generic method, we have to specify the type arguments. Otherwise, they will be fixed as the most general achievable within the limits of the covariance and contravariance of the function type (see \ref{subsec:covariance_contravariance}).
 
 In some cases, this might make the function impossible to call:
 \lstset{style=Scala}
@@ -324,7 +323,8 @@ val fun = makeTuple _
 In other cases, it might lead just to losing the compile-time type check:
 \lstset{style=Scala}
 \begin{lstlisting}
-def defaultCount[A](list: List[A], item: A) = list.count(_ == item)
+def defaultCount[A](list: List[A], item: A): Int = 
+  list.count(_ == item)
 val fun = defaultCount _
 // fun: (List[Any], Any) => Int
 \end{lstlisting}
@@ -334,13 +334,13 @@ As the \inlinecode{or} method performs combination of functions into another fun
 We can, however, take advantage of the fact that the type arguments being explicitly set in the process of eta-expansion can be generic type parameters of an enclosing structure (generic class or generic method). With this approach, there are two possible patterns for the workaround:
 
 \begin{enumerate}
-		\item Defining a generic method by creating the combination and then calling it immediately
+		\item Defining a generic method by creating the combination and then calling it immediately:
 	\lstset{style=Scala}
 	\begin{lstlisting}
 def count[A](list: List[A], item: A) = (defaultCount[A] _ or customCount[A])(list, item)
 	\end{lstlisting}
 	This approach was already mentioned in \ref{subsubsec:method_from_combined_func} and is discouraged from as it leads to repeated creation of the \inlinecode{AdaptiveFunctionN} implementation.
-	\item Defining a function field inside a generic class
+	\item Defining a function field inside a generic class:
 	\lstset{style=Scala}
 	\begin{lstlisting}
 def defaultCount[A](list: List[A], item: A) = list.count(_ == item)
@@ -369,11 +369,10 @@ val sort = radixSort _ or bubbleSort[Int]
 The implicit argument might, however, often be used to set requirements about the type argument (in the sense of type classes from other languages), like in this example:
 \lstset{style=Scala}
 \begin{lstlisting}
-def sort1[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
-def sort2[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
+def sort[A](list: List[A])(implicit ord: A => Ordered[A]): List[A] = ???
 \end{lstlisting}
 
-As explained in \ref{subsec:implicit_args}, the goal is to propagate the implicit arguments through several different scopes to the point where the type argument is fixed and the implicit value can be provided. The solution from section \ref{subsec:generics} to expand the type argument to a type argument of an enclosing scope can be extended to the implicit arguments, as the principle is exactly the same - the implicit argument can just be repeated in either the method scope:
+As explained in \ref{subsec:implicit_args}, the goal is to propagate the implicit arguments through several different scopes to the point where the type argument is fixed and the implicit value can be provided. The solution from section \ref{subsec:generics} to expand the type argument to a type argument of an enclosing scope can be extended to the implicit arguments, as the principle is exactly the same -- the implicit argument can just be repeated in the method scope:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -389,7 +388,7 @@ class Sorter[A](implicit ord: A => Ordered[A]) {
 }
 \end{lstlisting}
 
-\subsection{Implementing Traits}
+\subsection{Extending traits}
 Traits in the role of interfaces represent key element of object-oriented programming approach. Having a combined function exposed through a trait to the rest of the system is expected to be one of the most common usage patterns, as it would allow replacing the combined function with a fixed implementation and vice versa.
 
 A trait in Scala can define both methods and properties. In case of properties, the implementations will override the getter and setter of the property (which can be automatically generated). This allows us to define functions as parts of traits as well, and the Scala syntax will make them almost unrecognizable from methods in the trait user's point of view.
@@ -432,7 +431,7 @@ It is obvious that our API, which was designed to remain as simple as possible, 
 
 \subsubsection{Decision context}
 
-Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementation automatically generates a context of the decision - all measured function invocations that were affected by the decision. When measuring the invocation, the framework has to know to which context it belongs in order to be able to assign the measured data to the run history of the corresponding function.
+Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementations automatically generates a context of the decision -- all measured function invocations that were affected by the decision. When measuring the invocation, the framework needs to know to which context it belongs to in order to be able to assign the measured data to the run history of the corresponding function.
 
 The contexts can interleave and we cannot match the decision with the invocation by time or location. It is impossible to decide which invocation belongs to which decision automatically - we need support from the user. He will have to explicitly state the context whenever invoking the measured function. By doing this, he will also pinpoint the moment of decision that affected the invocation.
 
@@ -452,8 +451,8 @@ This approach has one main disadvantage compared to the rest of the API - it bre
 \subsection{Usage from Java and other JVM based languages}
 \label{subsec:usage_from_java}
 
-Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of described API from Java is not possible. The reason is it depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
+Even though Scala has a very high level of possible interoperability with Java and in general, Scala classes and methods can be called directly from Java code (being just a classes and methods in bytecode), the direct usage of described API from Java is not possible. The reason is that it depends heavily on the syntactic features that Scala provides, including implicit conversions and compile-time macros.
 
-There is, however, a very simple way how to utilize the method combining in a Java or any JVM based language project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class that internally holds the function created from the Java methods using the \inlinecode{or} method. It should expose it using a method, like described in section \ref{subsubsec:method_from_combined_func}, as Java does not have the concept of functions and the invocation would have to be done using the \inlinecode{apply} method call.
+There is, however, a very simple way how to utilize the method combining in a Java or any JVM based language project. Supposing we have multiple methods in Java that are interchangeable and that we want to adaptively combine, we can introduce a simple Scala wrapper class. This wrapper will use the ScalaAdaptive framework to create an adaptive function with said Java methods as the implementation options. The function should be exposed through a method, like described in section \ref{subsubsec:method_from_combined_func}, as Java does not have the concept of functions and the invocation would have to be done using the \inlinecode{apply} method call.
 
 %TODO: Use cases - configuration generation, expression tree building, query building...
