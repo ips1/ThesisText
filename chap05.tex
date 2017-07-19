@@ -780,7 +780,7 @@ List of all the configuration blocks available along with their parameters can b
 
 A special class for the default configuration was created and is used to initialize the ScalaAdaptive framework at the beginning of the application run. It specifies the implementations that are used if the user does not provide his configuration.
 
-Based on the results observed in section \ref{sec:strategy_comparison}, we decided to include the t-test selection strategy with cached statistics as the default mean based strategy, and the window-bound linear regression as the default input based strategy.
+Based on the results observed in section \ref{sec:strategy_comparison}, we decided to include the t-test selection strategy with cached statistics as the default mean based strategy, and the window-bound linear regression as the default input based strategy. The value of $alpha$ for both of these strategies was set to $0.05$.
 
 The default configuration can be extended with any of the configuration blocks as well:
 
