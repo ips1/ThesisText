@@ -5,24 +5,24 @@ In this thesis, we designed and implemented a framework that allows a completely
 
 The testing that was carried out identified some potential use-cases for this style of development. Among the more suitable ones were in general longer running functions, where the run time fluctuations were not as significant and where the selection overhead was negligible. We achieved better overall run times of adaptive functions on sequences of various inputs, either for an algorithmic problem (matrix multiplication), or in case of selection between two utility libraries (JSON parsing). On the other hand, optimizing fast-running functions for small inputs does not appear to be a useful application, as the overhead surpasses the potential benefit from adaptation.
 
-In addition, we demonstrated a potential of environment adaptation on the Spark distributed data processing framework, where different configurations and query types achieved better results depending on the execution environment. The Spark itself has a big potential in the adaptivity, as it is being actively developed and many features have experimental character and get iteratively optimized.
+In addition, we demonstrated the potential of environment adaptation on the Apache Spark distributed data processing framework, where different configurations and query types achieved better results depending on the cluster they were running on. The Spark itself seems to be a suitable use scenario for our framework, as it is being actively developed and many features have experimental character and get iteratively optimized.
 
-Among the main drawbacks of the solution is the fact that the user still has to identify the key feature of the input, which has to be one-dimensional (simple integer) in order to enable input based selection. The prediction models are not perfect, especially in cases where the observed performances of all the functions are very similar. In addition, upon selecting from more than two functions, the system might get stuck in a situation where the selection strategy cannot decide due to a pair of equally good variants and rotates all of them in a round-robin manner.
+Among the main drawbacks of the solution is the fact that the user has to identify the key feature of the input, which has to be one-dimensional (simple integer) in order to enable input based selection. The prediction models are not perfect, especially in cases where the observed performances of all the functions are very similar. In addition, upon selecting from more than two functions, the system might get stuck in a situation where the selection strategy cannot decide due to a pair of equally good variants and rotates all of them in a round-robin manner.
 
 The majority of current problems and issues can be addressed in the future by extending the framework and adding new functionality. This can be done without actually modifying the framework code due to the modularity and run-time composition.
 
-We believe that the biggest potential of this framework lies in its simplicity and possibility to be used in all kinds of systems without any structural changes. As we do not expect a common developer to implement one functionality multiple times and then combine it using our framework, the main use-case in some larger project would most likely consist of combining multiple libraries, configuration, queries or other simply obtainable entities.
+We believe that the biggest potential of this framework lies in its simplicity and possibility to be used in all kinds of systems without any structural changes. As we do not expect a common developer to implement one functionality multiple times and then combine it using our framework, the main use case in some larger project would most likely consist of combining multiple libraries, configuration, queries or other simply obtainable entities.
 
-To see the actual benefit that this development approach can bring to a larger system, we would need to practically test it in such an application, i.e. a long running service, and track the performance changes. This kind of test would also expose other problems connected with either the framework, or the whole concept of adaptive development, that could not have been identified in the isolated artificial tests that were part of this work.
+To see the actual benefit that this development approach can bring to a larger system, we would need to practically test it in such an application, i.e. a long running service, and track the performance changes. This kind of test would also expose other problems connected with either the framework or the whole concept of adaptive development that could not have been identified in the isolated artificial tests that were part of this work.
 
 \section*{Future work}
 
 \subsubsection{Improving selection from multiple functions}
 \label{subsec:problem_selecting_multiple}
 
-As mentioned in \ref{subsec:selecting_multiple_function}, the task of selecting the most suitable function out of a larger set is complicated by its nature and we have taken a simplified approach in this work. In addition, the significance-based selection strategies have to perform multiple tests (or confidence interval constructions) in the process and the probability of an error increases. We can either keep the significance high and lower the strength of the test, which leads to more situations without any function being selected, or let the significance drop while keeping the strength, causing more selection errors.
+As mentioned in \ref{subsec:selecting_multiple_function}, the task of selecting the most suitable function out of more than two is complicated by its nature and we have taken a simplified approach in this work. In addition, the significance-based selection strategies have to perform multiple tests (or confidence interval constructions) in the process and the probability of an error increases. We can either keep the significance high and lower the strength of the test, which leads to more situations without any function being selected, or let the significance drop while keeping the strength, causing more selection errors.
 
-The potential future extension could either completely redefine the goal of the selection from multiple functions and design a new process, or extend the current solution by determining suitable significance corrections.
+The potential future extension could either completely redefine the goal of selection from multiple functions and design a new process, or extend the current solution by determining suitable significance corrections.
 
 \subsubsection{Extending the policy logic and connecting it to selectors}
 
@@ -30,7 +30,7 @@ In section \ref{subsec:policy_improvements} we stated that the policies were cur
 
 \subsubsection{Custom selection rules based on the SPL}
 
-The \cite{bulej_performance_2012} introduces an extension of the SPL language designed to describe conditions based on the trends of historical performance data of functions. A special selector could be designed to accept the SPL conditions and make decisions according to them. This would allow the framework user to have more control over the selection process. 
+The \cite{bulej_performance_2012} introduces an extension of the SPL language designed to describe conditions based on the trends of historical performance data of functions. A special selection strategy could be designed to accept the SPL conditions and make decisions according to them. This would allow the framework user to have more control over the selection process. 
 
 \subsubsection{Thread safety and concurrency}
 
@@ -42,7 +42,7 @@ The framework in general is currently not thread safe. It is designed, however, 
 	\item Thread-safe access to the combined function state (run statistics and current policy)
 \end{enumerate}
 
-The first point should not cause any problems. Run histories are already prepared to be made thread-safe by having an API to support immutability (mutating operations return new instances) and an immutable implementation (with all the caches) as well. Because of that, only adding a simple lock on the history updating method should be enough. As to the third point, this is currently the biggest issue, because it has been optimized for performance and the statistics are mutable in general. They could, however, be made into an immutable structure, and replacing the policy and updating the statistics would be atomic operations without any overhead.
+The run histories are already prepared to be made thread-safe by having an API to support immutability (mutating operations return new instances) and an immutable implementation (with all the caches) as well. Because of that, only adding a simple lock on the history updating method should be enough. The third point is currently the biggest issue, because it has been optimized for performance and the statistics are mutable in general.
 
 \subsubsection{Optimizing run time of the whole system}
 
@@ -62,11 +62,11 @@ As mentioned in section \ref{subsec:input_in_selection}, algorithm complexities 
 
 \subsubsection{Detecting the input features}
 
-The fact that the user has to know which factors of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping, is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation between the input feature changes and the run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the features.
+The fact that the user has to know which features of the input might affect the function run time and manually specify the \textit{descriptor function} and the grouping is quite limiting. Another way of improving the framework might be some kind of analysis that would examine the history measurements and look for correlation between the input feature changes and the run time changes. The main limitation is that the input has to be some structure known to the framework in order to extract the features.
 
 \subsubsection{Implementation in other languages}
 
-The framework is implemented in Scala and can be used to combine functions for any JVM-based languages (see section \ref{subsec:usage_from_java}). Transferring the whole framework to a different language and platform might be desirable in the future. In such a case, the main problem would be the API of the framework, which, in its current design, relies heavily on Scala's DSL features (see section \ref{sec:dsls}). It requires the following features from the language:
+The framework is implemented in Scala and can be used to combine functions for any JVM-based languages (see section \ref{subsec:usage_from_java}). Transferring the whole framework to a different language and platform might be desirable in the future. In such a case, the main problem would be the API of the framework, which, in its current design, relies heavily on the Scala DSL features of Scala (see section \ref{sec:dsls}). It requires the following features from the language:
 
 \begin{itemize}
 	\item Implicit type conversions
@@ -77,6 +77,6 @@ The framework is implemented in Scala and can be used to combine functions for a
 	\item Macros to parse and modify the AST upon compilation
 \end{itemize}
 
-With a subset of these features in the language, a limited version of the current API could be designed. 
+With only a subset of these features in the language, a limited version of current API could be designed. 
 
 The best approach for a different platform implementation would probably be to analyze the features that the target language offers and the common approach to designing APIs in that language, and to create a new, better suited API.
