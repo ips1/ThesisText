@@ -151,7 +151,7 @@ As explained in \ref{subsec:functiontypes}, functions in Scala are instances tha
 
 Using the type names as unique identifiers is safe and straightforward. A small disadvantage is that they are not very readable, the compiler uses the name of the type that contained the lambda expression followed by a sequential number. 
 
-There is also a subtle danger connected - if we try to combine two different functions that originated from the same lambda expression (the difference might be determined by the closure arguments), they will have the same identifier, thus sharing the same history, which is usually not desirable.
+There is also a subtle danger connected -- if we try to combine two different functions that originated from the same lambda expression (the difference might be determined by the closure arguments), they will have the same identifier, thus sharing the same history, which is usually not desirable.
 
 The next problem is that in case of persisting the run history, the closure classes might get renamed automatically upon recompiling. The compiler usually assigns the closure names sequentially, so this could happen by just inserting another lambda expression into the enclosing class code before the current one. Run history data might even get mixed up as the newly added lambda expression could have the former name of the original closure (by taking its position in the sequence).
 
@@ -204,8 +204,8 @@ In section \ref{subsec:api_implementation}, we introduced an implicit method tha
 
 The conversion is done using the \inlinecode{toAdaptor()} method with two overloads:
 \begin{itemize}
-	\item Accepting only the function - implicit identifier is used (type name of the closure)
-	\item Accepting the function and an identifier - the identifier provided is used
+	\item Accepting only the function -- implicit identifier is used (type name of the closure)
+	\item Accepting the function and an identifier -- the identifier provided is used
 \end{itemize}
 
 \subsection{Eta-expansion AST format}
@@ -312,7 +312,7 @@ Apply(
   List(...implicit arguments...))
 \end{lstlisting}
 
-One more Apply node is added to the topmost level - the implicit arguments are applied after applying the actual function arguments. Their definition contains another nested block and lambda expression, but again, it is not important for our case. We just need to extract the invocation target and the method name, which can be both found in the Select node.
+One more Apply node is added to the topmost level -- the implicit arguments are applied after applying the actual function arguments. Their definition contains another nested block and lambda expression, but again, it is not important for our case. We just need to extract the invocation target and the method name, which can be both found in the Select node.
 
 Note that there are situations where the eta-expansion might lead to even more complicated trees, for example when used on methods with multiple argument lists. These are, however, cases which we are not going to support with the extraction.
 
@@ -376,9 +376,9 @@ The original tree in a simplified form can be seen in figure \ref{fig:original_e
 
 \subsection{Extracting method overloads}
 
-The approach that was described so far has one small issue - it does not recognize function overloads, so all the overloads share the same identifier.
+The approach that was described so far has one small issue -- it does not recognize function overloads, so all the overloads share the same identifier.
 
- It would not be difficult to extract the actual number of arguments that the method is being invoked with and include it in the identifier. As for extracting their types, the situation gets a little complicated - the function literal is generated without argument type specification, the TypeTree is empty:
+ It would not be difficult to extract the actual number of arguments that the method is being invoked with and include it in the identifier. As for extracting their types, the situation gets a little complicated -- the function literal is generated without argument type specification, the TypeTree is empty:
 
 \lstset{style=Dump}
 \begin{lstlisting}
@@ -463,7 +463,7 @@ In the section \ref{subsubsec:apimethods}, we explained why the \inlinecode{or} 
 def or(fun: (T1) => R) = orAdaptiveFunction(Implicits.toAdaptiveFunction1(fun))
 \end{lstlisting}
 
-The  \inlinecode{toAdaptiveFunction1} method is a macro - it gets executed at compile time, and it receives the argument AST as its input. In this case, an AST that consists of the \inlinecode{fun} identifier. We have no way to find out, where this function will be called from and with which arguments, so in order to extract the method name, we need to convert the entire \inlinecode{or} function to a macro which will generate the conversion code in the same manner as described in section \ref{subsec:generate_conversion}, and then wrap it in the internal \inlinecode{orAdaptiveFunction} code.
+The  \inlinecode{toAdaptiveFunction1} method is a macro -- it gets executed at compile time, and it receives the argument AST as its input. In this case, an AST that consists of the \inlinecode{fun} identifier. We have no way to find out, where this function will be called from and with which arguments, so in order to extract the method name, we need to convert the entire \inlinecode{or} function to a macro which will generate the conversion code in the same manner as described in section \ref{subsec:generate_conversion}, and then wrap it in the internal \inlinecode{orAdaptiveFunction} code.
 
 This does not require any extra AST manipulations, only one method call generation. It does, however, mean a complication for us, as the macros cannot be called virtually. The macro definition therefore has to be a part of the \inlinecode{AdaptiveFunctionN} API trait, breaking somehow the encapsulation of the implementation. Fortunately, it does not perform any actions by itself, only replaces the \inlinecode{or} call with a conversion and an \inlinecode{orAdaptiveFunction} call, which is, again, a virtual method defined on the trait without implementation and therefore encapsulated.
 
@@ -521,7 +521,7 @@ The immutable data are the following:
 \begin{itemize}
 	\item Set of functions that it is combined from (wrapped into the tuple form, see \ref{subsec:api_architecture})
 	\begin{itemize}
-		\item	Each function holds up to two identifiers - one based on the closure type name, the other being either a method name or a custom name, depending on the creation process (see \ref{subsec:function_identifiers})
+		\item	Each function holds up to two identifiers -- one based on the closure type name, the other being either a method name or a custom name, depending on the creation process (see \ref{subsec:function_identifiers})
 	\end{itemize}
 	\item \textit{Descriptor function} (wrapped into the tuple form), see \ref{sec:input_based_strategies}
 	\item \textit{Group selector} function (wrapped into the tuple form), see \ref{subsubsec:group_selection}
@@ -533,7 +533,7 @@ And the following state representing data:
 \begin{itemize}
 	\item Function statistics (separately for each group), see \ref{subsec:statistical_data}
 	\item Current policy (separately for each group), see \ref{sec:policies}
-	\item Analytics data - full list of all the selections and their results
+	\item Analytics data -- full list of all the selections and their results
 \end{itemize}
 
 In case of the local storage setup, the instance also has to contain its own \inlinecode{AdaptiveSelector} that holds the local \inlinecode{HistoryStorage}.
@@ -552,7 +552,7 @@ The \inlinecode{AdaptiveSelector} is accessed either through the \inlinecode{Com
 
 \subsubsection{AdaptiveSelector}
 
-A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used. It supports two basic operations - \textit{selectAndRun} and \textit{gatherData}, which correspond to the policy results. Both of these operations have also an option with delayed measurement (see \ref{subsec:delayed_measuring}).
+A module which is supposed to select one of given options to run, and to evaluate the run. It is parametrized with \inlinecode{TMeasurement} type, which represents the data measured from the function run. By default, a \inlinecode{Long} type for run time measured is used. It supports two basic operations -- \textit{selectAndRun} and \textit{gatherData}, which correspond to the policy results. Both of these operations have also an option with delayed measurement (see \ref{subsec:delayed_measuring}).
 
 The implementation \inlinecode{HistoryBasedAdaptiveSelector} contains the general chain described in \ref{sec:selection_and_invocation_process}. It uses a \inlinecode{HistoryStorage} to store and retrieve the run data of individual functions. In addition, it holds three \inlinecode{SelectionStrategy} instances, one for gathering new data, one for the input based selection, and one for the mean based selection. One of these three instances is used to select the function to run, which is then executed using an \inlinecode{EvaluationProvider}. The measurement retrieved is added to the history and the result is returned, along with a performance benchmark including execution and overhead times (independent on the actual measurement, always based on wall-clock times) for the function statistics update. Figure \ref{fig:history_based_selector} shows the entire process.
 
@@ -569,16 +569,16 @@ Note that the \inlinecode{SelectionStrategy} for gathering new data should selec
 
 \subsubsection{HistoryStorage}
 
-A type with a map-like interface based on the concepts from section \ref{subsec:storing_evaluation_data} - it is supposed to hold the historical measurement vectors represented by \inlinecode{RunHistory} instances for each combination of function and input group. A key composed of a function identifier and a group identifier is used to access the histories.
+A type with a map-like interface based on the concepts from section \ref{subsec:storing_evaluation_data} -- it is supposed to hold the historical measurement vectors represented by \inlinecode{RunHistory} instances for each combination of function and input group. A key composed of a function identifier and a group identifier is used to access the histories.
 
 There are two implementations in the framework:
 
 \begin{itemize}
-	\item\inlinecode{MapHistoryStorage} - stores the histories in memory
-	\item\inlinecode{PersistentHistoryStorage} - a wrapping storage that delegates the calls to an internal \inlinecode{HistoryStorage}, and, in addition, it serializes every new run using a \inlinecode{HistorySerializer}; if asked for a history that is not present in the underlying storage, it tries to deserialize it using the same type
+	\item\inlinecode{MapHistoryStorage} -- stores the histories in memory
+	\item\inlinecode{PersistentHistoryStorage} -- a wrapping storage that delegates the calls to an internal \inlinecode{HistoryStorage}, and, in addition, it serializes every new run using a \inlinecode{HistorySerializer}; if asked for a history that is not present in the underlying storage, it tries to deserialize it using the same type
 \end{itemize}
 
-The \inlinecode{HistorySerializer} has two basic implementations, one for direct serialization and one for buffered serialization. The data are stored into a file, one per function (the format, root directory and file name pattern are fully customizable). There is no list of these history containing files anywhere - when trying to deserialize a function, a file with corresponding name is checked for existence. This means that the individual function histories are deserialized one by one, at the moment of the first invocation of a combined function that contains them, which might cause a delay in the first execution.
+The \inlinecode{HistorySerializer} has two basic implementations, one for direct serialization and one for buffered serialization. The data are stored into a file, one per function (the format, root directory and file name pattern are fully customizable). There is no list of these history containing files anywhere -- when trying to deserialize a function, a file with corresponding name is checked for existence. This means that the individual function histories are deserialized one by one, at the moment of the first invocation of a combined function that contains them, which might cause a delay in the first execution.
 
 \subsubsection{RunHistory}
 \label{subsubsec:run_history}
@@ -589,16 +589,16 @@ Apart from that, it also has some methods to directly provide precomputed data f
 
 The basic implementations of \inlinecode{RunHistory} are the following:
 \begin{itemize}
-	\item \inlinecode{FullRunHistory} - stores all runs in an \inlinecode{ArrayBuffer}, is mutable
-	\item \inlinecode{ImmutableFullRunHistory} - stores all runs in an immutable \inlinecode{List}, is a little slower in general
+	\item \inlinecode{FullRunHistory} -- stores all runs in an \inlinecode{ArrayBuffer}, is mutable
+	\item \inlinecode{ImmutableFullRunHistory} -- stores all runs in an immutable \inlinecode{List}, is a little slower in general
 \end{itemize}
 
 These instances can be wrapped in the following decorating wrapper classes:
 \begin{itemize}
-	\item \inlinecode{LimitedRunHistory} - limits the maximum number of stored items, whenever it reaches maximum, it throws the older half of all the records away
-	\item \inlinecode{CachedStatisticsRunHistory} - stores the statistical data about the run items, speeds up the t-test strategy (see \ref{subsec:t_test_multiple})
-	\item \inlinecode{CachedGroupedRunHistory} - stores average evaluation data for each \textit{run selector}, speeds up the local regression strategy (see \ref{subsec:local_regression})
-	\item \inlinecode{CachedRegressionRunHistory} - stores the linear regression model built upon all the run items, speeds up the linear regression strategy (see \ref{subsec:simple_linear_regression})
+	\item \inlinecode{LimitedRunHistory} -- limits the maximum number of stored items, whenever it reaches maximum, it throws the older half of all the records away
+	\item \inlinecode{CachedStatisticsRunHistory} -- stores the statistical data about the run items, speeds up the t-test strategy (see \ref{subsec:t_test_multiple})
+	\item \inlinecode{CachedGroupedRunHistory} -- stores average evaluation data for each \textit{run selector}, speeds up the local regression strategy (see \ref{subsec:local_regression})
+	\item \inlinecode{CachedRegressionRunHistory} -- stores the linear regression model built upon all the run items, speeds up the linear regression strategy (see \ref{subsec:simple_linear_regression})
 \end{itemize}
 
 These wrappers can be chained in order to reach the desired behavior. They usually only decorate one method and the rest is directly delegated to the inner instance.
@@ -616,22 +616,22 @@ The strategies are parametrized by the \inlinecode{TMeasurement} type of the fun
 
 The mean based strategies consist of the following classes:
 \begin{itemize}
-	\item \inlinecode{TTestSelectionStrategy} - implements the t-test strategy described in section \ref{subsec:t_test_multiple}, uses \cite{noauthor_apachemath_nodate} to compute the p-value.
-	\item \inlinecode{UTestSelectionStrategy} - implements the u-test strategy described in section \ref{subsec:u_test}, uses \cite{noauthor_apachemath_nodate} to compute the test statistics.
+	\item \inlinecode{TTestSelectionStrategy} -- implements the t-test strategy described in section \ref{subsec:t_test_multiple}, uses \cite{noauthor_apachemath_nodate} to compute the p-value.
+	\item \inlinecode{UTestSelectionStrategy} -- implements the u-test strategy described in section \ref{subsec:u_test}, uses \cite{noauthor_apachemath_nodate} to compute the test statistics.
 \end{itemize}
 
 The implemented input based strategies are:
 \begin{itemize}
-	\item \inlinecode{RegressionSelectionStrategy} - implements the linear regression strategy as described in section \ref{subsec:simple_linear_regression}, uses \cite{noauthor_apachemath_nodate} to compute the regression
+	\item \inlinecode{RegressionSelectionStrategy} -- implements the linear regression strategy as described in section \ref{subsec:simple_linear_regression}, uses \cite{noauthor_apachemath_nodate} to compute the regression
 
-	\item \inlinecode{LoessInterpolationSelectionStrategy} - implements the local regression strategy from section \ref{subsec:local_regression}, uses \cite{noauthor_apachemath_nodate} for the interpolation
+	\item \inlinecode{LoessInterpolationSelectionStrategy} -- implements the local regression strategy from section \ref{subsec:local_regression}, uses \cite{noauthor_apachemath_nodate} for the interpolation
 \end{itemize}
 
 In addition, some complementary supporting strategies were added:
 \begin{itemize}
-	\item \inlinecode{WindowBoundSelectionStrategy} - a wrapper strategy that limits the history records to a flexible window before letting the internal strategy decide, as described in sections \ref{subsec:window_bound_regression} and \ref{subsec:window_bound_t_test}
-\item \inlinecode{LowRunAwareSelectionStrategy} - if any of the functions has less than a specified number of history records, uses one strategy, otherwise uses a different strategy
-\item \inlinecode{LeastDataSelectionStrategy} - uses the function with least historical runs
+	\item \inlinecode{WindowBoundSelectionStrategy} -- a wrapper strategy that limits the history records to a flexible window before letting the internal strategy decide, as described in sections \ref{subsec:window_bound_regression} and \ref{subsec:window_bound_t_test}
+\item \inlinecode{LowRunAwareSelectionStrategy} -- if any of the functions has less than a specified number of history records, uses one strategy, otherwise uses a different strategy
+\item \inlinecode{LeastDataSelectionStrategy} -- uses the function with least historical runs
 \end{itemize}
 
 The common pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost strategy in the composition to postpone the decision process until some data are gathered, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual input based or mean based strategies in the middle, optionally wrapped in the window-bound class. The \inlinecode{LeastDataSelectionStrategy} is also recommended to be used as the strategy for the \textit{gather data} operation of \inlinecode{AdaptiveSelector}.
@@ -730,15 +730,15 @@ Note that the analytics data collection is relies on the \inlinecode{AnalyticsCo
 
 In section \ref{sec:module_impl}, we mentioned a variety of building blocks that the main parts of the framework is composed of and the possibility to use multiple implementation to change the behavior of the entire system. This is the more advanced part of the configuration and it involves manipulation with the actual implementations.
 
-As explained earlier, all the shared and commonly accessible functionality is held inside the singleton object \inlinecode{AdaptiveInternal}. This object can be initialized using an \inlinecode{initialize()} method on a publicly accessible singleton \inlinecode{Adaptive}. The static description of the module implementation composition that is followed in this process is provided by the \inlinecode{Configuration} trait. This can be thought of as a composition root of the whole system - it has to provide factory methods for all the building blocks used. In addition, it has an abstract type member \inlinecode{TMeasurement} that determines the type of the evaluation data used throughout the whole framework.
+As explained earlier, all the shared and commonly accessible functionality is held inside the singleton object \inlinecode{AdaptiveInternal}. This object can be initialized using an \inlinecode{initialize()} method on a publicly accessible singleton \inlinecode{Adaptive}. The static description of the module implementation composition that is followed in this process is provided by the \inlinecode{Configuration} trait. This can be thought of as a composition root of the whole system -- it has to provide factory methods for all the building blocks used. In addition, it has an abstract type member \inlinecode{TMeasurement} that determines the type of the evaluation data used throughout the whole framework.
 
 The implementation of the \inlinecode{Configuration} trait has to provide a specific \inlinecode{TMeasurement} type and factory methods that rely on the type. Note that the \inlinecode{AdaptiveSelector} trait and its methods do not depend on the \inlinecode{TMeasurement}, only its implementation does, so the type of the evaluation data does not leak outside of the composition root or to the API. As a result, the actual type can be changed at runtime by simply replacing the \inlinecode{AdaptiveSelector} instance.
 
 The \inlinecode{Configuration} can be created by the user himself, using either a combination of provided implementations or his custom implementations in the factory methods. Alternatively, one of the predefined \inlinecode{Configuration} traits with some basic settings already in place can be utilized:
 
 \begin{itemize}
-	\item \inlinecode{BaseConfiguration} - provides basic configuration of some of the types that do not depend on the \inlinecode{TMeasurement}
-	\item \inlinecode{BaseLongConfiguration} - extends the \inlinecode{BaseConfiguration} and sets the \inlinecode{TMeasurement} type to \inlinecode{Long}
+	\item \inlinecode{BaseConfiguration} -- provides basic configuration of some of the types that do not depend on the \inlinecode{TMeasurement}
+	\item \inlinecode{BaseLongConfiguration} -- extends the \inlinecode{BaseConfiguration} and sets the \inlinecode{TMeasurement} type to \inlinecode{Long}
 \end{itemize}
 
 These traits have to be extended to define the unimplemented values.
@@ -750,7 +750,7 @@ These traits have to be extended to define the unimplemented values.
  
  In addition, some blocks can be parametrized. The parameters are always protected read-only attributes of the block trait that usually have default implementation (i.e. value), but can be overridden. It fits easily into the anonymous class usage pattern, as the new parameter values for all the blocks can simply be stated in the body of the class. Blocks can share a parameter by inheriting it from the same artificial base trait -- in such a case, it is impossible to set different values for different blocks.
  
- Some blocks call the parent implementation of the factory method to wrap its result into a different type. An example is the \inlinecode{CachedRegressionStorage} block, which creates a wrapper for caching the linear regression model atop of the \inlinecode{RunHistory} provided by its parent (for information about the decorating wrappers see \ref{subsubsec:run_history}). The parentage in the configuration inheritance chain is determined using \textit{linearization} (see section \ref{sec:linearization_mixins}). We have to be careful when mixing in a block with implementations and a wrapping block at the same time - the block with implementation has to be listed before the wrapping block in the extensions list.
+ Some blocks call the parent implementation of the factory method to wrap its result into a different type. An example is the \inlinecode{CachedRegressionStorage} block, which creates a wrapper for caching the linear regression model atop of the \inlinecode{RunHistory} provided by its parent (for information about the decorating wrappers see \ref{subsubsec:run_history}). The parentage in the configuration inheritance chain is determined using \textit{linearization} (see section \ref{sec:linearization_mixins}). We have to be careful when mixing in a block with implementations and a wrapping block at the same time -- the block with implementation has to be listed before the wrapping block in the extensions list.
  
  The whole configuration can look the following way:
 
@@ -807,7 +807,7 @@ The strategy will most likely have to work with either a specific \inlinecode{TM
 
 \subsubsection{History storages}
 
-If we wanted to change the way in which the history data are stored (by filtering some of the results, performing some aggregations to save space, etc.), we would need to implement one or both of the following traits - the \inlinecode{RunHistory} trait, that represents the sequence of results for one group and function, and the \inlinecode{HistoryStorage} trait, that manages the \inlinecode{RunHistory} instances for different groups and functions.
+If we wanted to change the way in which the history data are stored (by filtering some of the results, performing some aggregations to save space, etc.), we would need to implement one or both of the following traits -- the \inlinecode{RunHistory} trait, that represents the sequence of results for one group and function, and the \inlinecode{HistoryStorage} trait, that manages the \inlinecode{RunHistory} instances for different groups and functions.
 
 \subsubsection{Evaluation data}
 

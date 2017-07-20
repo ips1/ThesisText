@@ -3,12 +3,12 @@
 
 The adaptive framework introduced in this work was created in Scala \cite{noauthor_scala_nodate}, an advanced programming language that is built upon the JVM runtime. This chapter will present a brief overview of some of the language aspects that are important for the API design.
 
-The basic paradigm of Scala is object-orientation - it is based on the same principles as Java and its language constructs get mapped to Java bytecode constructs upon compilation. In addition to this, Scala aims to enable full-scale functional development in the same context as well. It is quite a unique concept among the common and production-used languages, which tend to adopt some functional features (higher-order functions, lambdas), but stop at some point and do not add more advanced mechanisms (type classes, monads).
+The basic paradigm of Scala is object-orientation -- it is based on the same principles as Java and its language constructs get mapped to Java bytecode constructs upon compilation. In addition to this, Scala aims to enable full-scale functional development in the same context as well. It is quite a unique concept among the common and production-used languages, which tend to adopt some functional features (higher-order functions, lambdas), but stop at some point and do not add more advanced mechanisms (type classes, monads).
 
 \section{Methods and functions in Scala}
 \label{sec:metandfun}
 
-There is an important difference between methods and functions in Scala, even though the names are often used interchangeably in the literature. Methods have the same concept as in Java and other object oriented languages - they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, their arguments and static members. They cannot be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
+There is an important difference between methods and functions in Scala, even though the names are often used interchangeably in the literature. Methods have the same concept as in Java and other object oriented languages -- they are an integral, compile-time part of their class and the only context that they can refer to is their class instance, their arguments and static members. They cannot be passed around, so no additional context is needed. Every invocation has to be performed on a class instance, allowing the compiler to correctly assign the \textit{this} reference. Simple example of a method can be the following:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -88,7 +88,7 @@ The default function implementations in Scala are created using lambda expressio
 \label{subsec:etaexpansion}
 
 %TODO: Reference to the eta-expansion
-As the strengths of Scala lie in its functional features, it is often handy to be able to convert methods to functions. This process is called \textit{eta-expansion} and is quite straightforward - we just need to create a function which delegates the call to the method:
+As the strengths of Scala lie in its functional features, it is often handy to be able to convert methods to functions. This process is called \textit{eta-expansion} and is quite straightforward -- we just need to create a function which delegates the call to the method:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -142,9 +142,9 @@ val composed = (method _).andThen(method)
 
 DSL (Domain Specific Language) is a type of a programming language that is narrowly focused on solving a specific class of problems. It offers a higher level of expressiveness and therefore is easier to use than general-purpose languages. There is a large variety of areas where the DSLs are often employed, e.g. mathematical computations (R, MATLAB), database queries (SQL), build scripts (make, Ant), parsing (regular expressions) and many more.
 
-In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This significantly speeds up the development process - there is no need to implement the syntax parser or the compiler. Additionally, the end user does not have to have any specialized tools to actually use the language. A program written in such a language will only get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, interpret it and carry out required tasks.
+In order to simplify the process of creating a new DSL, it is often implemented inside an existing general-purpose language using objects and references to substitute the keywords of the language. The DSL is represented by a set of class definitions and can be distributed as a library. This significantly speeds up the development process -- there is no need to implement the syntax parser or the compiler. Additionally, the end user does not have to have any specialized tools to actually use the language. A program written in such a language will only get compiled (if its necessary) and executed. The DSL code will create a certain object structure in runtime, interpret it and carry out required tasks.
 
-These DSLs became recently very popular for defining configurations, and build and deployment processes - an example could be the Gradle scripting language \cite{noauthor_gradle_nodate}, which is actually a DSL in Groovy, or the Recipe DSL for Chef \cite{noauthor_chef_nodate} built atop of the Ruby language.
+These DSLs became recently very popular for defining configurations, and build and deployment processes -- an example could be the Gradle scripting language \cite{noauthor_gradle_nodate}, which is actually a DSL in Groovy, or the Recipe DSL for Chef \cite{noauthor_chef_nodate} built atop of the Ruby language.
 
 DSLs can be efficiently implemented only in languages with flexible-enough syntax, which do not limit it too much. Scala belongs to this category of languages, along with for example Groovy. A code in one of the Scala DSLs, the ScalaTest framework \cite{noauthor_scalatest:_2017}, can look like:
 
@@ -179,7 +179,7 @@ def +(other: RichInt) = ???
 val res = x + y
 \end{lstlisting}
 
-This approach enables us to use the infix syntax with existing methods and with methods that were not designed with the intention to be used that way. It has, however, a downside as well - it does not allow us to create an infix operator that would accept a certain type as its first argument without actually changing the definition of that type and adding the method to its definition. Scala does not directly support declaring extension methods\footnote{Methods that can be added to existing types without changing them, they have access only to the public API of the type.} on types (unlike C\#, Kotlin and other languages), so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
+This approach enables us to use the infix syntax with existing methods and with methods that were not designed with the intention to be used that way. It has, however, a downside as well -- it does not allow us to create an infix operator that would accept a certain type as its first argument without actually changing the definition of that type and adding the method to its definition. Scala does not directly support declaring extension methods\footnote{Methods that can be added to existing types without changing them, they have access only to the public API of the type.} on types (unlike C\#, Kotlin and other languages), so the only way to solve this problem is to introduce implicit typecast to a custom type and to add the infix operator as a method to it.
 
 \section{Implicit conversions}
 \label{sec:implicits}
@@ -220,7 +220,7 @@ Implicit conversions are considered a potentially dangerous feature, therefore t
 
 In addition to being automatically called for conversions, the implicit methods and values can be automatically passed into method calls as arguments. If an argument of a method is marked with the implicit attribute, it does not have to be specified at invocation. It will be filled automatically by an identifier with matching type that is accessible at the point of the call and is marked implicit itself. The actual argument then, again, behaves as being marked implicit within the function. This can be used to propagate implicit values throughout a chain of calls.
 
-The most common application of implicit arguments is enabling the usage of implicit typecasts with type arguments - a method can set bound on its type arguments by requiring implicit conversion to a different type. In the Scala terminology, the type has to be \textit{viewable} as that type.
+The most common application of implicit arguments is enabling the usage of implicit typecasts with type arguments -- a method can set bound on its type arguments by requiring implicit conversion to a different type. In the Scala terminology, the type has to be \textit{viewable} as that type.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -287,7 +287,7 @@ Child <- TraitB <- TraitA <- Parent
 
 In tis case, the \inlinecode{TraitB} will have the \inlinecode{super} reference bound to \inlinecode{TraitA}, even though at the point of definition of the \inlinecode{TraitB}, the \inlinecode{TraitA} does not even have to be known.
 
-The multiple inheritance among traits leads to the possibility of creating \textit{mixins} - traits containing methods with implementations that can be added to a type to enrich it. An example follows:
+The multiple inheritance among traits leads to the possibility of creating \textit{mixins} -- traits containing methods with implementations that can be added to a type to enrich it. An example follows:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -309,7 +309,7 @@ val average = listWithAverage.average()
 
 Def Macros is quite a unique feature among all the widely used programming languages. It allows a library writer to include a code that will be executed upon compilation of the unit which references the library. This basically means that simple compiler extensions in Scala can behave like libraries and can be distributed and used similarly.
 
-The API is very simple - there are methods marked as \textit{macros} in the library code. Whenever a call of this method is being compiled, the compiler invokes the macro implementation, which is a normal Scala method. It will receive an AST\footnote{Abstract Syntax Tree - the product of the syntax analysis of the source code} of the arguments passed to the original method and produce another AST, which will replace the call in the code.
+The API is very simple -- there are methods marked as \textit{macros} in the library code. Whenever a call of this method is being compiled, the compiler invokes the macro implementation, which is a normal Scala method. It will receive an AST\footnote{Abstract Syntax Tree -- the product of the syntax analysis of the source code} of the arguments passed to the original method and produce another AST, which will replace the call in the code.
 
 %TODO: Example, usages, source
 

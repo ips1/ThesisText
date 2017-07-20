@@ -62,14 +62,14 @@ Scala macros would be able to modify the AST of the \inlinecode{Functions} class
 	\item The \inlinecode{@ClassWithCombinations} annotation would be necessary for each class that would contain the combined function, because the AST modification of the class can be done only when processing an annotation of the entire class
 	\item Consequentially, it would be possible to combine only methods within one class
 	\item The IDEs do not process the macros upon code inspections and code highlighting, and would mark the combined methods as non existing, which would be extremely inconvenient (this could potentially be fixed by adding a dummy implementation of the combined method, which would impose more work on the user)
-	\item The string-based name of the combined method is error prone - methods could be excluded from the combination due to typos in the name, or an existing method could be overwritten by mistake
+	\item The string-based name of the combined method is error prone -- methods could be excluded from the combination due to typos in the name, or an existing method could be overwritten by mistake
 \end{itemize}
 
 The second option of using an aspect weaver\footnote{For more information about JVM-based language aspect weaving see e.g. the AspectJ project \cite{here_aspectj_nodate}.} would lead to a very similar API with different limitations. The weaver does not allow us to modify the class and to generate a method, but can intercept calls of annotated methods using an annotation pointcut. We could either intercept all calls on the methods combined into the same group and use the selection mechanism every time (which would not allow the user to invoke any of the combined methods without the selection process), or have a dummy method with empty implementation and intercept its calls. Looking for other methods with annotation from the pointcut would require us to use reflection.
 
 \subsubsection{API based on functions}
 
-This option would work with functions as first-class values (and the objects representing them) entirely at runtime\footnote{With a small exception - a compile-time macro is actually used to fetch the method names, as will be explained in \ref{sec:extracting_method_name}}. It might look the following way:
+This option would work with functions as first-class values (and the objects representing them) entirely at runtime\footnote{With a small exception -- a compile-time macro is actually used to fetch the method names, as will be explained in \ref{sec:extracting_method_name}}. It might look the following way:
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -147,7 +147,7 @@ def or(fun: (T1) => R): AdaptiveFunction1[T1, R]
 	\end{lstlisting}
 \end{itemize}
 
-The implicit conversions have to be defined for all the function types separately as publicly accessible methods on an object\footnote{A Scala concept for singleton.}. For this purpose, a special object \inlinecode{Implicits} was introduced - it can be imported into any other Scala source file and the implicit conversions become active in the scope (for more details see \ref{sec:implicits}).
+The implicit conversions have to be defined for all the function types separately as publicly accessible methods on an object\footnote{A Scala concept for singleton.}. For this purpose, a special object \inlinecode{Implicits} was introduced -- it can be imported into any other Scala source file and the implicit conversions become active in the scope (for more details see \ref{sec:implicits}).
 
 The conversion of \inlinecode{FunctionN} to \inlinecode{AdaptiveFunctionN} should check every time, whether the \inlinecode{FunctionN} instance is not already a \inlinecode{AdaptiveFunctionN} instance as well, and if so, just cast it instead of creating a new wrapper. The same should be done by the \inlinecode{or} function, which can just manually call the conversion on its argument.
 
@@ -237,7 +237,7 @@ Even though functions are so common in Scala, there might be situations where we
 def combinedMethod(arg: T) = (function1 or function2)(arg)
 \end{lstlisting}
 
-The method body consists of creating the combined function object and then immediately applying it. Although this does look elegant, it has a major problem - the \inlinecode{AdaptiveFunctionN} instance is created upon every invocation, which leads to an unnecessary overhead and to loss of all the data locally stored in the instance. In addition, there is no way to access the \inlinecode{AdaptiveFunctionN} internal API.
+The method body consists of creating the combined function object and then immediately applying it. Although this does look elegant, it has a major problem -- the \inlinecode{AdaptiveFunctionN} instance is created upon every invocation, which leads to an unnecessary overhead and to loss of all the data locally stored in the instance. In addition, there is no way to access the \inlinecode{AdaptiveFunctionN} internal API.
 
 The preferred, a little less convenient way is to create a private field containing the combined function initialized in constructor and to delegate the method calls to it\footnote{It can be thought of as an analogy to the concept of \textit{property} and its \textit{backing field}.}.
  
@@ -310,7 +310,7 @@ This, however, leads to problems when being invoked as a macro, so this solution
 
 %TODO: How to solve this issue?
 
-Functions have one major limitation in Scala - they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the \textit{eta-expansion} on a generic method, we have to specify the type arguments. Otherwise, they will be fixed as the most general achievable within the limits of the covariance and contravariance of the function type (see \ref{subsec:covariance_contravariance}).
+Functions have one major limitation in Scala -- they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the \textit{eta-expansion} on a generic method, we have to specify the type arguments. Otherwise, they will be fixed as the most general achievable within the limits of the covariance and contravariance of the function type (see \ref{subsec:covariance_contravariance}).
 
 In some cases, this might make the function impossible to call:
 \lstset{style=Scala}
@@ -433,9 +433,9 @@ It is obvious that our API, which was designed to remain as simple as possible, 
 
 Supposing we already have a mechanism to mark the actual function to measure, we encounter another problem. Making a decision when executing the function with multiple implementations automatically generates a context of the decision -- all measured function invocations that were affected by the decision. When measuring the invocation, the framework needs to know to which context it belongs to in order to be able to assign the measured data to the run history of the corresponding function.
 
-The contexts can interleave and we cannot match the decision with the invocation by time or location. It is impossible to decide which invocation belongs to which decision automatically - we need support from the user. He will have to explicitly state the context whenever invoking the measured function. By doing this, he will also pinpoint the moment of decision that affected the invocation.
+The contexts can interleave and we cannot match the decision with the invocation by time or location. It is impossible to decide which invocation belongs to which decision automatically -- we need support from the user. He will have to explicitly state the context whenever invoking the measured function. By doing this, he will also pinpoint the moment of decision that affected the invocation.
 
-Practically, we need to introduce a special object - the \textit{invocation token} - which will represent the context. The \inlinecode{AdaptiveFunctionN} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate an invocation token that will be used to measure future function runs. We chose to make it accessible using the \inlinecode{\textasciicircum()} operator, to simulate the fluent application.
+Practically, we need to introduce a special object -- the \textit{invocation token} -- which will represent the context. The \inlinecode{AdaptiveFunctionN} instances will have a special, modified version of the apply method, which will not trigger the measure of the selected function, but will generate an invocation token that will be used to measure future function runs. We chose to make it accessible using the \inlinecode{\textasciicircum()} operator, to simulate the fluent application.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -445,7 +445,7 @@ val (config, measure) = getConfig^()
 measure(() => run(config))
 \end{lstlisting}
 
-This approach has one main disadvantage compared to the rest of the API - it breaks the transparency. The user has to know that he is working with the \inlinecode{AdaptiveFunctionN}, not just normal function. His assistance is, however, required by the nature of the problem.
+This approach has one main disadvantage compared to the rest of the API -- it breaks the transparency. The user has to know that he is working with the \inlinecode{AdaptiveFunctionN}, not just normal function. His assistance is, however, required by the nature of the problem.
 
 
 \subsection{Usage from Java and other JVM based languages}

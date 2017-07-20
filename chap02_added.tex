@@ -7,7 +7,7 @@ This chapter will provide a basic overview of the solution presented and of the 
 \section{Detailed goals}
 \label{sec:goals_revisited}
 
-In the introduction, the basic goal of the thesis was mentioned in a very general manner - as a simple-to-use framework that allows the user to introduce variants into his program. Now, we will go a little deeper and present more detailed goals and the consequences they have for the implementation.
+In the introduction, the basic goal of the thesis was mentioned in a very general manner -- as a simple-to-use framework that allows the user to introduce variants into his program. Now, we will go a little deeper and present more detailed goals and the consequences they have for the implementation.
 
 \subsubsection{A simple and fluent API}
 
@@ -28,7 +28,7 @@ In order to achieve this behavior, we are going to have to work with implicit ty
 
 \subsubsection{Transparent usage}
 
-The function that was created by the combining process (in the rest of the text referred to as \textit{combined function}) should behave just like a normal function - the caller should not have to perform any special action and he should not be able to recognize that multiple implementations are involved.
+The function that was created by the combining process (in the rest of the text referred to as \textit{combined function}) should behave just like a normal function -- the caller should not have to perform any special action and he should not be able to recognize that multiple implementations are involved.
 
 \lstset{style=Scala}
 \begin{lstlisting}
@@ -61,7 +61,7 @@ As the key part of the framework, we want to select the function to run each tim
 The selection would be based on historical measurements of each function. We should be able to handle the following situations regarding the history data:
 
 \begin{itemize}
-	\item Functions whose run time does not depend significantly on the input - we expect that if one function has better performance than the other, it will not change with different input or environment
+	\item Functions whose run time does not depend significantly on the input -- we expect that if one function has better performance than the other, it will not change with different input or environment
 	\item Functions whose run time depends on some characteristics of the input (e.g. if the sequence is sorted)
 	\item Functions whose run time is expected to be a function of the input size or some similar measurable feature of the input (e.g. length of the sequence to sort)
 	\item Functions whose run time depends on the execution environment and is expected to change over time
@@ -71,7 +71,7 @@ This leads to a few consequences. Multiple selection strategies meeting the requ
 
 \subsubsection{Controlling the invocation behavior}
 
-The invocation behavior should change in some situations - when we are sure enough that one option is in general better than the other, when we need to gather more data, when we need to save time and cannot perform the selection, or in other cases. Every combined function should have its state and some behavior plan, which would reflect some basic statistics and events on the functions.
+The invocation behavior should change in some situations -- when we are sure enough that one option is in general better than the other, when we need to gather more data, when we need to save time and cannot perform the selection, or in other cases. Every combined function should have its state and some behavior plan, which would reflect some basic statistics and events on the functions.
 
 We can achieve this by introducing a simple state machine logic and a language in form of a Scala DSL to create simple state machines.
 

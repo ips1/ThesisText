@@ -183,9 +183,9 @@ val parse = (
 The test is based on parsing three different JSON strings:
 
 \begin{itemize}
-	\item Small - 9KB, 10 records array
-	\item Medium - 80KB, 100 records array
-	\item Large - 8MB, 1000 records array
+	\item Small -- 9KB, 10 records array
+	\item Medium -- 80KB, 100 records array
+	\item Large -- 8MB, 1000 records array
 \end{itemize}
 
 We know that we deal with fixed sizes of input files, so we can use the default t-test selection strategy without any problems, because every size will occupy one of the groups. If we knew that the sizes within a group might vary, we should use some other strategy. The value $\alpha = 0.05$ is used.
@@ -248,7 +248,7 @@ A different sort of problems that ScalaAdaptive might help with concerns adaptin
 
 The main goal of such a replication is usually to distribute the work between more nodes, so that the response times remain low. A technique called load balancing should take care of distributing the requests evenly between the nodes often just using a simple round-robin technique. This, however, has to be done on the side of the service, through a common gateway. 
 
-We will use ScalaAdaptive to implement a simple load balancing on the side of the client by evaluating the response times and selecting the target node using our selection strategies. We will take advantage of the possibility to limit the maximal age of the historical data (see section \ref{subsec:limiting_record_age}) - we want to make decisions based only on the most recent measurements, because we suppose that they will change rapidly.
+We will use ScalaAdaptive to implement a simple load balancing on the side of the client by evaluating the response times and selecting the target node using our selection strategies. We will take advantage of the possibility to limit the maximal age of the historical data (see section \ref{subsec:limiting_record_age}) -- we want to make decisions based only on the most recent measurements, because we suppose that they will change rapidly.
 
 There are two goals of this load balancing example:
 
@@ -283,7 +283,7 @@ Note that we need to use the custom identifier feature as mentioned in \ref{subs
 
 For the actual test, we used two instances of a simple custom web service running on different ports of the same machine. Its implementation can be found in attachment \ref{attach:cd}. We simulated the problems with load on the machines by artificially changing the response times of the servers every 50 seconds according to a set of predefined scenarios. From the client application, we sent one request every 0.5 seconds directly to each one of the servers and one using our balanced method. 
 
-The results for three different scenarios can be seen in figure \ref{fig:load_balance_scen}. The lines represent response time evolution in time - direct requests are marked with double line and dotted line, the balanced request is solid. We can observe that most of the time, the solid line copies the lower of the two remaining lines. Sometimes, it repeatedly reaches the higher line, which means that the balanced request is sent to the slower server in order to gather fresh run data.
+The results for three different scenarios can be seen in figure \ref{fig:load_balance_scen}. The lines represent response time evolution in time -- direct requests are marked with double line and dotted line, the balanced request is solid. We can observe that most of the time, the solid line copies the lower of the two remaining lines. Sometimes, it repeatedly reaches the higher line, which means that the balanced request is sent to the slower server in order to gather fresh run data.
 
 \begin{figure}[h!]
 	\captionsetup{justification=centering,margin=0.5cm}
@@ -358,14 +358,14 @@ This approach is very simple and allows the user to write queries over custom da
 
 \subsubsection{DataFrames and Spark SQL}
 
-DataFrames API was introduced later into the Spark framework with a goal of solving the problems of RDDs. The data within DataFrames are described by a schema, somehow similar to classic SQL schema - Spark knows exactly how are the data records structured. The queries are constructed using Spark SQL, a query language (DSL in Scala) that uses textual names of the record attributes (i.e. schema columns). As we can see in the following example, the actions are described by strings and parsed by Spark upon execution:
+DataFrames API was introduced later into the Spark framework with a goal of solving the problems of RDDs. The data within DataFrames are described by a schema, somehow similar to classic SQL schema -- Spark knows exactly how are the data records structured. The queries are constructed using Spark SQL, a query language (DSL in Scala) that uses textual names of the record attributes (i.e. schema columns). As we can see in the following example, the actions are described by strings and parsed by Spark upon execution:
 
 \lstset{style=Scala}
 \begin{lstlisting}
 df.filter("id > 5000").count
 \end{lstlisting}
 
-Spark therefore knows how exactly the mapping, filtering, reducing or grouping is going to happen, and can use these information to optimize the execution and data distribution, to make estimations, etc., when building the query plan. In addition, the data described by a schema can be easily persisted or transfered between nodes without the need to perform a JVM serialization. A major disadvantage is the necessity to provide the schema and the fact that the actual query is parsed at runtime and is untyped - errors in attribute names or conditions in general will not be detected upon compilation.
+Spark therefore knows how exactly the mapping, filtering, reducing or grouping is going to happen, and can use these information to optimize the execution and data distribution, to make estimations, etc., when building the query plan. In addition, the data described by a schema can be easily persisted or transfered between nodes without the need to perform a JVM serialization. A major disadvantage is the necessity to provide the schema and the fact that the actual query is parsed at runtime and is untyped -- errors in attribute names or conditions in general will not be detected upon compilation.
 
 \subsubsection{Datasets}
 
@@ -456,18 +456,18 @@ These observations might be caused by Datasets having the operations optimized t
 
 \subsubsection{Spark SQL adaptive execution}
 
-Spark queries are divided into stages, where each stage can be performed on a single node without the need to exchange any data. Typically, multiple maps or filters are chained within one stage, because every record can be mapped without the necessity of any other data. On the other hand, join, group and reduce operations have to be done at the beginning of a new stage, because they can potentially require data from other nodes. Before every stage, a shuffle is performed - the data is exchanged between the nodes. 
+Spark queries are divided into stages, where each stage can be performed on a single node without the need to exchange any data. Typically, multiple maps or filters are chained within one stage, because every record can be mapped without the necessity of any other data. On the other hand, join, group and reduce operations have to be done at the beginning of a new stage, because they can potentially require data from other nodes. Before every stage, a shuffle is performed -- the data is exchanged between the nodes. 
 
-The data is divided into partitions and each node processes a specific subset during the stage execution. Upon shuffle, some partitions get exchanged. Originally, the partitioning of the data following each shuffle was fixed and based on the original partitioning - it did not reflect the actual results of previous stages, which could potentially lead  to some nodes having a lot less work than the others if there were partitions with majority of data filtered out in previous stage. To solve this issue, an experimental feature called \textit{adaptive execution}\footnote{Should not be mistaken with the adaptive execution of \textit{ScalaAdaptive} framework.} was introduced into Spark SQL. It causes that the result sizes from previous stages are collected and a new partitioning is created before performing the shuffle.
+The data is divided into partitions and each node processes a specific subset during the stage execution. Upon shuffle, some partitions get exchanged. Originally, the partitioning of the data following each shuffle was fixed and based on the original partitioning -- it did not reflect the actual results of previous stages, which could potentially lead  to some nodes having a lot less work than the others if there were partitions with majority of data filtered out in previous stage. To solve this issue, an experimental feature called \textit{adaptive execution}\footnote{Should not be mistaken with the adaptive execution of \textit{ScalaAdaptive} framework.} was introduced into Spark SQL. It causes that the result sizes from previous stages are collected and a new partitioning is created before performing the shuffle.
 
 The \textit{Spark adaptive execution} feature is turned off by default. We can use ScalaAdaptive to experiment with the performance impact when enabling it. In addition, there are two configurable attributes of the feature:
 \begin{itemize}
-	\item \inlinecode{targetPostShuffleInputSize} - the optimal size of a partition (will be targeted during shuffle)
-	\item \inlinecode{minNumPostShufflePartitions} - the minimal number of partitions (will be strictly kept)
+	\item \inlinecode{targetPostShuffleInputSize} -- the optimal size of a partition (will be targeted during shuffle)
+	\item \inlinecode{minNumPostShufflePartitions} -- the minimal number of partitions (will be strictly kept)
 \end{itemize}
 We can try a custom value for these attributes in one of the ScalaAdaptive combinations.
 
-The usage of ScalaAdaptive in this case will, however, be a little more complicated. Some attributes of the Spark SQL configuration can be changed at any point in the execution, but doing so is not reliable, especially in large cluster - changes do not seem to be reflected immediately. A safer approach is to create the SparkSession already with the target configuration. If we create new session for each query, we can incorporate the session creation into the query function. If we, on the other hand, use one session for multiple queries, we need to split the selection process (session creation) and the measurement process (query execution). The only solution is the delayed measurement model described in section \ref{subsec:delayed_measuring}.
+The usage of ScalaAdaptive in this case will, however, be a little more complicated. Some attributes of the Spark SQL configuration can be changed at any point in the execution, but doing so is not reliable, especially in large cluster -- changes do not seem to be reflected immediately. A safer approach is to create the SparkSession already with the target configuration. If we create new session for each query, we can incorporate the session creation into the query function. If we, on the other hand, use one session for multiple queries, we need to split the selection process (session creation) and the measurement process (query execution). The only solution is the delayed measurement model described in section \ref{subsec:delayed_measuring}.
 
 The test was performed on a Dataset of $n$ records which was filtered, grouped by an attribute, the groups reduced to a single element and the result filtered again and counted. We tried to combine various values of $n$ with the following setups:
 
@@ -543,13 +543,13 @@ Maintaining multiple implementations of the same functionality at once brings a 
 
 What is more, subtle differences in behavior of the implementations could be unintentionally introduced. These differences might not have visible effects immediately and may appear after several other modifications. At that moment, it will be extremely difficult to locate the problem, because the misbehavior caused will not be deterministic thanks to the nature of the selection algorithm.
 
-In cases where third-party libraries are used within the combined implementations, we introduce yet another factor of risk into the system - the libraries can change their behavior in newer versions, can have undocumented differences in their solutions of input corner cases, etc. 
+In cases where third-party libraries are used within the combined implementations, we introduce yet another factor of risk into the system -- the libraries can change their behavior in newer versions, can have undocumented differences in their solutions of input corner cases, etc. 
 
 Using non-deterministic decision tools in general lowers the maintainability of the system, and the ScalaAdaptive framework is such a tool.
 
 \subsection{Testing and verification}
 
-When maintaining multiple implementations used in our program, there will have to be inevitable changes made to every one of them. Before being released, the system has to go through the verification process. Common techniques of regression testing are insufficient in this case due to the non-deterministic nature of the adaptive selection in the system - some of the implementations might not be tested at all during the regression test, but might be selected in the production environment.
+When maintaining multiple implementations used in our program, there will have to be inevitable changes made to every one of them. Before being released, the system has to go through the verification process. Common techniques of regression testing are insufficient in this case due to the non-deterministic nature of the adaptive selection in the system -- some of the implementations might not be tested at all during the regression test, but might be selected in the production environment.
 
 The only way how to perform a regression test on the system is to change the \textit{ScalaAdaptive} framework configuration in the test environment, specifically the \textit{default policy} and the \textit{selection strategy}. The recommended settings are following:
 
@@ -573,4 +573,4 @@ In order to create a combined function from two different algorithms implemented
 	\item Does the algorithm sort in-place, or produces a new sequence?
 \end{itemize}
 
-Creating wrappers for the API that solve these issues is not trivial - data structures have to be converted, copied, etc., which will cause more unnecessary overhead. This overhead might get more significant with the complexity of data structures that we need to convert between the two APIs that we need to adapt.
+Creating wrappers for the API that solve these issues is not trivial -- data structures have to be converted, copied, etc., which will cause more unnecessary overhead. This overhead might get more significant with the complexity of data structures that we need to convert between the two APIs that we need to adapt.
