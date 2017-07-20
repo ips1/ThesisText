@@ -213,7 +213,7 @@ val combinedFunc = { () => obj1.call(...) } or { () => obj2.call(...) }
 \subsubsection{Combining methods}
 \label{subsubsec:apimethods}
 
-This is expected to be the most common use-case -- we have multiple methods and we want to combine them into a single combined function. As mentioned in \ref{subsec:etaexpansion}, the methods can be easily converted in functions, but unfortunately, in case of the implicit typecast and then a method call, the expansion is not done automatically on the first method. The second method, which is an argument, gets expanded.
+This is expected to be the most common use case -- we have multiple methods and we want to combine them into a single combined function. As mentioned in \ref{subsec:etaexpansion}, the methods can be easily converted in functions, but unfortunately, in case of the implicit typecast and then a method call, the expansion is not done automatically on the first method. The second method, which is an argument, gets expanded.
 
 \lstset{style=Scala}
 \begin{lstlisting}
