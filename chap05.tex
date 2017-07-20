@@ -193,7 +193,7 @@ In section \ref{subsec:api_implementation}, we introduced an implicit method tha
 
 \begin{enumerate}
 	\item Replace the implicit conversion method by a def macro (see \ref{sec:defmacros}) and extract the conversion logic into a different, non-implicit method that allows explicitly setting the function identifier (in our case, the \inlinecode{Conversions} singleton object methods \inlinecode{toAdaptor})
-	\item Inside the implicit macro, analyze the AST and try to locate the \mbox{eta-expansion} method call
+	\item In the implicit macro, analyze the AST and try to locate the \mbox{eta-expansion} method call
 	\item If the method call is successfully found:
 	\begin{enumerate}
 		\item Generate the identifier expression as a \inlinecode{getTypeName} call on the target of the method call, concatenated with the method name
@@ -610,7 +610,7 @@ The \inlinecode{LimitedRunHistory} wrapper should always be used, as it can prev
 
 Very simple trait that represents one of the selection strategies, as described in detail in chapter \ref{chap:deciding}. It receives a set of \inlinecode{RunHistory} instances for various functions and groups along with an input descriptor, and should select and return one of the functions. 
 
-The implementations should be stateless and should work only with the \inlinecode{RunHistory} records that it receives (in order not to mix together decisions about two separate history storage locations). The strategy implementations often have a customizable fallback strategy that is used in cases where the current strategy is not able to make a decision, as described in section \ref{subsec:solving_decision_failures}.
+The implementations should be stateless and should work only with the set of \inlinecode{RunHistory} records that it receives (in order not to mix together decisions about two separate history storage locations). The strategy implementations often have a customizable fallback strategy that is used in cases where the current strategy is not able to make a decision, as described in section \ref{subsec:solving_decision_failures}.
 
 The strategies are parametrized by the \inlinecode{TMeasurement} type of the function run evaluation. All of the implemented strategies work with function run time represented either directly by \inlinecode{Long} or by a type viewable as \inlinecode{Numeric}.
 
@@ -634,7 +634,9 @@ In addition, some complementary supporting strategies were added:
 \item \inlinecode{LeastDataSelectionStrategy} -- uses the function with least historical runs
 \end{itemize}
 
-The common pattern is to use the \inlinecode{LowRunAwareSelectionStrategy} as the topmost strategy in the composition to postpone the decision process until some data are gathered, the \inlinecode{LeastDataSelectionStrategy} as the fallback strategy, and to have one of the actual input based or mean based strategies in the middle, optionally wrapped in the window-bound class. The \inlinecode{LeastDataSelectionStrategy} is also recommended to be used as the strategy for the \textit{gather data} operation of \inlinecode{AdaptiveSelector}.
+The common pattern is to select one of the input based or mean based strategies and to set the \inlinecode{LeastDataSelectionStrategy} as its fallback strategy. Optionally, the strategy can be put into the window-bound type. Then, it should be wrapped inside the \inlinecode{LowRunAwareSelectionStrategy} to postpone the decision process until some data are gathered.
+
+The \inlinecode{LeastDataSelectionStrategy} is also recommended to be used as the strategy for the \textit{gather data} operation of \inlinecode{AdaptiveSelector}.
 
 \subsubsection{EvaluationProvider}
 
