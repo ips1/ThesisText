@@ -306,9 +306,6 @@ This, however, leads to problems when being invoked as a macro, so this solution
 \subsection{Generic methods}
 \label{subsec:generics}
 
-%TODO: Solution suggestion - OOP approach, genericity in classes
-
-%TODO: How to solve this issue?
 
 Functions have one major limitation in Scala -- they can't have any generic arguments. The signature of a function always has all the argument and return value types specified at compile-time. If we perform the \textit{eta-expansion} on a generic method, we have to specify the type arguments. Otherwise, they will be fixed as the most general achievable within the limits of the covariance and contravariance of the function type (see \ref{subsec:covariance_contravariance}).
 
