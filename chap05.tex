@@ -138,12 +138,10 @@ The persistent storage, just like the global one, relies on the unique function 
 	\item Having to deal with larger amounts of history data
 \end{itemize}
 
-\subsection{History storage function identifiers}
+\subsection{Function identifiers}
 \label{subsec:function_identifiers}
 
 As described in section \ref{subsec:storing}, we need some sort of identifier of the function to be able to store the run history data in a global or persistent storage. It does not make sense to use the references to the function objects, as new closure instances are created every time a lambda expression (or an eta-expanded method) is assigned, which would lead to having new history for each new instance, a behavior equivalent to local storage discussed in \ref{subsec:storing}.
-
-%TODO: Reference an example?
 
 This leaves us with three basic identifier options.
 

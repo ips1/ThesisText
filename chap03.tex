@@ -10,7 +10,7 @@ Some key design decisions about the functionality of the entire framework that a
 
 \subsection{Basic API requirements}
 
-The framework itself should not require much interaction from the programmer. The typical use-case of our API could be described in the following way:
+The framework itself should not require much interaction from the programmer. The typical use case of our API could be described in the following way:
 
 \blockquote{
 User has a class with two methods, \inlinecode{method1()} and  \inlinecode{method2()}, and uses the framework simple API to create a third method in the same class, \inlinecode{method()}, that adaptively uses one of the other two methods. If he wants to change the behavior of the adaptation (method selection) process, he can do it directly in the definition of the \inlinecode{method()}.
@@ -160,7 +160,7 @@ After having designed the basic look of our API, we can examine the usage patter
 
 \subsubsection{Combining two functions}
 
-The most simple and straightforward use-case is to combine two functions previously stored in variables. We use the implicit type conversion and the \inlinecode{or} method.
+The most simple and straightforward use case is to combine two functions previously stored in variables. We use the implicit type conversion and the \inlinecode{or} method.
 
 \lstset{style=Scala}
 \begin{lstlisting}

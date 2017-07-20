@@ -163,7 +163,7 @@ JSON\footnote{JavaScript Object Notation} is a data-exchange format that can hol
 
 The problem concerning JSON and other similar formats (XML, ProtocolBuffers, etc.) is that there is a variety of libraries available to perform the serialization and deserialization, and we have to decide for one when designing our application. The API tends to be similar and since it is used with such a frequency, optimizing its performance might be a suitable goal. There are performance tests and comparisons of the libraries available, but as shown in \cite{dreyfuss_ultimate_2015}, each one might be suitable for a different use case. In addition, \cite{Trojanek:Thesis:2013} shows that the performance might significantly vary in different versions.
 
-This library decision problem is a suitable use-case for ScalaAdaptive -- we can create a simple wrapper library with the same API as the original libraries that will expose the functions combined from the original serialization and deserialization methods. The user will be abstracted from the ScalaAdaptive, and the libraries can be added or removed at any time very easily.
+This library decision problem is a suitable use case for ScalaAdaptive -- we can create a simple wrapper library with the same API as the original libraries that will expose the functions combined from the original serialization and deserialization methods. The user will be abstracted from the ScalaAdaptive, and the libraries can be added or removed at any time very easily.
 
 \subsubsection{Combining GSON and Jackson}
 
